@@ -14,6 +14,11 @@ from .field import FieldElement
 from .keys import PrivateKey, PublicKey, hash160
 from .ripemd160 import ripemd160
 from .sha256 import double_sha256, sha256
+from .sha512 import hmac_sha512, pbkdf2_hmac_sha512, sha512
+from .bip32 import HDKey
+from .bip39 import (
+    entropy_to_mnemonic, is_valid, mnemonic_to_entropy, mnemonic_to_seed,
+)
 
 __all__ = [
     "FieldElement",
@@ -23,4 +28,6 @@ __all__ = [
     "PrivateKey", "PublicKey", "hash160",
     "Signature", "sign", "verify", "recover_secret_from_reused_nonce",
     "ser_sig", "parse_sig",
+    "sha512", "hmac_sha512", "pbkdf2_hmac_sha512",
+    "HDKey", "entropy_to_mnemonic", "mnemonic_to_entropy", "mnemonic_to_seed", "is_valid",
 ]

@@ -265,8 +265,13 @@ Each stage has a **Definition of Done (DoD)**. Tick the box when met.
       both tabs verified in-browser (reorgs show, P matches baked grid, reversal animates), console
       clean. Note: no `node.py` (folded into network.py); consensus baked from Python, race
       animated live in JS with P from the baked grid.
-- [ ] **Stage 6 — HD wallet.** `bip39.py` + `bip32.py` + vectors; `web/wallet/` tree.
-      DoD: official BIP-32/39 vectors pass in both impls; tree unfolds in browser.
+- [x] **Stage 6 — HD wallet.** From-scratch `sha512.py` (+ HMAC-SHA512, PBKDF2), `bip39.py`
+      (mnemonic↔entropy↔seed; `hermes/english.txt` wordlist, sha256-verified), `bip32.py`
+      (HDKey, CKD, xprv/xpub serialization). `tests/test_wallet.py` covers official BIP-39 + BIP-32
+      Test Vector 1 (32/32 total). JS mirror `web/shared/wallet.js` (BigInt SHA-512, ~348ms
+      PBKDF2); `web/wallet/` derivation-tree demo (generate 12/24, passphrase, mainnet/testnet).
+      DoD MET — JS reproduces all vectors + canonical abandon…about address (fp 73c5da0a, addr
+      1LqBGSKuX5y…); verified in-browser, console clean. Wordlist fetched at web/wallet/wordlist.txt.
 - [ ] **Stage 7 — Testnet.** `cli.py` builds/signs/broadcasts a real testnet tx. **User funds a
       faucet address.** Capture the real txid; `web/testnet/` narrates it + explorer link.
       DoD: a real tx is on testnet and linked.
@@ -344,3 +349,12 @@ _Append a dated entry every session: what changed · what's next · new decision
   which we don't have yet — build sha512.py first, then bip39.py/bip32.py against the official BIP
   test vectors, then `web/wallet/` (mnemonic → seed → derivation tree). Bundle the 2048-word list
   inline (~13KB).
+- **2026-06-27** — **Stage 6 DONE.** From-scratch SHA-512/HMAC/PBKDF2 + BIP-39 + BIP-32
+  (`hermes/sha512.py`, `bip39.py`, `bip32.py`, `hermes/english.txt`). 32/32 pytest vs official
+  BIP-39/BIP-32 vectors. JS mirror `web/shared/wallet.js` (BigInt SHA-512), `web/wallet/`
+  derivation-tree demo — verified in-browser (matches canonical abandon…about fp 73c5da0a / addr
+  1LqBGSKuX5y…), console clean. Wallet card live. **Next: Stage 7 — Real Testnet** (capstone).
+  Needs real DER signatures + a legacy P2PKH tx serializer + SIGHASH_ALL (extend `tx.py`),
+  `cli.py` to build/sign/broadcast, a faucet-funded testnet addr (**USER ACTION**: generate, user
+  funds), broadcast via blockstream/mempool.space testnet API, then `web/testnet/` narrating the
+  captured txid. Then Stage 8 polish/ship (og.png, GitHub Pages).

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HD Wallet — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="HD Wallet — Hermes">
+<meta property="og:description" content="One seed phrase unfolds into a whole tree of Bitcoin addresses — BIP-39 and BIP-32 from scratch.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#ffd56b;--accent-ink:#241c00}
+  .tree{font-family:var(--mono);font-size:13px;line-height:1.5}
+  .node{display:flex;gap:10px;align-items:baseline;padding:8px 11px;border-radius:8px;margin:4px 0;border:1px solid var(--line);background:#0e0e16}
+  .node .path{color:var(--accent);flex:0 0 auto}
+  .node .desc{color:var(--muted);font-size:11.5px}
+  .node.indent1{margin-left:22px} .node.indent2{margin-left:44px} .node.indent3{margin-left:66px}
+  .leaf{display:flex;gap:10px;align-items:baseline;padding:7px 11px;margin:3px 0 3px 88px;border-radius:8px;
+    background:var(--panel);border:1px solid var(--line);cursor:pointer;transition:.12s}
+  .leaf:hover{border-color:var(--accent)}
+  .leaf .idx{color:var(--muted);flex:0 0 auto;font-size:11.5px}
+  .leaf .addr{color:var(--ink)}
+  .leaf .wif{color:var(--muted);font-size:11px;margin-left:auto;opacity:0;transition:.12s}
+  .leaf:hover .wif{opacity:1}
+  .connector{color:var(--muted)}
+  textarea{width:100%;margin-top:7px;background:#0e0e16;color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:10px;font-family:var(--mono);font-size:12.5px;resize:vertical;min-height:74px;line-height:1.5}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  textarea.bad{border-color:var(--bad)}
+  .seedline{font-family:var(--mono);font-size:11.5px;color:var(--muted);word-break:break-all;margin-top:6px}
+  .seedline b{color:var(--ink);font-weight:400}
+  .deriving{color:var(--accent);font-size:12px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / HD Wallet</div>
+  <header class="hero">
+    <h1>The HD Wallet</h1>
+    <p class="sub">
+      A modern wallet isn't a pile of keys — it's <b>one seed phrase</b>. Twelve words become a
+      512-bit seed (<span class="x" data-pop="bip39">BIP-39</span>), and that seed deterministically
+      grows an entire <b>tree</b> of keys and addresses (<span class="x" data-pop="bip32">BIP-32</span>).
+      Back up the phrase once and you've backed up every address you'll ever use.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="panel">
+        <h2>Derivation tree <span id="deriving" class="deriving" style="float:right"></span></h2>
+        <div class="tree" id="tree"></div>
+        <p class="hint">Path <b>m / 44' / coin' / account' / change / index</b>. The ' marks a
+          <span class="x" data-pop="hardened">hardened</span> step. Hover an address to see its
+          private key — all from the phrase above, nothing stored.</p>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>Seed phrase</h2>
+        <textarea id="mnemonic" spellcheck="false"></textarea>
+        <div id="mnemonicErr" class="hint" style="color:var(--bad);min-height:14px"></div>
+        <div class="row"><button id="gen12" class="primary">Generate 12 words</button><button id="gen24">24 words</button></div>
+        <label>Passphrase (optional “25th word”)</label>
+        <input type="text" id="passphrase" spellcheck="false" placeholder="(none)">
+        <label>Network</label>
+        <div class="seg" id="net"><button data-v="main" aria-pressed="true">Mainnet</button><button data-v="test" aria-pressed="false">Testnet</button></div>
+      </div>
+      <div class="panel">
+        <h2>Under the hood</h2>
+        <div class="seedline">seed (512-bit): <b id="seedHex">–</b></div>
+        <div class="seedline" style="margin-top:8px">master fingerprint: <b id="fp">–</b></div>
+        <div class="seedline" style="margin-top:8px">account xpub: <b id="xpub">–</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Deterministic, not random</h3>
+        <p>The same phrase always rebuilds the exact same tree, in any conforming wallet. Lose your
+          device, type the words into a new one, and every address comes back.</p></div>
+      <div class="ncard"><h3>The passphrase is a hidden wallet</h3>
+        <p>Add a passphrase and you get a completely different tree from the same words — a
+          plausible-deniability vault. Forget it and that money is gone forever.</p></div>
+      <div class="ncard"><h3>Hardened keeps branches private</h3>
+        <p>Hardened steps stop someone who holds one account's public key from deriving its
+          siblings. That's why account-level paths use the apostrophe.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  bip39: "<h4>BIP-39</h4><p>Encodes random entropy as words (with a checksum so typos are caught), then stretches the phrase through PBKDF2-HMAC-SHA512 into a 512-bit seed.</p>",
+  bip32: "<h4>BIP-32</h4><p>Hierarchical deterministic keys: HMAC-SHA512 turns a parent key + an index into a child key, recursively, forming a tree addressed by paths like m/44'/0'/0'/0/0.</p>",
+  hardened: "<h4>Hardened derivation</h4><p>A child step (marked ') that mixes in the parent's private key, so revealing a public key can't expose sibling or parent keys.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script src="../shared/wallet.js"></script>
+<script>
+(() => {
+  const H = window.Hermes, WL = window.HermesWallet;
+  const $ = (id) => document.getElementById(id);
+  let words = [], testnet = false, timer = null;
+
+  function generate(count) {
+    const bytes = count === 24 ? 32 : 16;
+    const e = new Uint8Array(bytes); crypto.getRandomValues(e);
+    $("mnemonic").value = WL.entropyToMnemonic(e, words);
+    schedule();
+  }
+  function schedule() {
+    clearTimeout(timer);
+    $("deriving").textContent = "deriving…";
+    timer = setTimeout(derive, 60);   // let the UI paint the "deriving" state
+  }
+  function derive() {
+    const mnemonic = $("mnemonic").value.trim().replace(/\s+/g, " ");
+    const ta = $("mnemonic");
+    if (!WL.mnemonicValid(mnemonic, words)) {
+      ta.classList.add("bad");
+      $("mnemonicErr").textContent = mnemonic ? "Invalid mnemonic (unknown word or bad checksum)." : "Enter or generate a seed phrase.";
+      $("tree").innerHTML = ""; $("seedHex").textContent = "–"; $("fp").textContent="–"; $("xpub").textContent="–";
+      $("deriving").textContent = "";
+      return;
+    }
+    ta.classList.remove("bad"); $("mnemonicErr").textContent = "";
+
+    const seed = WL.mnemonicToSeed(mnemonic, $("passphrase").value);
+    const master = WL.fromSeed(seed);
+    const coin = testnet ? 1 : 0;
+    const accountPath = `m/44'/${coin}'/0'`;
+    const account = WL.derivePath(master, accountPath);
+    const external = WL.child(account, 0);   // change = 0 (receiving)
+
+    $("seedHex").textContent = H.bytesToHex(seed).slice(0, 32) + "…" + H.bytesToHex(seed).slice(-8);
+    $("fp").textContent = H.bytesToHex(WL.fingerprint(master));
+    const xp = WL.xpub(account); $("xpub").textContent = xp.slice(0, 20) + "…" + xp.slice(-8);
+
+    const rows = [
+      `<div class="node"><span class="path">m</span><span class="desc">master key</span></div>`,
+      `<div class="node indent1"><span class="path">m/44'</span><span class="desc">purpose (BIP-44)</span></div>`,
+      `<div class="node indent2"><span class="path">m/44'/${coin}'</span><span class="desc">coin: ${testnet ? "testnet" : "bitcoin"}</span></div>`,
+      `<div class="node indent3"><span class="path">…/0'</span><span class="desc">account 0 · change 0 (receiving)</span></div>`,
+    ];
+    for (let i = 0; i < 5; i++) {
+      const leaf = WL.child(external, i);
+      const addr = WL.address(leaf, testnet);
+      const wif = H.wif(leaf.secret, true, testnet);
+      rows.push(`<div class="leaf" data-addr="${addr}">
+        <span class="idx">/0/${i}</span>
+        <span class="addr">${addr}</span>
+        <span class="wif">key ${wif.slice(0,8)}…</span></div>`);
+    }
+    $("tree").innerHTML = rows.join("");
+    $("tree").querySelectorAll(".leaf").forEach(el => el.addEventListener("click", () => {
+      navigator.clipboard?.writeText(el.dataset.addr);
+    }));
+    $("deriving").textContent = "";
+  }
+
+  document.querySelectorAll("#net button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#net button").forEach(x=>x.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true"); testnet = b.dataset.v === "test"; schedule();
+  }));
+  $("gen12").addEventListener("click", () => generate(12));
+  $("gen24").addEventListener("click", () => generate(24));
+  $("mnemonic").addEventListener("input", schedule);
+  $("passphrase").addEventListener("input", schedule);
+
+  fetch("wordlist.txt").then(r => r.text()).then(t => {
+    words = t.split(/\s+/).filter(Boolean);
+    $("mnemonic").value = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+    derive();
+  });
+})();
+</script>
+</body>
+</html>
