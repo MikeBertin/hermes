@@ -1,0 +1,320 @@
+# Hermes — Build Plan
+
+> **Bitcoin from first principles.** A from-scratch Bitcoin implementation (in the spirit of
+> Karpathy's *"A from-scratch tour of Bitcoin in Python"* / `karpathy/cryptos`) turned into a
+> suite of interactive browser visualisations. Companion to **Chiron** (computational physics),
+> **Empedocles** (evolutionary algorithms), and **Plutus** (quant finance).
+
+**Status:** SCOPED & LOCKED — no code written yet. This document is the source of truth for
+multi-session handovers. Update the *Progress Log* at the bottom at the end of every session.
+
+---
+
+## 0. How to use this document (handover protocol)
+
+This is a multi-session project. To keep token usage bounded, each session should:
+
+1. **Read this file first.** It contains every locked decision and the full spec — you should
+   not need to re-derive anything or re-read the whole codebase.
+2. **Check the Progress Log** (bottom) for what's done and what's next.
+3. Do the next stage (or the stage the user asks for). Stages are ordered so each produces
+   something runnable/verifiable on its own.
+4. **At end of session:** tick the stage checklist, append a dated entry to the Progress Log
+   (what changed, what's next, any new decisions), and update the memory file
+   `hermes-bitcoin-from-scratch.md`.
+5. Keep the memory-file one-liner in `MEMORY.md` current.
+
+**Golden rule:** the Python package is the *canonical, correct* implementation, cross-checked
+against official protocol test vectors. The browser JS is a small re-implementation for snappy
+interaction; it must agree with the same test vectors. When in doubt, Python wins.
+
+---
+
+## 1. Naming & identity
+
+- **Codename: Hermes** — Greek god of commerce *and* of boundaries, messages, and secrets
+  (whence "hermetic" = sealed). Money + cryptography + signed messages is his exact portfolio.
+- **Tagline:** *"Bitcoin from first principles — keys, signatures, and proof of work, built from nothing."*
+- **README framing** must earn the name (template = Plutus's "blind god of wealth" intro):
+  a short myth paragraph tying Hermes to commerce + secrets + messengers, then the demos table,
+  then cross-links to Chiron / Empedocles / Plutus, then "Running locally".
+- GitHub Pages URL (to reserve in meta tags): `https://mikebertin.github.io/hermes/`
+
+---
+
+## 2. House style (mirror exactly — copy from chiron/index.html)
+
+Locked conventions, identical to Chiron/Empedocles/Plutus:
+
+- **Self-contained.** Each demo is a single `index.html` with inline `<style>` and vanilla JS +
+  `<canvas>`. No build step, no framework, no npm. `fetch()` of baked JSON is allowed (needs a
+  local server, documented in README).
+- **Palette** (from chiron): `--bg:#0a0a0f; --panel:#13131c; --line:#23232f; --ink:#e7e7ef;
+  --muted:#8a8a9c;` plus one **accent colour per demo** (see table in §5). Mono font
+  `"SF Mono",ui-monospace,Menlo,Consolas,monospace`; sans `ui-sans-serif,system-ui,...`.
+- **Landing page**: `.badge` (uppercase tracked-out codename) → gradient-text `<h1>` →
+  `.lede` paragraph → `.grid` of accent-coloured `a.card`s (thumb canvas + tag + h2 + blurb +
+  "Open →") → `footer` with myth note + sibling links. Cards lift on hover and tint to their
+  accent. Reuse chiron's exact CSS as the starting point.
+- Full OpenGraph + Twitter meta block (see chiron head), pointing at `og.png` (1200×630).
+- Each demo page: title + one-paragraph explainer up top, the canvas/controls, and a short
+  "what am I looking at / why it matters" note. Keep copy tight and confident.
+
+---
+
+## 3. Architecture (locked)
+
+```
+projects/hermes/
+├── PLAN.md                 # this file
+├── README.md               # myth + demos table + run instructions
+├── og.png                  # 1200×630 social card (built last)
+├── hermes/                 # ── canonical from-scratch Python package ──
+│   ├── __init__.py
+│   ├── field.py            # finite-field element mod p
+│   ├── curve.py            # secp256k1: Point, group law, scalar mult (k·G)
+│   ├── sha256.py           # SHA-256 from scratch (Karpathy did this by hand)
+│   ├── ripemd160.py        # RIPEMD-160 from scratch
+│   ├── base58.py           # Base58 + Base58Check
+│   ├── keys.py             # priv key, pub key, WIF, P2PKH address
+│   ├── ecdsa.py            # sign / verify; deterministic + explicit-nonce modes
+│   ├── script.py           # Bitcoin Script stack VM + opcode set
+│   ├── tx.py               # tx structure, serialization, sighash (SIGHASH_ALL)
+│   ├── node.py             # a single node: chain, mempool, fork-choice
+│   ├── network.py          # multi-node gossip sim + 51% attack scenario
+│   ├── bip39.py            # mnemonic <-> seed (PBKDF2-HMAC-SHA512)
+│   ├── bip32.py            # HD key derivation (CKD, paths)
+│   └── cli.py              # derive keys; build/sign/broadcast a real testnet tx
+├── tests/                  # pytest, drive everything off official test vectors
+│   └── vectors/            # JSON of known-answer vectors (see §4)
+├── export.py               # bakes JSON run-data into web/<demo>/data/ (Plutus pattern)
+└── web/
+    ├── index.html          # landing page (8 cards)
+    ├── shared/             # optional: shared.css, btc.js (small JS/BigInt crypto reimpl)
+    ├── curve/index.html
+    ├── address/index.html
+    ├── sign/index.html
+    ├── mine/index.html
+    ├── network/index.html  # consumes baked JSON from export.py
+    ├── testnet/index.html
+    ├── script/index.html
+    └── wallet/index.html
+```
+
+**Bridge policy:** interactive primitives (curve, address, sign, mine, script, wallet) get a
+small JS/BigInt reimplementation in `web/shared/btc.js` so input is instant — JS has native
+`BigInt`, and secp256k1 is just modular arithmetic, so this is ~300–400 lines. The **network**
+demo is data-heavy and non-interactive in its core, so it plays back **pre-baked JSON runs** from
+`export.py`. The **testnet** demo is driven by the Python `cli.py` (real serialization + real
+broadcast); the web page narrates/visualises a captured real transaction. **No Pyodide** unless a
+demo genuinely needs live arbitrary-Python — current plan: not needed.
+
+**secp256k1 constants** (so no session re-derives them):
+```
+p  = 2**256 - 2**32 - 977
+a  = 0,  b = 7
+Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798
+Gy = 0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A6855419 9C47D08FFB10D4B8  (concat, no space)
+n  = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+h  = 1
+```
+Mainnet P2PKH version byte `0x00`, testnet `0x6F`. WIF prefix main `0x80`, test `0xEF`.
+Base58Check payload = `version || data`, checksum = first 4 bytes of `sha256(sha256(payload))`.
+
+---
+
+## 4. Test-vector strategy (correctness backbone)
+
+Everything is validated against known-answer vectors so the Python and JS impls can't silently
+diverge. Store as JSON in `tests/vectors/`. Minimum set:
+
+- **Curve:** `G`, `2G`, `3G` coordinates; a known `k·G` (use Karpathy's worked example).
+- **Hashes:** `sha256("")`, `sha256("abc")`, `ripemd160("")`, known double-SHA-256.
+- **Keys/address:** a fixed private key → its WIF and P2PKH address (mainnet + testnet).
+- **ECDSA:** fixed key + message + fixed nonce k → exact `(r, s)`; verify true/false cases.
+- **Nonce reuse:** two messages signed with the *same* k → recovered private key matches.
+- **BIP-39:** official test vector (entropy → mnemonic → seed) from the BIP-39 spec.
+- **BIP-32:** official Test Vector 1 (seed → master xprv/xpub → `m/0'` child).
+- **Script:** P2PKH spend evaluates to true; a wrong signature evaluates to false.
+- **Tx:** a known raw tx serializes to the expected hex; sighash matches a reference.
+
+CI is overkill for a demo repo; a `pytest` run that's green is the bar.
+
+---
+
+## 5. The eight demos
+
+Accent colours are suggestions — pick a coherent 8-hue set on the landing page (extend chiron's
+blue/amber/teal). Each demo: **what it shows · key interaction · visual · data source.**
+
+### Layer 1 — Primitives (the Karpathy arc)
+
+**1. Curve** — *accent: electric blue*
+- Shows: secp256k1's group law made geometric; "private key = number, public key = point."
+- Interaction: drag a scalar `k` (slider/odometer); watch `P = k·G` and the chord-and-tangent
+  point-addition construction animate. Toggle: real-number curve (for geometric intuition) vs
+  the finite-field scatter over a small prime (to show it's really discrete).
+- Visual: the cubic curve, the add/double construction lines, the resulting point.
+- Data: live JS (`btc.js`).
+
+**2. Key → Address** — *accent: amber*
+- Shows: the full pipeline priv(256-bit) → pubkey(point) → SHA-256 → RIPEMD-160 → +version →
+  Base58Check address. Plus the WIF encoding of the private key.
+- Interaction: type/randomise a private key; every downstream stage updates live. Flip a single
+  bit on any intermediate and watch the **hash avalanche** ripple the address.
+- Visual: a vertical pipeline of byte-blocks, each stage labelled, bytes coloured.
+- Data: live JS.
+
+**3. Sign & Forge** — *accent: red*
+- Shows: ECDSA sign/verify, then the killer beat — **nonce reuse leaks the private key**
+  (the PS3 / Android-wallet bug), recovered on screen.
+- Interaction: sign a message → see `(r, s)`; verify (tamper the message → verify fails). Then
+  "Forge" panel: sign two different messages with the *same* k, and watch the page algebraically
+  recover the secret key: `k = (z1 - z2)/(s1 - s2)`, `d = (s1·k - z1)/r`.
+- Visual: signature components; the recovery worked step by step.
+- Data: live JS.
+
+**4. Mine & Chain** — *accent: orange*
+- Shows: double-SHA-256 proof-of-work and an immutable chain.
+- Interaction: a live miner grinding the header nonce under an adjustable difficulty target,
+  with a hashrate readout and leading-zero meter. Then a small chain of blocks linked by
+  prev-hash: edit a transaction in block N and watch every subsequent block turn red (invalid)
+  until you re-mine the cascade.
+- Visual: spinning nonce + hash, target bar; a row of block cards with link arrows.
+- Data: live JS (real header serialization; difficulty dialled down for snappy mining).
+
+### Layer 2 — Systems (the differentiators)
+
+**5. Network + 51% attack** — *accent: violet*
+- Shows: emergent consensus — gossip, natural forks, reorgs — and why confirmations matter.
+- Interaction: scrub/play a simulated run of N nodes mining (Poisson) and propagating blocks
+  with latency; watch two blocks found at once create a fork that resolves to the longest/most-
+  work chain, orphaning the loser. Then the **51% scenario**: an attacker mines a private chain,
+  releases it, overtakes the public chain, and a payment that looked "confirmed" gets reversed.
+  Slider for attacker hashpower → probability of a successful double-spend vs confirmations.
+- Visual: a growing block-DAG/tree, coloured by miner; the attacker's hidden chain revealed.
+- Data: **pre-baked JSON** from `export.py` (a few representative seeded runs). Core sim lives
+  in `hermes/network.py`; web just plays it back.
+
+**6. Testnet** — *accent: green*
+- Shows: it's real. Construct, sign, serialize and **broadcast an actual Bitcoin testnet tx**.
+- Interaction: the page narrates a captured real transaction — inputs (a funded UTXO), sighash,
+  signature, raw hex — and links to it confirming on a public explorer (blockstream.info or
+  mempool.space testnet). A "build your own" path documents the CLI flow.
+- Visual: the raw-hex tx with fields annotated; the live explorer link / confirmation count.
+- Data: produced by `hermes/cli.py`. **Requires the user** to fund a generated testnet address
+  from a faucet before the real broadcast (one-time, when this stage is built).
+- Broadcast API: `POST` raw hex to blockstream testnet `/api/tx` (fallback mempool.space).
+  Input type: legacy P2PKH, `SIGHASH_ALL`.
+
+**7. Script VM** — *accent: teal*
+- Shows: Bitcoin Script is a tiny stack language; build the interpreter.
+- Interaction: step a debugger through scripts — P2PKH
+  (`OP_DUP OP_HASH160 <h> OP_EQUALVERIFY OP_CHECKSIG`), bare multisig (`OP_CHECKMULTISIG`),
+  a hashlock (`OP_HASH160 <h> OP_EQUAL`), and a timelock (`OP_CHECKLOCKTIMEVERIFY`). Watch the
+  stack push/pop per opcode; toggle a wrong input to see it fail.
+- Visual: the script listing with a program counter; the live stack.
+- Data: live JS (mirror of `hermes/script.py`).
+
+**8. HD Wallet** — *accent: gold*
+- Shows: real wallet machinery — one seed phrase → a whole tree of addresses.
+- Interaction: enter/generate a 12-word BIP-39 mnemonic; watch mnemonic → seed (PBKDF2) →
+  BIP-32 master key → derived child addresses along `m/44'/1'/0'/0/i` (testnet coin type).
+  Reveal the tree node by node; change one word → entirely different tree.
+- Visual: an unfolding derivation tree; addresses at the leaves.
+- Data: live JS (BIP-39 wordlist bundled; mirror of `hermes/bip32.py`/`bip39.py`).
+
+---
+
+## 6. Build stages (ordered; each ends runnable/verifiable)
+
+Each stage has a **Definition of Done (DoD)**. Tick the box when met.
+
+- [x] **Stage 0 — Skeleton.** Created `projects/hermes/` with `hermes/` package, `tests/`,
+      `pyproject.toml` (pytest `pythonpath=["."]`), `.gitignore`, README stub, `.venv` (pytest).
+      Note: system Python is 3.14 + PEP-668 externally-managed, so we use a project `.venv`.
+- [x] **Stage 1 — Crypto core.** `field`, `curve`, `sha256`, `ripemd160`, `base58`, `keys`,
+      `ecdsa` built from scratch; `tests/test_core.py` has 12 passing vectors. DoD MET: green
+      against SHA-256/RIPEMD-160 KATs (+50 random hashlib cross-checks), published 2G curve
+      coords, Bitcoin-wiki address + WIF vectors, ECDSA sign/verify, and nonce-reuse recovery.
+      Run: `cd projects/hermes && .venv/bin/python -m pytest -q`.
+- [x] **Stage 2 — `btc.js`.** Ported the whole core to JS/BigInt in `web/shared/btc.js`
+      (hashes via Uint32 ops, curve/keys/ecdsa via native BigInt). In-page harness
+      `web/shared/test.html` runs the same vectors + 25 random SHA-256 cross-checks vs native
+      `crypto.subtle`. DoD MET: **41/41 pass** in-browser, console clean. Served via launch
+      config `hermes-web` (port 8011, `--directory hermes/web`) in `projects/.claude/launch.json`.
+- [x] **Stage 3 — Primitive demos.** Landing page `web/index.html` (8 cards: 4 live + 4
+      "coming soon") + the four demos, all self-contained on shared `web/shared/demo.css` +
+      `demo.js` (hover popovers) + `btc.js`. DoD MET — verified in-browser, console clean:
+      `curve/` (real-ℝ chord/tangent + finite-field k·G scatter over F223),
+      `address/` (live pipeline + bit-flip avalanche; matches known WIF/address for the test key),
+      `sign/` (ECDSA sign→valid, tamper→invalid, nonce-reuse recovers the exact private key),
+      `mine/` (live PoW grinder + tamper-the-chain cascade). Accents per demo set on `:root`.
+- [ ] **Stage 4 — Script.** `hermes/script.py` + vectors; `web/script/` step-debugger.
+      DoD: P2PKH/multisig/hashlock/timelock evaluate correctly in both impls; page steps cleanly.
+- [ ] **Stage 5 — Tx + Network sim.** `hermes/tx.py`, `node.py`, `network.py`; `export.py` bakes
+      runs; `web/network/` plays them back incl. the 51% scenario. DoD: baked JSON loads; fork +
+      reorg + double-spend visibly resolve.
+- [ ] **Stage 6 — HD wallet.** `bip39.py` + `bip32.py` + vectors; `web/wallet/` tree.
+      DoD: official BIP-32/39 vectors pass in both impls; tree unfolds in browser.
+- [ ] **Stage 7 — Testnet.** `cli.py` builds/signs/broadcasts a real testnet tx. **User funds a
+      faucet address.** Capture the real txid; `web/testnet/` narrates it + explorer link.
+      DoD: a real tx is on testnet and linked.
+- [ ] **Stage 8 — Polish & ship.** Landing page (8 cards), README myth + table, `og.png`,
+      GitHub Pages, sibling cross-links added to Chiron/Empedocles/Plutus if desired.
+      DoD: site loads on Pages; all 8 demos reachable.
+
+Rough sequencing: Stages 1–3 are one natural chunk (the Karpathy arc, demoable). 4–6 are the
+systems middle. 7–8 close it out. Expect ~3–5 sessions depending on depth.
+
+---
+
+## 7. Open questions / decisions log
+
+- **Locked:** name = Hermes; flagship scope; all 8 demos; Python canonical + JS reimpl bridge;
+  no Pyodide; pure self-contained web; GitHub Pages.
+- **Open:** final 8-colour accent palette (decide on landing page). Whether to also do a Merkle/
+  SPV mini-demo later (deferred — not in the 8). Whether to bundle the full 2048-word BIP-39
+  list inline or fetch it (lean: inline, it's ~13KB).
+- **Needs user action when reached:** Stage 7 faucet funding; possibly a real GitHub repo +
+  Pages enablement at Stage 8.
+
+## 8. Risks / watch-items
+
+- **RIPEMD-160 from scratch** is fiddly — vectors first. (Acceptable fallback: note it's the one
+  primitive Python's `hashlib` may expose via `new('ripemd160')`, but prefer from-scratch for the
+  "from nothing" claim; keep hashlib as a cross-check oracle in tests.)
+- **JS/Python divergence** — mitigated by shared vectors (§4); never ship a demo whose JS hasn't
+  passed them.
+- **Testnet flakiness** — faucets and broadcast APIs come and go; keep the captured txid static in
+  the page so the demo survives even if the live build path rots.
+- **Scope creep** — 8 demos is already a lot; resist adding more until shipped.
+
+---
+
+## 9. Progress Log
+
+_Append a dated entry every session: what changed · what's next · new decisions._
+
+- **2026-06-27** — Project scoped and locked through discussion (name, flagship ambition, all 8
+  demos, architecture, bridge policy). This PLAN.md written.
+- **2026-06-27** — **Stages 0 + 1 DONE.** Scaffolded repo and built the full from-scratch crypto
+  core (`hermes/`: field, curve/secp256k1, sha256, ripemd160, base58, keys, ecdsa). 12/12
+  vector tests pass via project `.venv`. Caught & fixed one bad fixture (had chained a privkey
+  from the wiki's WIF example to a pubkey from its address example — not a real pair); re-anchored
+  the curve on the published 2G coordinates. **Next: Stage 2** — port the core to JS/BigInt in
+  `web/shared/btc.js` with an in-page assert harness against the same vectors, then Stage 3
+  (the four primitive demos: curve, address, sign, mine).
+- **2026-06-27** — **Stage 2 DONE.** `web/shared/btc.js` is the full JS/BigInt port (global
+  `Hermes`); `web/shared/test.html` is the vector harness. 41/41 pass in-browser (incl. native
+  `crypto.subtle` SHA-256 cross-checks), console clean. Added `hermes-web` launch config (port
+  8011) to `projects/.claude/launch.json`. **Next: Stage 3** — the four primitive demos
+  (curve → address → sign → mine) on `btc.js`, each a self-contained `web/<demo>/index.html` in
+  chiron house style.
+- **2026-06-27** — **Stage 3 DONE.** Landing page + all four primitive demos built and verified
+  in-browser (console clean): `curve` (real chord/tangent + F223 k·G scatter), `address` (live
+  HASH160→Base58Check pipeline + bit-flip avalanche), `sign` (ECDSA + nonce-reuse key recovery),
+  `mine` (live PoW + tamper-the-chain). Shared chrome in `web/shared/demo.css` + `demo.js`
+  (popovers). The Layer-1 / Karpathy arc is now demoable end-to-end. **Next: Stage 4** — the
+  Script stack-VM (`hermes/script.py` + vectors, then `web/script/` step-debugger). NOTE on Stage
+  4+: these need tx.py/script.py which don't exist yet — fresh build, Python-first then JS mirror.

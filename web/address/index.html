@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key → Address — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Key → Address — Hermes">
+<meta property="og:description" content="Watch a 256-bit secret become a Bitcoin address through SHA-256, RIPEMD-160 and Base58Check.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#ffc266;--accent-ink:#1f1400}
+  .stg{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+  .stg-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+  .stg-h .meta{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.5px}
+  .arrow-d{color:var(--muted);text-align:center;font-size:15px;margin:-4px 0;line-height:1.2}
+  .chg{color:var(--bad);font-weight:600}
+  .val-big{font-family:var(--mono);font-size:14px;color:var(--accent);word-break:break-all}
+  .pipe{display:flex;flex-direction:column;gap:0}
+  .pipe > .stg{margin:5px 0}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Key → Address</div>
+  <header class="hero">
+    <h1>Key → Address</h1>
+    <p class="sub">
+      A Bitcoin address is the end of an assembly line. It starts with one <b>random number</b> — your
+      private key — and runs through elliptic-curve multiplication, two
+      <span class="x" data-pop="hash">hash functions</span>, and a checksummed encoding. Every step is
+      computed here, for real, by hand. Change one bit of the secret and the whole address
+      <span class="x" data-pop="aval">avalanches</span>.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="pipe">
+        <div class="stg"><div class="stg-h"><span class="tag">① Private key</span><span class="meta">256-bit secret</span></div>
+          <div class="bytes" id="s-priv"></div></div>
+        <div class="arrow-d">↓ &nbsp;multiply by G on secp256k1</div>
+        <div class="stg"><div class="stg-h"><span class="tag">② Public key (SEC)</span><span class="meta" id="m-sec"></span></div>
+          <div class="bytes" id="s-sec"></div></div>
+        <div class="arrow-d">↓ &nbsp;SHA-256</div>
+        <div class="stg"><div class="stg-h"><span class="tag">③ SHA-256</span><span class="meta">32 bytes</span></div>
+          <div class="bytes" id="s-sha"></div></div>
+        <div class="arrow-d">↓ &nbsp;RIPEMD-160</div>
+        <div class="stg"><div class="stg-h"><span class="tag">④ HASH160</span><span class="meta">20 bytes</span></div>
+          <div class="bytes" id="s-h160"></div></div>
+        <div class="arrow-d">↓ &nbsp;prepend version byte, append 4-byte checksum, Base58</div>
+        <div class="stg" style="border-color:var(--accent)">
+          <div class="stg-h"><span class="tag">⑤ Address</span><span class="meta" id="m-addr"></span></div>
+          <div class="val-big" id="s-addr"></div></div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>Private key</h2>
+        <input type="text" id="priv" spellcheck="false">
+        <div class="row" style="margin-top:10px">
+          <button id="rand" class="primary">Random key</button>
+          <button id="flip">Flip one bit</button>
+        </div>
+        <label>Encoding</label>
+        <div class="seg" id="comp"><button data-v="c" aria-pressed="true">Compressed</button><button data-v="u" aria-pressed="false">Uncompressed</button></div>
+        <label>Network</label>
+        <div class="seg" id="net"><button data-v="main" aria-pressed="true">Mainnet</button><button data-v="test" aria-pressed="false">Testnet</button></div>
+        <p class="hint" id="err" style="color:var(--bad);min-height:14px"></p>
+      </div>
+      <div class="panel">
+        <h2>WIF — the private key, encoded</h2>
+        <div class="val-big" id="s-wif" style="font-size:13px;color:var(--ink)"></div>
+        <p class="hint">The same secret in Wallet Import Format: version byte + key + checksum, Base58.
+          This is what you back up.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>One way only</h3>
+        <p>You can run this line top to bottom in microseconds. Running it backwards — address to
+          public key to private key — would mean breaking both the curve and the hashes.</p></div>
+      <div class="ncard"><h3>The avalanche</h3>
+        <p>Hit <em>Flip one bit</em>. A single changed bit in the secret produces a completely
+          unrelated address (changed characters in red). No partial credit — that's a good hash.</p></div>
+      <div class="ncard"><h3>The checksum saves you</h3>
+        <p>Those last 4 bytes are a hash of everything before them. Mistype an address and the
+          checksum won't match, so your wallet refuses to send. Typos can't burn coins.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  hash: "<h4>SHA-256 then RIPEMD-160</h4><p>Two different hash functions in series (called HASH160). The double layer shrinks the key to 20 bytes and hedges against a weakness in either one.</p>",
+  aval: "<h4>Avalanche effect</h4><p>A good hash sends every input bit through every output bit. Flip one and on average half the output bits flip — the result looks entirely new.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  let compressed = true, testnet = false;
+  let prevAddr = "", prevH160 = "";
+
+  const fmtHex = (bytes) => H.bytesToHex(bytes).replace(/(..)/g, "$1 ").trim();
+  const randHex = () => { const b = new Uint8Array(32); crypto.getRandomValues(b); return H.bytesToHex(b); };
+
+  // diff-highlight: wrap chars in `cur` that differ from `prev`
+  function diff(cur, prev) {
+    if (!prev || prev.length !== cur.length)
+      return cur.replace(/</g, "&lt;");
+    let out = "";
+    for (let i = 0; i < cur.length; i++)
+      out += cur[i] === prev[i] ? cur[i] : `<span class="chg">${cur[i]}</span>`;
+    return out;
+  }
+
+  function compute() {
+    const hex = $("priv").value.trim().replace(/^0x/, "");
+    let secret;
+    try {
+      if (!/^[0-9a-fA-F]{1,64}$/.test(hex)) throw 0;
+      secret = BigInt("0x" + hex);
+      if (secret < 1n || secret >= H.N) throw 0;
+    } catch {
+      $("err").textContent = "Enter a hex number between 1 and n−1 (≤ 64 hex digits).";
+      return;
+    }
+    $("err").textContent = "";
+
+    const point = H.pubFromSecret(secret);
+    const sec = H.sec(point, compressed);
+    const sha = H.sha256(sec);
+    const h160 = H.ripemd160(sha);
+    const version = Uint8Array.of(testnet ? 0x6f : 0x00);
+    const addr = H.b58checkEncode(H.concatBytes(version, h160));
+    const wif = H.wif(secret, compressed, testnet);
+
+    $("s-priv").innerHTML = "<b>" + fmtHex(H.bigIntToBytes(secret, 32)) + "</b>";
+    $("s-sec").innerHTML = "<b>" + fmtHex(sec) + "</b>";
+    $("m-sec").textContent = compressed ? "33 bytes (02/03 ‖ x)" : "65 bytes (04 ‖ x ‖ y)";
+    $("s-sha").innerHTML = fmtHex(sha);
+    const h160hex = H.bytesToHex(h160);
+    $("s-h160").innerHTML = diff(h160hex.replace(/(..)/g, "$1 ").trim(), prevH160);
+    $("s-addr").innerHTML = diff(addr, prevAddr);
+    $("m-addr").textContent = (testnet ? "testnet" : "mainnet") + " P2PKH";
+    $("s-wif").textContent = wif;
+    prevAddr = addr; prevH160 = h160hex.replace(/(..)/g, "$1 ").trim();
+  }
+
+  function seg(id, fn) {
+    document.querySelectorAll(`#${id} button`).forEach((b) =>
+      b.addEventListener("click", () => {
+        document.querySelectorAll(`#${id} button`).forEach((x) => x.setAttribute("aria-pressed", "false"));
+        b.setAttribute("aria-pressed", "true"); fn(b.dataset.v); compute();
+      }));
+  }
+  seg("comp", (v) => compressed = v === "c");
+  seg("net", (v) => testnet = v === "test");
+
+  $("priv").addEventListener("input", () => { prevAddr = ""; prevH160 = ""; compute(); });
+  $("rand").addEventListener("click", () => { prevAddr = ""; prevH160 = ""; $("priv").value = randHex(); compute(); });
+  $("flip").addEventListener("click", () => {
+    const hex = $("priv").value.trim().replace(/^0x/, "").padStart(64, "0");
+    let secret = BigInt("0x" + hex);
+    const bit = BigInt(Math.floor(Math.random() * 256));
+    secret ^= (1n << bit);
+    if (secret < 1n) secret = 1n; if (secret >= H.N) secret %= H.N;
+    $("priv").value = H.bytesToHex(H.bigIntToBytes(secret, 32));
+    compute(); // keeps prevAddr/prevH160 so the change highlights in red
+  });
+
+  $("priv").value = "0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1d";
+  compute();
+})();
+</script>
+</body>
+</html>

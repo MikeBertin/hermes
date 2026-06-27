@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mine &amp; Chain — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mine & the Chain — Hermes">
+<meta property="og:description" content="Grind a nonce until the hash clears the target, link blocks, then tamper with one and break the chain.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#ff9f43;--accent-ink:#241200}
+  .hdr{font-family:var(--mono);font-size:12px;line-height:1.9}
+  .hdr .f{display:flex;justify-content:space-between;gap:14px;color:var(--muted)}
+  .hdr .f b{color:var(--ink);font-weight:400;word-break:break-all;text-align:right}
+  .hashbox{font-family:var(--mono);font-size:14px;word-break:break-all;background:#0e0e16;
+    border:1px solid var(--line);border-radius:9px;padding:13px 14px;margin-top:12px;line-height:1.55}
+  .hashbox .zeros{color:var(--accent);font-weight:700}
+  .target-pill{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px}
+  .target-pill b{color:var(--accent)}
+  /* chain */
+  .chain{display:flex;gap:0;overflow-x:auto;padding:6px 2px 14px}
+  .block{flex:0 0 232px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;position:relative}
+  .block.bad{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}
+  .block.good{border-color:rgba(88,214,141,.4)}
+  .link{flex:0 0 30px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+  .block h4{margin:0 0 9px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .block .st{position:absolute;top:13px;right:13px;font-size:11px;font-family:var(--mono);font-weight:700}
+  .block.bad .st{color:var(--bad)} .block.good .st{color:var(--good)}
+  .block label{margin-top:8px;font-size:10.5px}
+  .block input{font-size:11.5px;padding:7px 8px}
+  .block .ln{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:8px;word-break:break-all}
+  .block .ln b{color:var(--ink);font-weight:400}
+  .block .ln .h{color:var(--accent)}
+  .block .ln.badln .h{color:var(--bad)}
+  .block button{margin-top:10px;font-size:12px;padding:7px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Mine &amp; Chain</div>
+  <header class="hero">
+    <h1>Mine &amp; the Chain</h1>
+    <p class="sub">
+      Mining is a <b>guessing game</b>. Bitcoin double-hashes a block header with SHA-256 and only
+      accepts the block if the hash comes out below a <span class="x" data-pop="target">target</span> —
+      so miners grind the <span class="mono">nonce</span> until they get lucky. Stacked up and linked
+      by hash, those blocks become a chain you <b>can't quietly rewrite</b>.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="panel">
+        <h2>Block header</h2>
+        <div class="hdr">
+          <div class="f">version <b>00000001</b></div>
+          <div class="f">prev block <b id="h-prev">000000000000000000027a5…</b></div>
+          <div class="f">merkle root <b id="h-merkle">4a5e1e4baab89f3a32518a8…</b></div>
+          <div class="f">timestamp <b id="h-time"></b></div>
+          <div class="f">bits (target) <b id="h-bits"></b></div>
+          <div class="f">nonce <b id="h-nonce" style="color:var(--accent)">0</b></div>
+        </div>
+        <div class="hashbox" id="hashout">–</div>
+        <div class="target-pill">target: hash must start with <b id="t-zeros">0000</b> &nbsp;·&nbsp; <span id="t-status">idle</span></div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>Mining</h2>
+        <div class="row"><button id="mineBtn" class="primary">Start mining</button><button id="resetMine">Reset</button></div>
+        <label>Difficulty (leading zeros) <span class="val" id="diffV">4</span></label>
+        <input type="range" id="diff" min="2" max="6" value="4">
+        <div class="stats" style="margin-top:16px">
+          <div class="stat"><div class="k">nonce tried</div><div class="v" id="st-nonce">0</div></div>
+          <div class="stat"><div class="k">hash rate</div><div class="v accent" id="st-rate">0</div></div>
+          <div class="stat wide"><div class="k">status</div><div class="v" id="st-found">grinding…</div></div>
+        </div>
+        <p class="hint">Each extra zero makes blocks ~16× rarer. Bitcoin's real target needs ~19
+          leading zeros — quintillions of hashes per block.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:26px">
+    <div class="notice-title" style="margin-bottom:8px">The chain — edit a block to break it</div>
+    <div class="chain" id="chain"></div>
+    <p class="hint" style="margin-top:0">Each block stores the hash of the one before it. Edit any
+      block's data: its hash changes, so the next block's “prev” no longer matches and every block
+      downstream turns <span style="color:var(--bad)">red</span>. Re-mine them left to right to heal the chain.</p>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Hard to find, instant to check</h3>
+        <p>Finding a nonce takes millions of tries; verifying one takes a single hash. That asymmetry
+          is the whole security model — cheap to police, expensive to cheat.</p></div>
+      <div class="ncard"><h3>Tampering cascades</h3>
+        <p>Change old data and you must re-mine that block <em>and every block after it</em>, faster
+          than the rest of the network extends the honest chain. Practically: impossible.</p></div>
+      <div class="ncard"><h3>No clock, just work</h3>
+        <p>Nothing trusts a timestamp. The chain's order is enforced purely by which blocks point to
+          which — and by how much computation is piled on top.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  target: "<h4>The target</h4><p>A number the block hash must come in under. Lower target = fewer valid hashes = more work. We show it as a count of leading zero hex digits; Bitcoin stores it packed into the header's <i>bits</i> field.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hashHex = (str) => H.bytesToHex(H.doubleSha256(H.utf8(str)));
+
+  // ---------- live miner ----------
+  let diff = 4, mining = false, nonce = 0, hashes = 0, t0 = 0;
+  const header = () => `00000001|prev|merkle|1700000000|${diff}|`;
+  function showHash(hex) {
+    const z = hex.match(/^0*/)[0].length;
+    $("hashout").innerHTML = `<span class="zeros">${hex.slice(0, z)}</span>${hex.slice(z)}`;
+  }
+  function loop() {
+    if (!mining) return;
+    const target = "0".repeat(diff);
+    let last;
+    for (let i = 0; i < 4000; i++) {
+      last = hashHex(header() + nonce);
+      hashes++;
+      if (last.startsWith(target)) { found(nonce, last); return; }
+      nonce++;
+    }
+    $("h-nonce").textContent = nonce.toLocaleString();
+    $("st-nonce").textContent = nonce.toLocaleString();
+    $("st-rate").textContent = Math.round(hashes / ((performance.now() - t0) / 1000)).toLocaleString() + "/s";
+    showHash(last);
+    requestAnimationFrame(loop);
+  }
+  function found(n, hex) {
+    mining = false;
+    showHash(hex);
+    const rate = Math.round(hashes / Math.max(0.001, (performance.now() - t0) / 1000));
+    $("st-rate").textContent = rate.toLocaleString() + "/s";
+    $("h-nonce").textContent = n.toLocaleString();
+    $("st-nonce").textContent = n.toLocaleString();
+    $("st-found").textContent = "✓ block found at nonce " + n.toLocaleString();
+    $("st-found").style.color = "var(--good)";
+    $("t-status").textContent = "solved";
+    $("mineBtn").textContent = "Start mining";
+  }
+  $("mineBtn").addEventListener("click", () => {
+    mining = !mining;
+    $("mineBtn").textContent = mining ? "Pause" : "Start mining";
+    if (mining) { t0 = performance.now() - 1; hashes = 0; $("st-found").textContent = "grinding…"; $("st-found").style.color = ""; $("t-status").textContent = "grinding"; loop(); }
+  });
+  $("resetMine").addEventListener("click", () => { mining = false; nonce = 0; hashes = 0;
+    $("h-nonce").textContent = "0"; $("st-nonce").textContent = "0"; $("st-rate").textContent = "0";
+    $("st-found").textContent = "grinding…"; $("st-found").style.color = ""; $("t-status").textContent = "idle"; $("hashout").textContent = "–";
+    $("mineBtn").textContent = "Start mining"; });
+  $("diff").addEventListener("input", () => { diff = +$("diff").value; $("diffV").textContent = diff;
+    $("t-zeros").textContent = "0".repeat(diff); nonce = 0; $("h-nonce").textContent = "0"; });
+  $("h-bits").textContent = "1d00ffff";
+  $("h-time").textContent = "1700000000";
+
+  // ---------- the chain ----------
+  const CDIFF = 3, ctarget = "0".repeat(CDIFF);
+  const GENESIS = "00".repeat(8) + "…";
+  const blocks = [
+    { data: "Genesis — 50 BTC to Satoshi", nonce: 0 },
+    { data: "Alice → Bob: 12 BTC", nonce: 0 },
+    { data: "Bob → Carol: 3 BTC", nonce: 0 },
+    { data: "Carol → Dave: 1 BTC", nonce: 0 },
+  ];
+  const blkStr = (i, b, prev) => `${i}|${b.data}|${prev}|${b.nonce}`;
+  function prevOf(i) { return i === 0 ? GENESIS : blocks[i - 1]._hash; }
+  function recompute() {
+    for (let i = 0; i < blocks.length; i++) {
+      const prev = prevOf(i);
+      blocks[i]._prev = prev;
+      blocks[i]._hash = hashHex(blkStr(i, blocks[i], prev));
+      blocks[i]._meetsTarget = blocks[i]._hash.startsWith(ctarget);
+    }
+  }
+  function mineBlock(i) {
+    let n = 0;
+    const prev = prevOf(i);
+    while (!hashHex(blkStr(i, { ...blocks[i], nonce: n }, prev)).startsWith(ctarget)) n++;
+    blocks[i].nonce = n;
+    recompute(); render();
+  }
+  function render() {
+    const c = $("chain"); c.innerHTML = "";
+    blocks.forEach((b, i) => {
+      const good = b._meetsTarget;
+      const el = document.createElement("div");
+      el.className = "block " + (good ? "good" : "bad");
+      el.innerHTML = `
+        <h4>Block #${i}</h4><div class="st">${good ? "VALID" : "INVALID"}</div>
+        <label>Data</label>
+        <input type="text" value="${b.data.replace(/"/g, "&quot;")}" data-i="${i}">
+        <div class="ln">nonce <b>${b.nonce.toLocaleString()}</b></div>
+        <div class="ln">prev <b>${b._prev.slice(0, 12)}…</b></div>
+        <div class="ln ${good ? "" : "badln"}">hash <span class="h">${b._hash.slice(0, 14)}…</span></div>
+        <button data-mine="${i}">Re-mine</button>`;
+      c.appendChild(el);
+      if (i < blocks.length - 1) {
+        const link = document.createElement("div");
+        link.className = "link"; link.textContent = "→"; c.appendChild(link);
+      }
+    });
+    c.querySelectorAll("input[data-i]").forEach((inp) =>
+      inp.addEventListener("input", () => { blocks[+inp.dataset.i].data = inp.value; recompute(); render(); }));
+    c.querySelectorAll("button[data-mine]").forEach((btn) =>
+      btn.addEventListener("click", () => mineBlock(+btn.dataset.mine)));
+  }
+  // mine the initial honest chain once, then render
+  for (let i = 0; i < blocks.length; i++) {
+    let n = 0; const prev = prevOf(i);
+    while (!hashHex(blkStr(i, { ...blocks[i], nonce: n }, prev)).startsWith(ctarget)) n++;
+    blocks[i].nonce = n; recompute();
+  }
+  render();
+})();
+</script>
+</body>
+</html>

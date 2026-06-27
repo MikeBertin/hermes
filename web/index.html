@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hermes — Bitcoin from First Principles</title>
+<meta name="description" content="Bitcoin built from nothing — the secp256k1 curve, signatures, hashing, mining, Script and wallets, as interactive browser visualisations.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mikebertin.github.io/hermes/">
+<meta property="og:title" content="Hermes — Bitcoin from First Principles">
+<meta property="og:description" content="Bitcoin built from nothing — keys, signatures, proof of work and more, as interactive visualisations.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Hermes — Bitcoin from First Principles">
+<meta name="twitter:image" content="https://mikebertin.github.io/hermes/og.png">
+<style>
+  :root{
+    --bg:#0a0a0f; --panel:#13131c; --line:#23232f;
+    --ink:#e7e7ef; --muted:#8a8a9c;
+    --curve:#7cc4ff; --address:#ffc266; --sign:#ff6b6b; --mine:#ff9f43;
+    --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:radial-gradient(1100px 700px at 50% -10%,#16161f,#0a0a0f 60%);
+    color:var(--ink);min-height:100vh;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:1060px;margin:0 auto;padding:64px 28px 48px}
+  header{margin-bottom:30px}
+  .badge{font-family:var(--mono);font-size:12px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+  h1{font-size:46px;margin:8px 0 12px;letter-spacing:-.5px;
+    background:linear-gradient(90deg,var(--curve),var(--sign) 45%,var(--mine) 70%,var(--wallet));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--muted);font-size:15.5px;line-height:1.65;max-width:680px;margin:0}
+  .lede b{color:var(--ink);font-weight:600}
+
+  .layer-label{font-family:var(--mono);font-size:11.5px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--muted);margin:42px 0 4px}
+  .layer-label span{color:var(--ink)}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px}
+  @media (max-width:880px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:520px){.grid{grid-template-columns:1fr}}
+
+  a.card{text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:18px 17px 17px;display:flex;flex-direction:column;min-height:172px;
+    transition:transform .15s,border-color .15s,box-shadow .15s}
+  a.card:hover{transform:translateY(-4px);box-shadow:0 24px 50px -24px #000}
+  .card .num{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .card .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;margin:9px 0 7px}
+  .card h2{font-size:16.5px;margin:0 0 7px;line-height:1.25}
+  .card p{color:var(--muted);font-size:12.5px;line-height:1.5;margin:0 0 12px;flex:1}
+  .card .open{font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  .card .arrow{transition:transform .15s}
+  a.card:hover .arrow{transform:translateX(4px)}
+  .card.soon{opacity:.6;pointer-events:none}
+  .card.soon .open{color:var(--muted)}
+
+  .c1{--c:var(--curve)} .c2{--c:var(--address)} .c3{--c:var(--sign)} .c4{--c:var(--mine)}
+  .c5{--c:var(--network)} .c6{--c:var(--testnet)} .c7{--c:var(--script)} .c8{--c:var(--wallet)}
+  a.card:hover{border-color:var(--c)} .card .tag,.card .open{color:var(--c)}
+
+  footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:12.5px;line-height:1.8}
+  footer b{color:var(--ink);font-weight:600}
+  footer a{color:var(--curve)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge">Hermes</div>
+    <h1>Bitcoin from First Principles</h1>
+    <p class="lede">
+      Bitcoin, built from <b>nothing</b> — no crypto libraries, no magic. The
+      <b>secp256k1</b> curve, the hashes, the signatures, the proof of work, the
+      network, all rebuilt by hand and turned into things you can <b>touch</b>. Eight
+      interactive windows onto how a chain of numbers becomes money nobody can forge.
+    </p>
+  </header>
+
+  <div class="layer-label">Layer 1 — <span>The Primitives</span></div>
+  <div class="grid">
+    <a class="card c1" href="curve/">
+      <div class="num">01</div><div class="tag">Elliptic curve</div>
+      <h2>The Curve</h2>
+      <p>secp256k1's group law, made geometric. Your private key is a number; your public key is a point on a curve.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+    <a class="card c2" href="address/">
+      <div class="num">02</div><div class="tag">Hashing pipeline</div>
+      <h2>Key → Address</h2>
+      <p>Watch a 256-bit secret become an address through SHA-256, RIPEMD-160 and Base58Check. Flip a bit, see the avalanche.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+    <a class="card c3" href="sign/">
+      <div class="num">03</div><div class="tag">ECDSA</div>
+      <h2>Sign &amp; Forge</h2>
+      <p>Sign a message, verify it — then reuse one nonce across two signatures and watch the private key fall out.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+    <a class="card c4" href="mine/">
+      <div class="num">04</div><div class="tag">Proof of work</div>
+      <h2>Mine &amp; Chain</h2>
+      <p>Grind a nonce until the hash clears the target, link blocks together, then tamper with one and break the chain.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+  </div>
+
+  <div class="layer-label">Layer 2 — <span>The Systems</span></div>
+  <div class="grid">
+    <a class="card c5 soon">
+      <div class="num">05</div><div class="tag">Consensus</div>
+      <h2>Network &amp; the 51% Attack</h2>
+      <p>Nodes gossip, forks appear, and an attacker rewrites a "confirmed" payment.</p>
+      <span class="open">Coming soon</span>
+    </a>
+    <a class="card c6 soon">
+      <div class="num">06</div><div class="tag">On-chain</div>
+      <h2>Real Testnet</h2>
+      <p>Build, sign and broadcast a genuine transaction to the Bitcoin testnet.</p>
+      <span class="open">Coming soon</span>
+    </a>
+    <a class="card c7 soon">
+      <div class="num">07</div><div class="tag">Stack machine</div>
+      <h2>Script VM</h2>
+      <p>Step through Bitcoin's tiny programming language: P2PKH, multisig, timelocks.</p>
+      <span class="open">Coming soon</span>
+    </a>
+    <a class="card c8 soon">
+      <div class="num">08</div><div class="tag">BIP-32 / 39</div>
+      <h2>HD Wallet</h2>
+      <p>One seed phrase unfolds into a whole tree of addresses.</p>
+      <span class="open">Coming soon</span>
+    </a>
+  </div>
+
+  <footer>
+    <b>Hermes</b> — Greek god of commerce, boundaries and secrets; patron, by association, of
+    every signed and sealed message. Built from scratch in Python and JavaScript, cross-checked
+    against Bitcoin's own test vectors.<br>
+    Companion to <a href="https://mikebertin.github.io/chiron/">Chiron</a> (computational physics)
+    and <a href="https://mikebertin.github.io/empedocles/">Empedocles</a> (evolutionary algorithms).
+  </footer>
+</div>
+</body>
+</html>

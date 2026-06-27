@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign &amp; Forge — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sign & Forge — Hermes">
+<meta property="og:description" content="ECDSA signing and verification — then reuse one nonce and watch the private key fall out.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#ff6b6b;--accent-ink:#2a0000}
+  .card2{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card2 + .card2{margin-top:16px}
+  .card2 h2{margin-top:0}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-family:var(--mono);font-size:12.5px;align-items:baseline}
+  .kv .lab{color:var(--muted)}
+  .kv .num{word-break:break-all;color:var(--ink)}
+  .kv .num.r{color:var(--accent)}
+  .badge2{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:13px;
+    padding:7px 12px;border-radius:8px;font-weight:600;margin-top:6px}
+  .badge2.ok{background:rgba(88,214,141,.14);color:var(--good)}
+  .badge2.no{background:rgba(255,107,107,.14);color:var(--bad)}
+  .recovered{background:#0e0e16;border:1px dashed var(--accent);border-radius:10px;padding:13px 15px;margin-top:12px}
+  .recovered .match{color:var(--good);font-weight:600;margin-top:8px;font-size:13px}
+  .formula{font-family:var(--mono);font-size:12.5px;color:var(--muted);line-height:1.9;margin:6px 0}
+  .formula b{color:var(--ink)}
+  .shared-r{color:var(--accent);font-weight:600}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Sign &amp; Forge</div>
+  <header class="hero">
+    <h1>Sign &amp; Forge</h1>
+    <p class="sub">
+      A signature proves you hold a private key without ever showing it. Every signature needs a
+      fresh secret <span class="x" data-pop="nonce">nonce</span> <span class="mono">k</span>. Reuse
+      <span class="mono">k</span> just once across two messages and your private key drops out by
+      <b>schoolbook algebra</b> — the bug that unlocked the PlayStation 3 and has drained real wallets.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="card2">
+        <h2>1 · Sign &amp; verify</h2>
+        <label>Message to sign</label>
+        <input type="text" id="msg" value="Pay Alice 0.5 BTC" spellcheck="false">
+        <div class="row" style="margin-top:10px">
+          <button id="signBtn" class="primary">Sign</button>
+          <button id="tamper">Tamper the message</button>
+        </div>
+        <div class="kv" style="margin-top:16px">
+          <span class="lab">z =</span><span class="num" id="z">–</span>
+          <span class="lab">r =</span><span class="num r" id="r">–</span>
+          <span class="lab">s =</span><span class="num" id="s">–</span>
+        </div>
+        <div id="verBadge" class="badge2 no" style="margin-top:14px">not signed yet</div>
+        <p class="hint" id="verNote"></p>
+      </div>
+
+      <div class="card2" style="border-color:rgba(255,107,107,.35)">
+        <h2>2 · The attack — one nonce, two messages</h2>
+        <label>Message A</label>
+        <input type="text" id="mA" value="Pay Alice 0.5 BTC" spellcheck="false">
+        <label>Message B</label>
+        <input type="text" id="mB" value="Pay Bob 0.5 BTC" spellcheck="false">
+        <button id="signTwo" class="primary" style="margin-top:12px;width:100%">Sign both with the same nonce k</button>
+        <div class="kv" style="margin-top:16px">
+          <span class="lab">shared r =</span><span class="num r" id="fr">–</span>
+          <span class="lab">s₁ =</span><span class="num" id="fs1">–</span>
+          <span class="lab">s₂ =</span><span class="num" id="fs2">–</span>
+        </div>
+        <button id="recover" style="margin-top:14px;width:100%" disabled>Recover the private key →</button>
+        <div class="recovered" id="recBox" style="display:none">
+          <div class="formula">
+            <b>k</b> = (z₁ − z₂) / (s₁ − s₂) &nbsp;mod n<br>
+            <b>d</b> = (s₁·k − z₁) / r &nbsp;mod n
+          </div>
+          <div class="kv">
+            <span class="lab">recovered k =</span><span class="num" id="recK">–</span>
+            <span class="lab">recovered d =</span><span class="num r" id="recD">–</span>
+          </div>
+          <div class="match" id="matchLine"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>Your key pair</h2>
+        <label>Private key d</label>
+        <input type="text" id="priv" spellcheck="false">
+        <button id="rand" class="primary" style="margin-top:10px;width:100%">Random key</button>
+        <div class="kv" style="margin-top:14px">
+          <span class="lab">pubkey x</span><span class="num" id="pubx" style="font-size:11.5px">–</span>
+        </div>
+        <p class="hint">The signatures below are made with this key. The attack never sees it — yet
+          it recovers it exactly.</p>
+      </div>
+      <div class="panel">
+        <h2>Why it works</h2>
+        <p class="hint" style="margin-top:0">Each signature is <span class="mono">s = k⁻¹(z + r·d)</span>.
+          The nonce <span class="mono">k</span> is the only secret hiding <span class="mono">d</span>.
+          Two signatures with the <span class="shared-r">same r</span> betray that they share
+          <span class="mono">k</span> — two equations, two unknowns, solved.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Edit after signing → invalid</h3>
+        <p>A signature is bound to one exact message. Change a single character and verification
+          fails immediately — you can't lift a signature onto different terms.</p></div>
+      <div class="ncard"><h3>Reused nonce = shared r</h3>
+        <p>Because <span class="mono">r</span> comes only from <span class="mono">k·G</span>, two
+          signatures sharing a nonce share their <span class="mono">r</span>. That repeat is the
+          visible fingerprint of the fatal mistake.</p></div>
+      <div class="ncard"><h3>It really recovers <em>your</em> key</h3>
+        <p>The recovered <span class="mono">d</span> matches the private key in the side panel to the
+          last digit — computed only from public signature data.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  nonce: "<h4>The nonce k</h4><p>A random number chosen fresh for every signature. It must be secret and never repeat. Real wallets derive it deterministically from the key and message (RFC 6979) precisely to avoid reuse.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hexBig = (v) => v.toString(16).padStart(64, "0");
+  const short = (v) => { const h = hexBig(v); return h.slice(0, 10) + "…" + h.slice(-8); };
+
+  let secret = 0x0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1dn;
+  let signed = null; // {sig, msg}
+
+  function refreshKey() {
+    $("priv").value = hexBig(secret);
+    $("pubx").textContent = short(H.pubFromSecret(secret).x);
+  }
+
+  // --- card 1: sign / verify ---
+  function doSign() {
+    const msg = $("msg").value;
+    const z = H.messageHash(msg);
+    const sig = H.sign(secret, z); // random nonce, low-s
+    signed = { sig, msg };
+    $("z").textContent = hexBig(z);
+    $("r").textContent = hexBig(sig.r);
+    $("s").textContent = hexBig(sig.s);
+    verify();
+  }
+  function verify() {
+    if (!signed) return;
+    const cur = $("msg").value;
+    const ok = H.verify(H.pubFromSecret(secret), H.messageHash(cur), signed.sig);
+    const b = $("verBadge");
+    b.className = "badge2 " + (ok ? "ok" : "no");
+    b.textContent = ok ? "✓ signature VALID" : "✗ signature INVALID";
+    $("verNote").textContent = (cur !== signed.msg)
+      ? "Message was edited after signing — the signature no longer matches."
+      : "";
+  }
+  $("signBtn").addEventListener("click", doSign);
+  $("msg").addEventListener("input", verify);
+  $("tamper").addEventListener("click", () => { $("msg").value += "!"; verify(); });
+
+  // --- card 2: nonce-reuse attack ---
+  let forge = null;
+  function signTwo() {
+    const z1 = H.messageHash($("mA").value);
+    const z2 = H.messageHash($("mB").value);
+    // the fatal mistake: the same k for both. low-s off so the algebra is clean.
+    const k = H.randScalar();
+    const s1 = H.sign(secret, z1, k, false);
+    const s2 = H.sign(secret, z2, k, false);
+    forge = { z1, z2, s1, s2 };
+    $("fr").textContent = hexBig(s1.r);
+    $("fs1").textContent = hexBig(s1.s);
+    $("fs2").textContent = hexBig(s2.s);
+    $("recover").disabled = false;
+    $("recBox").style.display = "none";
+  }
+  function recover() {
+    if (!forge) return;
+    const { z1, z2, s1, s2 } = forge;
+    // k and d from the two signatures alone — no secret used
+    const sdiff = ((s1.s - s2.s) % H.N + H.N) % H.N;
+    const k = ((z1 - z2) * H.modInv(sdiff, H.N) % H.N + H.N) % H.N;
+    const d = H.recoverNonceReuse(z1, s1, z2, s2);
+    $("recK").textContent = hexBig(k);
+    $("recD").textContent = hexBig(d);
+    $("matchLine").innerHTML = d === secret
+      ? "✓ matches your private key exactly — recovered from public data alone."
+      : "recovered value (compare to side panel)";
+    $("recBox").style.display = "";
+  }
+  $("signTwo").addEventListener("click", signTwo);
+  $("recover").addEventListener("click", recover);
+
+  // --- key panel ---
+  $("priv").addEventListener("input", () => {
+    const hex = $("priv").value.trim().replace(/^0x/, "");
+    if (/^[0-9a-fA-F]{1,64}$/.test(hex)) {
+      const v = BigInt("0x" + hex);
+      if (v >= 1n && v < H.N) { secret = v; $("pubx").textContent = short(H.pubFromSecret(secret).x);
+        signed = null; forge = null; $("recover").disabled = true; }
+    }
+  });
+  $("rand").addEventListener("click", () => { secret = H.randScalar(); refreshKey(); signed = null; forge = null; $("recover").disabled = true; });
+
+  refreshKey();
+  doSign();
+})();
+</script>
+</body>
+</html>

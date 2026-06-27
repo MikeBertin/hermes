@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Curve — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Elliptic Curve — Hermes">
+<meta property="og:description" content="secp256k1's group law made geometric: your private key is a number, your public key is a point.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>:root{--accent:#7cc4ff}</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / The Curve</div>
+  <header class="hero">
+    <h1>The Elliptic Curve</h1>
+    <p class="sub">
+      Bitcoin's keys live on <b>secp256k1</b>, the curve <span class="mono">y² = x³ + 7</span>.
+      Its points form a group: you can <span class="x" data-pop="add">add</span> two points with a
+      ruler and you can <span class="x" data-pop="mul">multiply</span> a point by a whole number.
+      That multiplication, <span class="mono">k·G</span>, is a <b>one-way street</b> — easy forwards,
+      hopeless backwards. That asymmetry is your <b>private key → public key</b>.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="seg" id="mode" style="margin:0 0 4px">
+        <button data-v="real" aria-pressed="true">Geometry over ℝ</button>
+        <button data-v="field" aria-pressed="false">Finite field (secp256k1 shape)</button>
+      </div>
+      <div class="stage"><canvas id="c" width="900" height="580"></canvas></div>
+    </div>
+
+    <div class="col-right">
+      <!-- real-mode controls -->
+      <div class="panel" id="realPanel">
+        <h2>Point addition</h2>
+        <div class="seg" id="op">
+          <button data-v="add" aria-pressed="true">P + Q</button>
+          <button data-v="double" aria-pressed="false">2P (double)</button>
+        </div>
+        <label>Point P — x <span class="val" id="pxV"></span></label>
+        <input type="range" id="px" min="-2.0" max="4.1" step="0.01" value="-1.2">
+        <div class="seg" id="pb"><button data-v="up" aria-pressed="true">upper</button><button data-v="dn" aria-pressed="false">lower</button></div>
+        <div id="qBlock">
+          <label>Point Q — x <span class="val" id="qxV"></span></label>
+          <input type="range" id="qx" min="-2.0" max="4.1" step="0.01" value="2.1">
+          <div class="seg" id="qb"><button data-v="up" aria-pressed="true">upper</button><button data-v="dn" aria-pressed="false">lower</button></div>
+        </div>
+        <div class="stats" style="margin-top:16px">
+          <div class="stat wide"><div class="k">slope λ</div><div class="v" id="slope">–</div></div>
+          <div class="stat wide"><div class="k">result R = P + Q</div><div class="v accent" id="rcoord">–</div></div>
+        </div>
+        <p class="hint">Draw the line through P and Q. It hits the curve once more; reflect that
+          third point across the x-axis and you have <b>R</b>. Doubling uses the <em>tangent</em> at P.</p>
+      </div>
+
+      <!-- field-mode controls -->
+      <div class="panel" id="fieldPanel" style="display:none">
+        <h2>k · G over a small field</h2>
+        <p class="hint" style="margin-top:0">Same curve, but over the integers mod <span id="pVal" class="mono"></span>.
+          Every dot is a point. Crank <b>k</b> and watch <span class="mono">k·G</span> hop around with no
+          pattern — that scramble is why nobody can run the private key backwards out of the public key.</p>
+        <label>k <span class="val" id="kV"></span></label>
+        <input type="range" id="k" min="1" max="2" value="1">
+        <div class="row" style="margin-top:10px">
+          <button id="kStep">k → k+1</button>
+          <button id="kPlay" class="primary">Play</button>
+        </div>
+        <div class="stats" style="margin-top:16px">
+          <div class="stat"><div class="k">k</div><div class="v" id="kStat">1</div></div>
+          <div class="stat"><div class="k">subgroup order</div><div class="v" id="ordStat">–</div></div>
+          <div class="stat wide"><div class="k">public point k·G</div><div class="v accent" id="kgStat">–</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>The vertical line is "infinity"</h3>
+        <p>Add a point to its own mirror image and the line through them is vertical — it never hits the
+          curve a third time. That missing point is the group's <b>zero</b>, the point at infinity.</p></div>
+      <div class="ncard"><h3>Real intuition, integer reality</h3>
+        <p>Bitcoin doesn't use the smooth curve — it uses points over a 256-bit prime, a cloud of
+          ~10⁷⁷ dots. The algebra is identical; only the picture changes.</p></div>
+      <div class="ncard"><h3>One generator, every key</h3>
+        <p>One fixed point <b>G</b> generates the whole group. Your private key is just <em>how many
+          times</em> you added G to itself. Counting forward is instant; counting back is the
+          discrete-log problem.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  add: "<h4>Adding points</h4><p>Draw a straight line through two points on the curve. It crosses the curve at exactly one more place; reflect that point over the x-axis and you've got P + Q.</p>",
+  mul: "<h4>k·G</h4><p>Add a point G to itself k times. Do it with repeated doubling and it's fast even for 256-bit k — but recovering k from the result is believed to be infeasible.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script>
+(() => {
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const ACCENT = "#7cc4ff", INK = "#e7e7ef", MUTE = "#6a6a7c", LINE = "#23232f", GRID = "#16161f";
+
+  let mode = "real";
+
+  // ---------- REAL MODE ----------
+  const xmin = -2.2, xmax = 4.2, ymax = 9;
+  const sx = (x) => 46 + (x - xmin) / (xmax - xmin) * (W - 70);
+  const sy = (y) => H / 2 - y / ymax * (H / 2 - 26);
+  const curveY = (x) => Math.sqrt(Math.max(0, x * x * x + 7));
+
+  const state = { op: "add", px: -1.2, pUp: true, qx: 2.1, qUp: true };
+
+  function addReal(P, Q, doubling) {
+    let s;
+    if (doubling) s = (3 * P.x * P.x) / (2 * P.y);
+    else s = (Q.y - P.y) / (Q.x - P.x);
+    const x3 = s * s - P.x - (doubling ? P.x : Q.x);
+    const y3 = s * (P.x - x3) - P.y;
+    return { x: x3, y: y3, s };
+  }
+
+  function drawReal() {
+    ctx.clearRect(0, 0, W, H);
+    // axes
+    ctx.strokeStyle = GRID; ctx.lineWidth = 1;
+    for (let gx = Math.ceil(xmin); gx <= xmax; gx++) { ctx.beginPath(); ctx.moveTo(sx(gx), 0); ctx.lineTo(sx(gx), H); ctx.stroke(); }
+    for (let gy = -8; gy <= 8; gy += 2) { ctx.beginPath(); ctx.moveTo(0, sy(gy)); ctx.lineTo(W, sy(gy)); ctx.stroke(); }
+    ctx.strokeStyle = LINE; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(0, sy(0)); ctx.lineTo(W, sy(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx(0), 0); ctx.lineTo(sx(0), H); ctx.stroke();
+
+    // curve
+    ctx.strokeStyle = ACCENT; ctx.lineWidth = 2.4; ctx.beginPath();
+    let started = false;
+    for (let px = 0; px <= W; px++) {
+      const x = xmin + (px - 46) / (W - 70) * (xmax - xmin);
+      if (x * x * x + 7 < 0) { started = false; continue; }
+      const yv = curveY(x);
+      if (!started) { ctx.moveTo(sx(x), sy(yv)); started = true; } else ctx.lineTo(sx(x), sy(yv));
+    }
+    ctx.stroke();
+    ctx.beginPath(); started = false;
+    for (let px = 0; px <= W; px++) {
+      const x = xmin + (px - 46) / (W - 70) * (xmax - xmin);
+      if (x * x * x + 7 < 0) { started = false; continue; }
+      const yv = -curveY(x);
+      if (!started) { ctx.moveTo(sx(x), sy(yv)); started = true; } else ctx.lineTo(sx(x), sy(yv));
+    }
+    ctx.stroke();
+
+    const doubling = state.op === "double";
+    const P = { x: state.px, y: (state.pUp ? 1 : -1) * curveY(state.px) };
+    const Q = doubling ? P : { x: state.qx, y: (state.qUp ? 1 : -1) * curveY(state.qx) };
+    const R = addReal(P, Q, doubling);
+
+    // construction line (through P,Q or tangent at P), extended across view
+    if (isFinite(R.s)) {
+      const lineY = (x) => P.y + R.s * (x - P.x);
+      ctx.strokeStyle = "#5a5a72"; ctx.lineWidth = 1.4; ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.moveTo(sx(xmin), sy(lineY(xmin))); ctx.lineTo(sx(xmax), sy(lineY(xmax))); ctx.stroke();
+      // vertical from -R to R
+      ctx.strokeStyle = css("--accent") || ACCENT; ctx.beginPath();
+      ctx.moveTo(sx(R.x), sy(-R.y)); ctx.lineTo(sx(R.x), sy(R.y)); ctx.stroke();
+      ctx.setLineDash([]);
+      dot(R.x, -R.y, "#5a5a72", "−R"); // the third intersection
+    }
+    dot(P.x, P.y, INK, doubling ? "P" : "P");
+    if (!doubling) dot(Q.x, Q.y, INK, "Q");
+    dot(R.x, R.y, "#ff9f43", "R");
+
+    document.getElementById("slope").textContent = isFinite(R.s) ? R.s.toFixed(3) : "∞";
+    document.getElementById("rcoord").textContent =
+      isFinite(R.x) ? `(${R.x.toFixed(2)}, ${R.y.toFixed(2)})` : "point at infinity";
+  }
+  function dot(x, y, color, label) {
+    if (!isFinite(x) || Math.abs(y) > ymax + 2) return;
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(sx(x), sy(y), 5.5, 0, 7); ctx.fill();
+    if (label) { ctx.fillStyle = INK; ctx.font = "600 14px ui-sans-serif"; ctx.fillText(label, sx(x) + 9, sy(y) - 8); }
+  }
+
+  // ---------- FIELD MODE ----------
+  const FP = 223n, Fa = 0n, Fb = 7n;
+  const fmod = (a, m) => ((a % m) + m) % m;
+  const fInv = (a) => { let [old_r, r] = [fmod(a, FP), FP], [old_s, s] = [1n, 0n];
+    while (r !== 0n) { const q = old_r / r; [old_r, r] = [r, old_r - q * r]; [old_s, s] = [s, old_s - q * s]; } return fmod(old_s, FP); };
+  function fAdd(P, Q) {
+    if (!P) return Q; if (!Q) return P;
+    if (P.x === Q.x && fmod(P.y + Q.y, FP) === 0n) return null;
+    let s;
+    if (P.x === Q.x && P.y === Q.y) s = fmod((3n * P.x * P.x + Fa) * fInv(2n * P.y), FP);
+    else s = fmod((Q.y - P.y) * fInv(fmod(Q.x - P.x, FP)), FP);
+    const x = fmod(s * s - P.x - Q.x, FP);
+    const y = fmod(s * (P.x - x) - P.y, FP);
+    return { x, y };
+  }
+  // all points (for the scatter)
+  const allPts = [];
+  for (let X = 0n; X < FP; X++) {
+    const rhs = fmod(X * X * X + Fb, FP);
+    for (let Y = 0n; Y < FP; Y++) if (fmod(Y * Y, FP) === rhs) allPts.push({ x: X, y: Y });
+  }
+  const Gpt = { x: 47n, y: 71n };
+  const multiples = []; let acc = null;
+  do { acc = fAdd(acc, Gpt); if (acc) multiples.push(acc); } while (acc);
+  const ORDER = multiples.length + 1; // including infinity
+  let kVal = 1, playing = false, timer = null;
+
+  const fx = (x) => 40 + Number(x) / 222 * (W - 70);
+  const fy = (y) => H - 30 - Number(y) / 222 * (H - 56);
+
+  function drawField() {
+    ctx.clearRect(0, 0, W, H);
+    // scatter of all points
+    ctx.fillStyle = "#2c2c3c";
+    for (const pt of allPts) { ctx.beginPath(); ctx.arc(fx(pt.x), fy(pt.y), 2.4, 0, 7); ctx.fill(); }
+    // trail G -> 2G -> ... -> kG
+    ctx.strokeStyle = "rgba(124,196,255,.35)"; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (let i = 0; i < kVal; i++) { const m = multiples[i]; const X = fx(m.x), Y = fy(m.y); i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); }
+    ctx.stroke();
+    // visited multiples
+    for (let i = 0; i < kVal; i++) { const m = multiples[i]; ctx.fillStyle = i === kVal - 1 ? "#ff9f43" : ACCENT;
+      ctx.beginPath(); ctx.arc(fx(m.x), fy(m.y), i === kVal - 1 ? 6 : 3.4, 0, 7); ctx.fill(); }
+    // G label
+    ctx.fillStyle = INK; ctx.font = "600 13px ui-sans-serif";
+    ctx.fillText("G", fx(Gpt.x) + 7, fy(Gpt.y) - 7);
+    const kg = multiples[kVal - 1];
+    ctx.fillText(kVal + "·G", fx(kg.x) + 8, fy(kg.y) - 8);
+
+    document.getElementById("kStat").textContent = kVal;
+    document.getElementById("ordStat").textContent = ORDER;
+    document.getElementById("kgStat").textContent = `(${kg.x}, ${kg.y})`;
+    document.getElementById("kV").textContent = kVal;
+  }
+
+  // ---------- wiring ----------
+  function seg(id, fn) {
+    document.querySelectorAll(`#${id} button`).forEach((b) =>
+      b.addEventListener("click", () => {
+        document.querySelectorAll(`#${id} button`).forEach((x) => x.setAttribute("aria-pressed", "false"));
+        b.setAttribute("aria-pressed", "true"); fn(b.dataset.v);
+      }));
+  }
+  seg("mode", (v) => {
+    mode = v;
+    document.getElementById("realPanel").style.display = v === "real" ? "" : "none";
+    document.getElementById("fieldPanel").style.display = v === "field" ? "" : "none";
+    draw();
+  });
+  seg("op", (v) => { state.op = v; document.getElementById("qBlock").style.display = v === "double" ? "none" : ""; draw(); });
+  seg("pb", (v) => { state.pUp = v === "up"; draw(); });
+  seg("qb", (v) => { state.qUp = v === "up"; draw(); });
+  const px = document.getElementById("px"), qx = document.getElementById("qx");
+  px.addEventListener("input", () => { state.px = +px.value; document.getElementById("pxV").textContent = (+px.value).toFixed(2); draw(); });
+  qx.addEventListener("input", () => { state.qx = +qx.value; document.getElementById("qxV").textContent = (+qx.value).toFixed(2); draw(); });
+
+  const kSlider = document.getElementById("k");
+  kSlider.max = ORDER - 1;
+  kSlider.addEventListener("input", () => { kVal = +kSlider.value; draw(); });
+  document.getElementById("kStep").addEventListener("click", () => { kVal = kVal % (ORDER - 1) + 1; kSlider.value = kVal; draw(); });
+  document.getElementById("kPlay").addEventListener("click", (e) => {
+    playing = !playing; e.target.textContent = playing ? "Pause" : "Play";
+    if (playing) timer = setInterval(() => { kVal = kVal % (ORDER - 1) + 1; kSlider.value = kVal; draw(); }, 260);
+    else clearInterval(timer);
+  });
+  document.getElementById("pVal").textContent = "223";
+
+  function draw() { mode === "real" ? drawReal() : drawField(); }
+  document.getElementById("pxV").textContent = (+px.value).toFixed(2);
+  document.getElementById("qxV").textContent = (+qx.value).toFixed(2);
+  draw();
+})();
+</script>
+</body>
+</html>
