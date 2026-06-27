@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network &amp; the 51% Attack — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Network & the 51% Attack — Hermes">
+<meta property="og:description" content="Nodes gossip, forks appear and resolve — and a majority miner rewrites a confirmed payment.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#b58cff;--accent-ink:#160a2b}
+  canvas{height:auto}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:10px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .prob{font-family:var(--mono);text-align:center;padding:14px;border:1px solid var(--line);border-radius:10px;background:#0e0e16;margin-top:14px}
+  .prob .big{font-size:34px;font-weight:700}
+  .prob .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:2px}
+  .prob.lo .big{color:var(--good)} .prob.mid .big{color:var(--accent)} .prob.hi .big{color:var(--bad)}
+  .outcome{font-family:var(--mono);font-size:13px;font-weight:600;padding:9px 13px;border-radius:8px;margin-top:12px;text-align:center}
+  .outcome.safe{background:rgba(88,214,141,.16);color:var(--good)}
+  .outcome.rev{background:rgba(255,107,107,.16);color:var(--bad)}
+  .outcome.run{background:#1c1c28;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Network &amp; the 51% Attack</div>
+  <header class="hero">
+    <h1>Network &amp; the 51% Attack</h1>
+    <p class="sub">
+      No one is in charge of Bitcoin. Every node simply keeps the chain with the
+      <span class="x" data-pop="work">most work</span>. Two things follow: the network sometimes
+      <b>forks</b> and heals itself — and an attacker with enough hashpower can secretly out-build the
+      honest chain to <b>reverse a payment</b> that already looked confirmed.
+    </p>
+  </header>
+
+  <div class="seg" id="tab" style="margin-bottom:8px;max-width:520px">
+    <button data-v="consensus" aria-pressed="true">Forks &amp; reorgs</button>
+    <button data-v="attack" aria-pressed="false">The 51% double-spend</button>
+  </div>
+
+  <!-- ============ TAB A: consensus ============ -->
+  <div id="paneA">
+    <div class="cols">
+      <div class="col-left">
+        <div class="stage"><canvas id="tree" width="900" height="520"></canvas></div>
+        <div class="legend">
+          <span><i style="background:#b58cff"></i>main chain</span>
+          <span><i style="background:#3a3a4c"></i>orphaned</span>
+          <span><i style="background:#7cc4ff"></i>miner A</span>
+          <span><i style="background:#ffc266"></i>miner B</span>
+          <span><i style="background:#58d68d"></i>miner C</span>
+        </div>
+      </div>
+      <div class="col-right">
+        <div class="panel">
+          <h2>Mining the network</h2>
+          <div class="row"><button id="play" class="primary">Play</button><button id="stepBtn">Step</button></div>
+          <div class="row" style="margin-top:8px"><button id="resetC">Reset</button><button id="newNet">New network</button></div>
+          <div class="stats" style="margin-top:16px">
+            <div class="stat"><div class="k">blocks</div><div class="v" id="cBlocks">0</div></div>
+            <div class="stat"><div class="k">chain height</div><div class="v accent" id="cHeight">0</div></div>
+            <div class="stat"><div class="k">orphaned</div><div class="v" id="cOrph">0</div></div>
+            <div class="stat"><div class="k">reorgs seen</div><div class="v" id="cReorg">0</div></div>
+          </div>
+          <p class="hint">When two miners find a block at once you get a fork. The moment one side is
+            extended, it becomes the most-work chain and the other side's block is orphaned — a
+            <b>reorg</b>. Watch the highlight jump.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB B: 51% ============ -->
+  <div id="paneB" style="display:none">
+    <div class="cols">
+      <div class="col-left">
+        <div class="stage"><canvas id="race" width="900" height="360"></canvas></div>
+        <div class="legend">
+          <span><i style="background:#58d68d"></i>honest chain</span>
+          <span><i style="background:#ff6b6b"></i>attacker's private chain</span>
+          <span>🛒 = the payment &nbsp; 📦 = merchant ships</span>
+        </div>
+      </div>
+      <div class="col-right">
+        <div class="panel">
+          <h2>The setup</h2>
+          <label>Attacker hashpower <span class="val" id="qV">30%</span></label>
+          <input type="range" id="q" min="5" max="45" step="5" value="30">
+          <label>Merchant waits for <span class="val" id="nV">3</span> confirmations</label>
+          <input type="range" id="n" min="0" max="10" step="1" value="3">
+          <div class="prob mid" id="probBox">
+            <div class="big" id="probBig">–</div>
+            <div class="lbl">double-spend success probability</div>
+          </div>
+          <div class="row" style="margin-top:14px"><button id="runAtk" class="primary">Run one attack</button><button id="resetA">Reset</button></div>
+          <div class="outcome run" id="outcome">set hashpower &amp; confirmations, then run</div>
+          <p class="hint">The probability is from a Monte-Carlo run of the Python simulator. A single
+            run below is one roll of the dice — watch the private red chain try to overtake.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Confirmations buy safety</h3>
+        <p>Each block mined on top of a payment makes reversing it exponentially harder — for any
+          attacker below 50%. That's the whole reason to "wait for 6 confirmations".</p></div>
+      <div class="ncard"><h3>51% isn't a magic switch</h3>
+        <p>Even just under half the hashpower gives a real chance of a double-spend; just over half
+          makes it a near-certainty given patience. Security degrades smoothly, then collapses.</p></div>
+      <div class="ncard"><h3>Honesty is the default win</h3>
+        <p>Mining honestly on the longest chain is the most profitable strategy for anyone without a
+          majority — which is exactly why the network stays converged.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  work: "<h4>Most-work rule</h4><p>Nodes prefer the chain with the most cumulative proof-of-work (usually the longest). No votes, no authority — just whichever chain took the most computation to build.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const MINER_COLORS = { A:"#7cc4ff", B:"#ffc266", C:"#58d68d", genesis:"#5a5a72" };
+
+  // ---------------- TAB A: consensus ----------------
+  let runs = [], runIdx = 0, cStep = 0, cTimer = null, reorgs = 0, prevMain = new Set();
+  const tree = $("tree"), tctx = tree.getContext("2d");
+
+  function curRun() { return runs[runIdx]; }
+  function mainChainAt(blocks, step) {
+    const vis = blocks.filter(b => b.order <= step);
+    let tip = vis[0];
+    for (const b of vis) if (b.height > tip.height) tip = b; // ties keep earlier (lower order)
+    const byId = Object.fromEntries(blocks.map(b => [b.id, b]));
+    const chain = new Set(); let n = tip.id;
+    while (n !== null && n !== undefined) { chain.add(n); n = byId[n].parent; }
+    return { chain, tip };
+  }
+  function recomputeReorg() {
+    const { chain } = mainChainAt(curRun().blocks, cStep);
+    for (const id of prevMain) if (!chain.has(id)) { reorgs++; break; }
+    prevMain = chain;
+  }
+  function drawTree() {
+    const blocks = curRun().blocks;
+    const vis = blocks.filter(b => b.order <= cStep);
+    const { chain, tip } = mainChainAt(blocks, cStep);
+    const byId = Object.fromEntries(blocks.map(b => [b.id, b]));
+    const maxH = Math.max(...blocks.map(b => b.height));
+    const W = tree.width, H = tree.height, m = 46;
+    const dx = (W - 2*m) / Math.max(maxH, 1);
+    const midY = H * 0.40, laneGap = 70, bw = Math.min(26, dx*0.7);
+    tctx.clearRect(0,0,W,H);
+    const px = (b) => m + b.height*dx, py = (b) => midY + b.lane*laneGap;
+    // edges
+    vis.forEach(b => { if (b.parent===null) return; const p = byId[b.parent];
+      const onMain = chain.has(b.id) && chain.has(b.parent);
+      tctx.strokeStyle = onMain ? "#b58cff" : "#2a2a3a"; tctx.lineWidth = onMain ? 2.4 : 1.4;
+      tctx.beginPath(); tctx.moveTo(px(p)+bw/2, py(p)); tctx.lineTo(px(b)-bw/2, py(b)); tctx.stroke(); });
+    // nodes
+    vis.forEach(b => { const onMain = chain.has(b.id); const x = px(b), y = py(b);
+      tctx.fillStyle = b.id===0 ? MINER_COLORS.genesis : MINER_COLORS[b.miner] || "#888";
+      tctx.globalAlpha = onMain ? 1 : 0.4;
+      roundRect(tctx, x-bw/2, y-bw/2, bw, bw, 5); tctx.fill();
+      if (onMain) { tctx.globalAlpha=1; tctx.strokeStyle="#b58cff"; tctx.lineWidth=2; tctx.stroke(); }
+      if (b.id===tip.id) { tctx.globalAlpha=1; tctx.strokeStyle="#fff"; tctx.lineWidth=1.5; tctx.stroke(); }
+      tctx.globalAlpha=1; });
+    $("cBlocks").textContent = vis.length-1;
+    $("cHeight").textContent = byId[tip.id].height;
+    $("cOrph").textContent = vis.filter(b => b.id!==0 && !chain.has(b.id)).length;
+    $("cReorg").textContent = reorgs;
+  }
+  function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
+    c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+  function stepConsensus() {
+    const max = curRun().blocks.length-1;
+    if (cStep >= max) { stopC(); return; }
+    cStep++; recomputeReorg(); drawTree();
+  }
+  function stopC(){ clearInterval(cTimer); cTimer=null; $("play").textContent="Play"; }
+  function resetConsensus(){ stopC(); cStep=0; reorgs=0; prevMain=new Set([0]); drawTree(); }
+
+  $("play").addEventListener("click", () => {
+    if (cTimer) { stopC(); return; }
+    if (cStep >= curRun().blocks.length-1) resetConsensus();
+    $("play").textContent="Pause"; cTimer=setInterval(stepConsensus, 420);
+  });
+  $("stepBtn").addEventListener("click", () => { stopC(); stepConsensus(); });
+  $("resetC").addEventListener("click", resetConsensus);
+  $("newNet").addEventListener("click", () => { runIdx=(runIdx+1)%runs.length; resetConsensus(); });
+
+  // ---------------- TAB B: 51% ----------------
+  let probs = null, atkTimer = null;
+  const race = $("race"), rctx = race.getContext("2d");
+
+  function showProb() {
+    if (!probs) return;
+    const q = (+$("q").value/100).toFixed(2).replace(/0$/,"").replace(/\.$/,".0");
+    const qKey = String(+(+$("q").value/100).toFixed(2));
+    const n = $("n").value;
+    const p = probs.grid[qKey] ? probs.grid[qKey][n] : null;
+    const box = $("probBox"), big = $("probBig");
+    if (p===null || p===undefined) { big.textContent="–"; return; }
+    big.textContent = (p*100).toFixed(p>=0.1?1:2) + "%";
+    box.className = "prob " + (p<0.05?"lo":p<0.5?"mid":"hi");
+  }
+  function drawRace(state) {
+    const W=race.width, H=race.height; rctx.clearRect(0,0,W,H);
+    const m=50, dx=34, bw=24, topY=H*0.34, botY=H*0.72;
+    rctx.font="600 11px ui-sans-serif";
+    // labels
+    rctx.fillStyle="#8a8a9c"; rctx.fillText("HONEST", 8, topY-26); rctx.fillText("ATTACKER", 8, botY-26);
+    const drawChain=(count,y,color,markPay)=>{ for(let i=0;i<count;i++){ const x=m+i*dx;
+      rctx.fillStyle=color; roundRect(rctx,x,y-bw/2,bw,bw,5); rctx.fill();
+      if(markPay && i===0){ rctx.fillStyle="#0a0a0f"; rctx.font="13px serif"; rctx.fillText("🛒",x+4,y+5); rctx.font="600 11px ui-sans-serif"; } } };
+    drawChain(state.honest, topY, "#58d68d", true);
+    drawChain(state.attacker, botY, "#ff6b6b", true);
+    // confirmation threshold marker on honest lane
+    const n=+$("n").value; if(n>0){ const x=m+(n-0.5)*dx; rctx.strokeStyle="#b58cff"; rctx.setLineDash([4,4]);
+      rctx.beginPath(); rctx.moveTo(x,topY-bw); rctx.lineTo(x,topY+bw); rctx.stroke(); rctx.setLineDash([]);
+      rctx.fillStyle="#b58cff"; rctx.fillText(n+" conf", x-12, topY-bw-4); }
+    if(state.shipped){ const x=m+(state.honest)*dx+4; rctx.font="15px serif"; rctx.fillText("📦",x,topY+5); rctx.font="600 11px ui-sans-serif"; }
+  }
+  function runAttack() {
+    if (atkTimer) clearInterval(atkTimer);
+    const q=+$("q").value/100, n=+$("n").value;
+    let honest=0, attacker=0, shipped=false, done=false;
+    $("outcome").className="outcome run"; $("outcome").textContent="mining…";
+    atkTimer=setInterval(()=>{
+      if(done){ clearInterval(atkTimer); atkTimer=null; return; }
+      if(Math.random()<q) attacker++; else honest++;
+      if(honest>=n) shipped=true;
+      const state={honest,attacker,shipped};
+      drawRace(state);
+      if(shipped && attacker>honest){ done=true; $("outcome").className="outcome rev";
+        $("outcome").textContent="✗ DOUBLE-SPEND — attacker overtook; the payment is reversed"; }
+      else if(shipped && honest-attacker>=8){ done=true; $("outcome").className="outcome safe";
+        $("outcome").textContent="✓ SAFE — honest chain pulled too far ahead; attacker gives up"; }
+    }, 180);
+  }
+  function resetRace(){ if(atkTimer){clearInterval(atkTimer);atkTimer=null;} drawRace({honest:0,attacker:0,shipped:false});
+    $("outcome").className="outcome run"; $("outcome").textContent="set hashpower & confirmations, then run"; }
+
+  $("q").addEventListener("input", ()=>{ $("qV").textContent=$("q").value+"%"; showProb(); });
+  $("n").addEventListener("input", ()=>{ $("nV").textContent=$("n").value; showProb(); });
+  $("runAtk").addEventListener("click", runAttack);
+  $("resetA").addEventListener("click", resetRace);
+
+  // ---------------- tabs + load ----------------
+  document.querySelectorAll("#tab button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#tab button").forEach(x=>x.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true");
+    const v=b.dataset.v; $("paneA").style.display=v==="consensus"?"":"none"; $("paneB").style.display=v==="attack"?"":"none";
+  }));
+
+  Promise.all([
+    fetch("data/consensus.json").then(r=>r.json()),
+    fetch("data/probabilities.json").then(r=>r.json()),
+  ]).then(([c,p]) => {
+    runs=c.runs; probs=p; resetConsensus(); showProb(); resetRace();
+  });
+})();
+</script>
+</body>
+</html>

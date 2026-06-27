@@ -256,9 +256,15 @@ Each stage has a **Definition of Done (DoD)**. Tick the box when met.
       (P2PKH, 2-of-3 multisig, hashlock, CLTV) + a Tamper toggle. DoD MET — 17/17 pytest;
       all 4 presets valid + tampered-invalid in-browser, console clean. (Sigs are flat r‖s here,
       not DER — the real DER+sighash comes with tx.py in Stage 5/7.)
-- [ ] **Stage 5 — Tx + Network sim.** `hermes/tx.py`, `node.py`, `network.py`; `export.py` bakes
-      runs; `web/network/` plays them back incl. the 51% scenario. DoD: baked JSON loads; fork +
-      reorg + double-spend visibly resolve.
+- [x] **Stage 5 — Tx + Network sim.** `hermes/tx.py` (Tx/TxIn/TxOut, txid, UTXO, conflict
+      detection), `hermes/network.py` (`simulate_consensus` w/ forks+reorgs+lane layout;
+      `simulate_51` race; `double_spend_probability` Monte-Carlo). `export.py` bakes
+      `web/network/data/{consensus,probabilities}.json`. `web/network/` has two tabs: animated
+      block-tree (forks/orphans/reorgs, dynamic longest-chain highlight) + the 51% double-spend
+      (q & confirmations sliders, baked P readout, live race animation). DoD MET — 24/24 pytest;
+      both tabs verified in-browser (reorgs show, P matches baked grid, reversal animates), console
+      clean. Note: no `node.py` (folded into network.py); consensus baked from Python, race
+      animated live in JS with P from the baked grid.
 - [ ] **Stage 6 — HD wallet.** `bip39.py` + `bip32.py` + vectors; `web/wallet/` tree.
       DoD: official BIP-32/39 vectors pass in both impls; tree unfolds in browser.
 - [ ] **Stage 7 — Testnet.** `cli.py` builds/signs/broadcasts a real testnet tx. **User funds a
@@ -331,3 +337,10 @@ _Append a dated entry every session: what changed · what's next · new decision
   the landing page. **Next: Stage 5** — Tx + Network sim (`tx.py`, `node.py`, `network.py`,
   `export.py` baking JSON runs) → `web/network/` with the 51% double-spend. This is the heaviest
   stage; build tx serialization first, then the sim, then bake representative runs for the web.
+- **2026-06-27** — **Stage 5 DONE.** `tx.py` + `network.py` + `export.py`; `web/network/` with the
+  forks/reorgs tree and the 51% double-spend (live race + baked Python probability grid). 24/24
+  pytest; verified in-browser, console clean. Network card live on the landing page. **Next:
+  Stage 6 — HD Wallet** (BIP-39/32). Needs a from-scratch **SHA-512** (for HMAC-SHA512 + PBKDF2)
+  which we don't have yet — build sha512.py first, then bip39.py/bip32.py against the official BIP
+  test vectors, then `web/wallet/` (mnemonic → seed → derivation tree). Bundle the 2048-word list
+  inline (~13KB).
