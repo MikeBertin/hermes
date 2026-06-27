@@ -7,7 +7,9 @@ dependencies, to be visualised in the browser. See PLAN.md.
 
 from .base58 import b58check_decode, b58check_encode, b58decode, b58encode
 from .curve import G, N, P, INFINITY, Point
-from .ecdsa import Signature, recover_secret_from_reused_nonce, sign, verify
+from .ecdsa import (
+    Signature, parse_sig, recover_secret_from_reused_nonce, ser_sig, sign, verify,
+)
 from .field import FieldElement
 from .keys import PrivateKey, PublicKey, hash160
 from .ripemd160 import ripemd160
@@ -20,4 +22,5 @@ __all__ = [
     "b58encode", "b58decode", "b58check_encode", "b58check_decode",
     "PrivateKey", "PublicKey", "hash160",
     "Signature", "sign", "verify", "recover_secret_from_reused_nonce",
+    "ser_sig", "parse_sig",
 ]

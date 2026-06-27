@@ -250,8 +250,12 @@ Each stage has a **Definition of Done (DoD)**. Tick the box when met.
       `address/` (live pipeline + bit-flip avalanche; matches known WIF/address for the test key),
       `sign/` (ECDSA sign→valid, tamper→invalid, nonce-reuse recovers the exact private key),
       `mine/` (live PoW grinder + tamper-the-chain cascade). Accents per demo set on `:root`.
-- [ ] **Stage 4 — Script.** `hermes/script.py` + vectors; `web/script/` step-debugger.
-      DoD: P2PKH/multisig/hashlock/timelock evaluate correctly in both impls; page steps cleanly.
+- [x] **Stage 4 — Script.** `hermes/script.py` (stack VM + opcodes) + `tests/test_script.py`
+      (5 vectors). Added `PublicKey.parse` (SEC + modular sqrt) & `ecdsa.ser_sig/parse_sig`;
+      mirrored `secDecode` in `btc.js`. `web/script/` is a step-debugger with 4 presets
+      (P2PKH, 2-of-3 multisig, hashlock, CLTV) + a Tamper toggle. DoD MET — 17/17 pytest;
+      all 4 presets valid + tampered-invalid in-browser, console clean. (Sigs are flat r‖s here,
+      not DER — the real DER+sighash comes with tx.py in Stage 5/7.)
 - [ ] **Stage 5 — Tx + Network sim.** `hermes/tx.py`, `node.py`, `network.py`; `export.py` bakes
       runs; `web/network/` plays them back incl. the 51% scenario. DoD: baked JSON loads; fork +
       reorg + double-spend visibly resolve.
@@ -318,3 +322,12 @@ _Append a dated entry every session: what changed · what's next · new decision
   (popovers). The Layer-1 / Karpathy arc is now demoable end-to-end. **Next: Stage 4** — the
   Script stack-VM (`hermes/script.py` + vectors, then `web/script/` step-debugger). NOTE on Stage
   4+: these need tx.py/script.py which don't exist yet — fresh build, Python-first then JS mirror.
+- **2026-06-27** — Repo housekeeping: Hermes is now its own git repo, pushed to
+  github.com/MikeBertin/hermes (now **public**). Landing-page footer companion links removed.
+- **2026-06-27** — **Stage 4 DONE.** Script stack-VM: `hermes/script.py` + 5 vectors (17/17
+  pytest); `web/script/` step-debugger with P2PKH / 2-of-3 multisig / hashlock / CLTV presets +
+  Tamper toggle, verified in-browser (all valid + tampered-invalid, console clean). Added
+  `PublicKey.parse`, `ecdsa.ser_sig/parse_sig`, and `secDecode` in btc.js. Script card now live on
+  the landing page. **Next: Stage 5** — Tx + Network sim (`tx.py`, `node.py`, `network.py`,
+  `export.py` baking JSON runs) → `web/network/` with the 51% double-spend. This is the heaviest
+  stage; build tx serialization first, then the sim, then bake representative runs for the web.

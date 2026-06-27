@@ -44,6 +44,16 @@ def sign(secret: int, z: int, k: int | None = None, low_s: bool = True) -> Signa
     return Signature(r, s)
 
 
+def ser_sig(sig: Signature) -> bytes:
+    """Serialize a signature as 64 bytes (r ‖ s, big-endian). Real Bitcoin uses
+    DER + a sighash-type byte; we keep a flat form for the Script VM demo."""
+    return sig.r.to_bytes(32, "big") + sig.s.to_bytes(32, "big")
+
+
+def parse_sig(data: bytes) -> Signature:
+    return Signature(int.from_bytes(data[:32], "big"), int.from_bytes(data[32:64], "big"))
+
+
 def verify(point: Point, z: int, sig: Signature) -> bool:
     if not (1 <= sig.r < N and 1 <= sig.s < N):
         return False

@@ -12,7 +12,7 @@ itself.
 from __future__ import annotations
 
 from .base58 import b58check_encode
-from .curve import G, N, Point
+from .curve import G, N, P, Point
 from .ripemd160 import ripemd160
 from .sha256 import sha256
 
@@ -40,6 +40,23 @@ class PublicKey:
             return b"\x04" + x + y
         prefix = b"\x02" if self.point.y.num % 2 == 0 else b"\x03"
         return prefix + x
+
+    @classmethod
+    def parse(cls, sec: bytes) -> "PublicKey":
+        """Recover the point from SEC bytes. For compressed keys we solve for y
+        with a modular square root (secp256k1's prime is ≡ 3 mod 4, so the root
+        is just a single modular exponentiation), then pick the parity."""
+        if sec[0] == 4:
+            x = int.from_bytes(sec[1:33], "big")
+            y = int.from_bytes(sec[33:65], "big")
+            return cls(Point(x, y))
+        x = int.from_bytes(sec[1:33], "big")
+        alpha = (pow(x, 3, P) + 7) % P
+        beta = pow(alpha, (P + 1) // 4, P)        # the square root
+        even_beta = beta if beta % 2 == 0 else P - beta
+        odd_beta = P - even_beta
+        want_even = sec[0] == 2
+        return cls(Point(x, even_beta if want_even else odd_beta))
 
     def hash160(self, compressed: bool = True) -> bytes:
         return hash160(self.sec(compressed))

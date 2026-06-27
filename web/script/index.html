@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Script VM — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Script VM — Hermes">
+<meta property="og:description" content="Bitcoin Script as a step-through stack machine: P2PKH, multisig, hash locks and time locks.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#5fd0c5;--accent-ink:#04201d}
+  .prog{font-family:var(--mono);font-size:13px}
+  .divider{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.4px;
+    margin:12px 0 6px;display:flex;align-items:center;gap:8px}
+  .divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  .op{display:flex;align-items:center;gap:10px;padding:7px 11px;border:1px solid transparent;border-radius:8px;margin:3px 0}
+  .op .pc{color:var(--muted);font-size:11px;width:20px;text-align:right;flex:0 0 auto}
+  .op .name{color:var(--ink)}
+  .op .name.opc{color:var(--accent)}
+  .op .ann{color:var(--muted);font-size:11.5px;margin-left:auto}
+  .op.cur{background:rgba(95,208,197,.12);border-color:var(--accent)}
+  .op.done{opacity:.5}
+  .op.failrow{background:rgba(255,107,107,.14);border-color:var(--bad)}
+  /* stack */
+  .stackwrap{min-height:230px;display:flex;flex-direction:column-reverse;gap:7px;justify-content:flex-start}
+  .cell{background:#0e0e16;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:12px}
+  .cell .lab{color:var(--accent);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
+  .cell .hx{color:var(--muted);word-break:break-all;margin-top:2px}
+  .cell.top{border-color:var(--accent)}
+  .stack-empty{color:var(--muted);font-size:12px;font-style:italic;align-self:flex-start}
+  .badge2{display:inline-block;font-family:var(--mono);font-size:13px;padding:8px 13px;border-radius:8px;font-weight:600;margin-top:12px}
+  .badge2.ok{background:rgba(95,208,197,.16);color:var(--accent)}
+  .badge2.no{background:rgba(255,107,107,.16);color:var(--bad)}
+  .badge2.mid{background:#1c1c28;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Script VM</div>
+  <header class="hero">
+    <h1>The Script VM</h1>
+    <p class="sub">
+      Bitcoin coins aren't "owned" — they're <b>locked by a script</b>. To spend one you supply an
+      <span class="x" data-pop="unlock">unlocking script</span>; glue it in front of the lock, run the
+      pair on a <span class="x" data-pop="stack">stack machine</span>, and if the stack ends holding
+      <b>true</b>, the money moves. Step through four classic locks below.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="seg" id="preset" style="margin:0 0 6px;flex-wrap:wrap">
+        <button data-v="p2pkh" aria-pressed="true">P2PKH</button>
+        <button data-v="multisig" aria-pressed="false">2-of-3 Multisig</button>
+        <button data-v="hashlock" aria-pressed="false">Hash lock</button>
+        <button data-v="cltv" aria-pressed="false">Time lock</button>
+      </div>
+      <div class="panel">
+        <div class="prog" id="prog"></div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>The stack</h2>
+        <div class="stackwrap" id="stack"></div>
+        <div id="badge" class="badge2 mid">ready</div>
+      </div>
+      <div class="panel">
+        <div class="row">
+          <button id="step" class="primary">Step →</button>
+          <button id="run">Run all</button>
+          <button id="reset">Reset</button>
+        </div>
+        <label style="margin-top:14px;display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="tamper" style="width:auto;margin:0;accent-color:var(--bad)">
+          <span>Tamper — make the spend invalid</span>
+        </label>
+        <p class="hint" id="explain"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Lock and key are separate</h3>
+        <p>The <em>scriptPubKey</em> ships with the coin; the <em>scriptSig</em> is provided by the
+          spender later. Spending is just: can you write a prefix that makes the whole thing pass?</p></div>
+      <div class="ncard"><h3>No loops, on purpose</h3>
+        <p>Script has no jumps or loops, so every program halts. That keeps validation cheap and
+          predictable — nodes can't be tricked into running forever.</p></div>
+      <div class="ncard"><h3>One machine, many contracts</h3>
+        <p>The same opcodes express a plain payment, an m-of-n vault, a hash-revealed payment, and a
+          time-delayed one. Lightning channels are built from exactly these pieces.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  unlock: "<h4>Unlocking script</h4><p>The data a spender provides — typically a signature and public key — that satisfies the conditions the coin was locked with.</p>",
+  stack: "<h4>Stack machine</h4><p>A last-in-first-out pile of byte strings. Opcodes push and pop values; the script passes if it ends with a single true value on top.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+
+  // opcodes (mirror hermes/script.py)
+  const OP = { OP_0:0, OP_2:82, OP_3:83, OP_VERIFY:105, OP_DUP:118, OP_EQUAL:135,
+    OP_EQUALVERIFY:136, OP_SHA256:168, OP_HASH160:169, OP_CHECKSIG:172,
+    OP_CHECKMULTISIG:174, OP_CHECKLOCKTIMEVERIFY:177 };
+  const OPNAME = Object.fromEntries(Object.entries(OP).map(([k,v]) => [v,k]));
+
+  const ser64 = (sig) => H.concatBytes(H.bigIntToBytes(sig.r,32), H.bigIntToBytes(sig.s,32));
+  const parseSig = (b) => ({ r: H.bytesToBigInt(b.slice(0,32)), s: H.bytesToBigInt(b.slice(32,64)) });
+  const enc = H.utf8;
+
+  function encodeNum(n){ if(n===0) return new Uint8Array(); const out=[]; let a=Math.abs(n); const neg=n<0;
+    while(a){ out.push(a&0xff); a=Math.floor(a/256); } if(out[out.length-1]&0x80) out.push(neg?0x80:0);
+    else if(neg) out[out.length-1]|=0x80; return Uint8Array.from(out); }
+  function decodeNum(b){ if(b.length===0) return 0; const le=Array.from(b).reverse(); const neg=le[0]&0x80;
+    let r=neg?(le[0]&0x7f):le[0]; for(let i=1;i<le.length;i++) r=r*256+le[i]; return neg?-r:r; }
+  const truthy = (b) => { for(let i=0;i<b.length-1;i++) if(b[i]!==0) return true;
+    return b.length>0 && b[b.length-1]!==0 && b[b.length-1]!==0x80; };
+  const eqBytes = (a,b) => a.length===b.length && a.every((v,i)=>v===b[i]);
+
+  // ---- build the four presets ----
+  const z = H.messageHash("spend this output");
+  function build(kind, tamper) {
+    const D = (bytes, label) => ({ bytes, label });
+    const O = (code) => ({ op: code, label: OPNAME[code] });
+    if (kind === "p2pkh") {
+      const priv = 0xc0ffeen, sec = H.sec(H.pubFromSecret(priv)), h160 = H.hash160(sec);
+      const signer = tamper ? 0xbadbadn : priv;
+      const sig = ser64(H.sign(signer, z, null, true));
+      return { unlock: [D(sig,"signature"), D(sec,"pubkey")],
+        lock: [O(OP.OP_DUP), O(OP.OP_HASH160), D(h160,"pubKeyHash"), O(OP.OP_EQUALVERIFY), O(OP.OP_CHECKSIG)],
+        explain: "Pay-to-Public-Key-Hash — the everyday Bitcoin address. The lock commits to a hash of the public key; spending reveals the key and a signature over the transaction." };
+    }
+    if (kind === "multisig") {
+      const ks = [1001n,1002n,1003n].map(k => ({k, sec:H.sec(H.pubFromSecret(k))}));
+      const s0 = ser64(H.sign(ks[0].k, z, null, true));
+      const s1 = ser64(H.sign(ks[1].k, z, null, true));
+      const second = tamper ? ser64(H.sign(ks[0].k, z, null, true)) : s1; // tamper: 2nd sig also from key0
+      return { unlock: [O(OP.OP_0), D(s0,"sig · key1"), D(second, tamper ? "sig · key1 (dup!)" : "sig · key2")],
+        lock: [O(OP.OP_2), D(ks[0].sec,"pubkey1"), D(ks[1].sec,"pubkey2"), D(ks[2].sec,"pubkey3"), O(OP.OP_3), O(OP.OP_CHECKMULTISIG)],
+        explain: "A 2-of-3 vault: any two of three keys can spend. The leading OP_0 is the famous off-by-one bug Bitcoin can never fix — CHECKMULTISIG pops one item too many." };
+    }
+    if (kind === "hashlock") {
+      const preimage = enc("hermes-was-here"), h = H.sha256(preimage);
+      return { unlock: [D(tamper ? enc("wrong-secret") : preimage, tamper ? "wrong preimage" : "preimage")],
+        lock: [O(OP.OP_SHA256), D(h,"hash"), O(OP.OP_EQUAL)],
+        explain: "A hash lock: whoever can reveal a string that hashes to this value may spend. The building block of atomic swaps and Lightning HTLCs." };
+    }
+    // cltv
+    const threshold = 800000;
+    return { unlock: [], lock: [D(encodeNum(threshold),"800000"), O(OP.OP_CHECKLOCKTIMEVERIFY)],
+      locktime: tamper ? 799999 : 800001,
+      explain: "A time lock (CHECKLOCKTIMEVERIFY): the coin can't move until block height 800000. The spending transaction's own locktime must have reached the threshold." };
+  }
+
+  // ---- evaluate into a trace ----
+  function evaluate(cmds, locktime) {
+    const stack = []; const trace = [{ stack: snap([]), fail:false }];
+    let failed = false;
+    const snapNow = () => trace.push({ stack: snap(stack), fail: failed });
+    for (const c of cmds) {
+      if (failed) break;
+      if (c.bytes) { stack.push({ bytes:c.bytes, label:c.label }); }
+      else {
+        const op = c.op;
+        try {
+          if (op === OP.OP_0) stack.push({ bytes:new Uint8Array(), label:"0" });
+          else if (op === OP.OP_2) stack.push({ bytes:encodeNum(2), label:"2" });
+          else if (op === OP.OP_3) stack.push({ bytes:encodeNum(3), label:"3" });
+          else if (op === OP.OP_DUP) stack.push({ ...stack[stack.length-1] });
+          else if (op === OP.OP_HASH160) { const x=stack.pop(); stack.push({ bytes:H.hash160(x.bytes), label:"hash160" }); }
+          else if (op === OP.OP_SHA256) { const x=stack.pop(); stack.push({ bytes:H.sha256(x.bytes), label:"sha256" }); }
+          else if (op === OP.OP_EQUAL) { const a=stack.pop(), b=stack.pop(); stack.push({ bytes:eqBytes(a.bytes,b.bytes)?Uint8Array.of(1):new Uint8Array(), label:eqBytes(a.bytes,b.bytes)?"true":"false" }); }
+          else if (op === OP.OP_EQUALVERIFY) { const a=stack.pop(), b=stack.pop(); if(!eqBytes(a.bytes,b.bytes)) failed=true; }
+          else if (op === OP.OP_VERIFY) { const a=stack.pop(); if(!truthy(a.bytes)) failed=true; }
+          else if (op === OP.OP_CHECKSIG) { const sec=stack.pop(), sig=stack.pop(); let ok=false;
+            try { ok=H.verify(H.secDecode(sec.bytes), z, parseSig(sig.bytes)); } catch(e){}
+            stack.push({ bytes: ok?Uint8Array.of(1):new Uint8Array(), label: ok?"true":"false" }); }
+          else if (op === OP.OP_CHECKMULTISIG) { const ok=checkmultisig(stack); stack.push({ bytes: ok?Uint8Array.of(1):new Uint8Array(), label: ok?"true":"false" }); }
+          else if (op === OP.OP_CHECKLOCKTIMEVERIFY) { const req=decodeNum(stack[stack.length-1].bytes); if(locktime===undefined||locktime<req) failed=true; }
+        } catch(e) { failed = true; }
+      }
+      snapNow();
+    }
+    const valid = !failed && stack.length>0 && truthy(stack[stack.length-1].bytes);
+    return { trace, valid, failedAt: failed ? trace.length-2 : -1 };
+  }
+  function checkmultisig(stack){
+    const n=decodeNum(stack.pop().bytes); const secs=[]; for(let i=0;i<n;i++) secs.push(stack.pop());
+    const m=decodeNum(stack.pop().bytes); const sigs=[]; for(let i=0;i<m;i++) sigs.push(stack.pop());
+    stack.pop(); // off-by-one dummy
+    let pts; try { pts = secs.map(s=>H.secDecode(s.bytes)); } catch(e){ return false; }
+    const parsed = sigs.map(s=>parseSig(s.bytes));
+    for (const sig of parsed) { let matched=false;
+      while (pts.length) { const p=pts.shift(); if(H.verify(p,z,sig)){ matched=true; break; } }
+      if (!matched) return false; }
+    return true;
+  }
+  const snap = (st) => st.map(it => ({ hex: H.bytesToHex(it.bytes) || "∅", label: it.label }));
+
+  // ---- UI state ----
+  let kind = "p2pkh", tamper = false, cur = null, step = 0;
+  function rebuild() {
+    const b = build(kind, tamper);
+    const cmds = [...b.unlock, ...b.lock];
+    const ev = evaluate(cmds, b.locktime);
+    cur = { ...b, cmds, ...ev, splitLen: b.unlock.length };
+    step = 0;
+    $("explain").textContent = b.explain + (b.locktime!==undefined ? ` (tx locktime = ${b.locktime})` : "");
+    renderProgram(); renderStack(); setBadge();
+  }
+  function renderProgram() {
+    const rows = [];
+    if (cur.splitLen > 0) rows.push(`<div class="divider">scriptSig — unlock</div>`);
+    else rows.push(`<div class="divider">scriptSig — (empty)</div>`);
+    cur.cmds.forEach((c, i) => {
+      if (i === cur.splitLen) rows.push(`<div class="divider">scriptPubKey — lock</div>`);
+      const isOp = c.op !== undefined;
+      const done = i < step ? "done" : "";
+      const isCur = i === step - 1 ? "cur" : "";
+      const failrow = (cur.failedAt === step && i === step-1 && !cur.valid) ? "failrow" : "";
+      rows.push(`<div class="op ${done} ${isCur} ${failrow}">
+        <span class="pc">${i}</span>
+        <span class="name ${isOp?"opc":""}">${isOp ? c.label : "⟨"+c.label+"⟩"}</span>
+        ${!isOp ? `<span class="ann">push</span>` : ``}
+      </div>`);
+    });
+    $("prog").innerHTML = rows.join("");
+  }
+  function renderStack() {
+    const st = cur.trace[step].stack;
+    const wrap = $("stack");
+    if (!st.length) { wrap.innerHTML = `<div class="stack-empty">empty</div>`; return; }
+    wrap.innerHTML = st.map((it, i) => `
+      <div class="cell ${i===st.length-1?"top":""}">
+        <div class="lab">${it.label}${i===st.length-1?" · top":""}</div>
+        <div class="hx">${it.hex.length>40?it.hex.slice(0,40)+"…":it.hex}</div>
+      </div>`).join("");
+  }
+  function setBadge() {
+    const b = $("badge"); const atEnd = step >= cur.trace.length-1;
+    if (!atEnd) { b.className="badge2 mid"; b.textContent = `step ${step} / ${cur.trace.length-1}`; return; }
+    b.className = "badge2 " + (cur.valid ? "ok" : "no");
+    b.textContent = cur.valid ? "✓ VALID — coins can move" : "✗ INVALID — spend rejected";
+  }
+
+  $("step").addEventListener("click", () => { if (step < cur.trace.length-1) step++; renderProgram(); renderStack(); setBadge(); });
+  $("run").addEventListener("click", () => { step = cur.trace.length-1; renderProgram(); renderStack(); setBadge(); });
+  $("reset").addEventListener("click", () => { step = 0; renderProgram(); renderStack(); setBadge(); });
+  $("tamper").addEventListener("change", (e) => { tamper = e.target.checked; rebuild(); });
+  document.querySelectorAll("#preset button").forEach((bn) => bn.addEventListener("click", () => {
+    document.querySelectorAll("#preset button").forEach(x=>x.setAttribute("aria-pressed","false"));
+    bn.setAttribute("aria-pressed","true"); kind = bn.dataset.v; $("tamper").checked=false; tamper=false; rebuild();
+  }));
+
+  rebuild();
+})();
+</script>
+</body>
+</html>

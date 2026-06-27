@@ -299,6 +299,17 @@
     const prefix = point.y % 2n === 0n ? 0x02 : 0x03;
     return concatBytes(Uint8Array.of(prefix), x);
   }
+  // recover a point from its SEC bytes (compressed needs a modular sqrt; the
+  // field prime is ≡ 3 mod 4, so the root is a single exponentiation)
+  function secDecode(b) {
+    if (b[0] === 4)
+      return { x: bytesToBigInt(b.slice(1, 33)), y: bytesToBigInt(b.slice(33, 65)) };
+    const x = bytesToBigInt(b.slice(1, 33));
+    const alpha = mod(x * x * x + B, P);
+    const beta = modPow(alpha, (P + 1n) / 4n, P);
+    const evenBeta = beta % 2n === 0n ? beta : P - beta;
+    return { x, y: b[0] === 2 ? evenBeta : P - evenBeta };
+  }
   function address(point, compressed = true, testnet = false) {
     const version = Uint8Array.of(testnet ? 0x6f : 0x00);
     return b58checkEncode(concatBytes(version, hash160(sec(point, compressed))));
@@ -353,7 +364,7 @@
     // curve
     P, A, B, N, G, INFINITY, mod, modInv, ptAdd, ptDouble, ptMul,
     // keys
-    pubFromSecret, sec, address, wif,
+    pubFromSecret, sec, secDecode, address, wif,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, messageHash,
   };
