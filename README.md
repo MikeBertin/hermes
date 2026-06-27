@@ -7,7 +7,8 @@ A from-scratch Bitcoin implementation (in the spirit of Karpathy's *"A from-scra
 of Bitcoin in Python"*) turned into a suite of interactive browser visualisations. No crypto
 libraries: the secp256k1 curve, SHA-256, RIPEMD-160, Base58Check, ECDSA — all by hand.
 
-🔒 *Private while in progress — not yet published.* See [PLAN.md](PLAN.md) for the full build plan.
+🚧 *Work in progress — Layer 1 (the primitives) is live; Layer 2 (the systems) is being built.*
+See [PLAN.md](PLAN.md) for the full build plan.
 
 Companion to [Chiron](https://mikebertin.github.io/chiron/) (computational physics),
 [Empedocles](https://mikebertin.github.io/empedocles/) (evolutionary algorithms), and
