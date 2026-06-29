@@ -285,9 +285,10 @@ Each stage has a **Definition of Done (DoD)**. Tick the box when met.
       `mnGLT42un82fQGtWpC7K6pppWcjSf2wpi6` (key in gitignored `.testnet-key.json`); **user funds it
       from a faucet**, then `python -m hermes.cli info` → `send <dest> --broadcast` (confirm tx
       first). *7c TODO:* `web/testnet/` narrates the captured txid (bake raw hex + field breakdown).
-- [ ] **Stage 8 — Polish & ship.** Landing page (8 cards), README myth + table, `og.png`,
-      GitHub Pages, sibling cross-links added to Chiron/Empedocles/Plutus if desired.
-      DoD: site loads on Pages; all 8 demos reachable.
+- [x] **Stage 8 — Polish & ship.** `web/og.png` (1200×630, rendered from an HTML card via headless
+      Chrome). GitHub Pages enabled via Actions workflow `.github/workflows/pages.yml` deploying the
+      `web/` folder (Pages build_type=workflow, since the repo is a hybrid Python+site). Live at
+      https://mikebertin.github.io/hermes/. DoD: site loads on Pages; all 8 demos reachable.
 
 Rough sequencing: Stages 1–3 are one natural chunk (the Karpathy arc, demoable). 4–6 are the
 systems middle. 7–8 close it out. Expect ~3–5 sessions depending on depth.
@@ -382,3 +383,8 @@ _Append a dated entry every session: what changed · what's next · new decision
   `web/testnet/` narrating the real tx (annotated raw hex, explorer link). All 8 demo cards now
   live. 37/37 pytest. **ONLY Stage 8 left — polish & ship:** og.png (1200×630 social card), then
   GitHub Pages (serve `web/` — repo is already public). Optionally add sibling cross-links.
+- **2026-06-29** — **Stage 8 DONE — PROJECT COMPLETE & SHIPPED.** Made `web/og.png` (1200×630 via
+  headless Chrome from an HTML card). Enabled GitHub Pages via Actions workflow
+  (`.github/workflows/pages.yml`, build_type=workflow) deploying `web/`. Live at
+  https://mikebertin.github.io/hermes/. All 8 stages done; flagship shipped. (Siblings serve Pages
+  from main-root legacy; Hermes uses a workflow since it's a Python+site hybrid.)
