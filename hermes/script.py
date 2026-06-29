@@ -86,6 +86,43 @@ class Script:
     def __add__(self, other: "Script") -> "Script":
         return Script(self.cmds + other.cmds)
 
+    # --- wire serialization (no length prefix; the tx layer adds the varint) --
+    def raw_serialize(self) -> bytes:
+        out = b""
+        for cmd in self.cmds:
+            if isinstance(cmd, int):
+                out += cmd.to_bytes(1, "little")
+            else:
+                n = len(cmd)
+                if n < 76:
+                    out += n.to_bytes(1, "little")
+                elif n < 256:
+                    out += b"\x4c" + n.to_bytes(1, "little")        # OP_PUSHDATA1
+                elif n <= 520:
+                    out += b"\x4d" + n.to_bytes(2, "little")        # OP_PUSHDATA2
+                else:
+                    raise ValueError("data push too long")
+                out += cmd
+        return out
+
+    @classmethod
+    def parse_raw(cls, data: bytes) -> "Script":
+        cmds, i = [], 0
+        while i < len(data):
+            current = data[i]
+            i += 1
+            if 1 <= current <= 75:
+                cmds.append(data[i : i + current]); i += current
+            elif current == 76:                                    # OP_PUSHDATA1
+                n = data[i]; i += 1
+                cmds.append(data[i : i + n]); i += n
+            elif current == 77:                                    # OP_PUSHDATA2
+                n = int.from_bytes(data[i : i + 2], "little"); i += 2
+                cmds.append(data[i : i + n]); i += n
+            else:
+                cmds.append(current)
+        return cls(cmds)
+
 
 class ScriptError(Exception):
     pass

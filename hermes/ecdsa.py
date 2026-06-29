@@ -45,13 +45,45 @@ def sign(secret: int, z: int, k: int | None = None, low_s: bool = True) -> Signa
 
 
 def ser_sig(sig: Signature) -> bytes:
-    """Serialize a signature as 64 bytes (r ‖ s, big-endian). Real Bitcoin uses
-    DER + a sighash-type byte; we keep a flat form for the Script VM demo."""
+    """Serialize a signature as 64 bytes (r ‖ s, big-endian). Used by the Script
+    VM demo; real Bitcoin uses the DER form below."""
     return sig.r.to_bytes(32, "big") + sig.s.to_bytes(32, "big")
 
 
 def parse_sig(data: bytes) -> Signature:
     return Signature(int.from_bytes(data[:32], "big"), int.from_bytes(data[32:64], "big"))
+
+
+def _der_int(n: int) -> bytes:
+    """DER integer: big-endian, minimal, with a leading 0x00 if the top bit is set
+    (so it isn't read as negative)."""
+    b = n.to_bytes(32, "big").lstrip(b"\x00")
+    if b and b[0] & 0x80:
+        b = b"\x00" + b
+    return b"\x02" + len(b).to_bytes(1, "big") + b
+
+
+def der(sig: Signature) -> bytes:
+    """Encode a signature in the ASN.1 DER form Bitcoin transactions carry."""
+    body = _der_int(sig.r) + _der_int(sig.s)
+    return b"\x30" + len(body).to_bytes(1, "big") + body
+
+
+def parse_der(data: bytes) -> Signature:
+    if data[0] != 0x30:
+        raise ValueError("bad DER: no compound marker")
+    # data[1] is the body length; r and s each preceded by 0x02, length, bytes
+    i = 2
+    if data[i] != 0x02:
+        raise ValueError("bad DER: expected integer for r")
+    rlen = data[i + 1]
+    r = int.from_bytes(data[i + 2 : i + 2 + rlen], "big")
+    i = i + 2 + rlen
+    if data[i] != 0x02:
+        raise ValueError("bad DER: expected integer for s")
+    slen = data[i + 1]
+    s = int.from_bytes(data[i + 2 : i + 2 + slen], "big")
+    return Signature(r, s)
 
 
 def verify(point: Point, z: int, sig: Signature) -> bool:

@@ -272,9 +272,15 @@ Each stage has a **Definition of Done (DoD)**. Tick the box when met.
       PBKDF2); `web/wallet/` derivation-tree demo (generate 12/24, passphrase, mainnet/testnet).
       DoD MET — JS reproduces all vectors + canonical abandon…about address (fp 73c5da0a, addr
       1LqBGSKuX5y…); verified in-browser, console clean. Wordlist fetched at web/wallet/wordlist.txt.
-- [ ] **Stage 7 — Testnet.** `cli.py` builds/signs/broadcasts a real testnet tx. **User funds a
-      faucet address.** Capture the real txid; `web/testnet/` narrates it + explorer link.
-      DoD: a real tx is on testnet and linked.
+- [~] **Stage 7 — Testnet.** *7a DONE:* `hermes/transaction.py` (real wire-format Tx/TxIn/TxOut,
+      varint, SIGHASH_ALL, sign/verify), DER in `ecdsa.py` (`der`/`parse_der`), `Script.raw_serialize`/
+      `parse_raw`. `tests/test_transaction.py` proves it against a REAL on-chain legacy P2PKH tx
+      (fba398fa…, block 955925) — our sighash+DER verify its live signature (37/37 pytest).
+      `hermes/cli.py` (`new`/`info`/`send [--broadcast]`) + testnet API helpers (`fetch_utxos`,
+      `broadcast`) via blockstream. *7b PENDING USER:* testnet address generated =
+      `mnGLT42un82fQGtWpC7K6pppWcjSf2wpi6` (key in gitignored `.testnet-key.json`); **user funds it
+      from a faucet**, then `python -m hermes.cli info` → `send <dest> --broadcast` (confirm tx
+      first). *7c TODO:* `web/testnet/` narrates the captured txid (bake raw hex + field breakdown).
 - [ ] **Stage 8 — Polish & ship.** Landing page (8 cards), README myth + table, `og.png`,
       GitHub Pages, sibling cross-links added to Chiron/Empedocles/Plutus if desired.
       DoD: site loads on Pages; all 8 demos reachable.
@@ -358,3 +364,11 @@ _Append a dated entry every session: what changed · what's next · new decision
   `cli.py` to build/sign/broadcast, a faucet-funded testnet addr (**USER ACTION**: generate, user
   funds), broadcast via blockstream/mempool.space testnet API, then `web/testnet/` narrating the
   captured txid. Then Stage 8 polish/ship (og.png, GitHub Pages).
+- **2026-06-29** — **Stage 7a DONE.** Real tx engine: `hermes/transaction.py` (wire serialization,
+  SIGHASH_ALL, sign/verify), DER (`ecdsa.der`/`parse_der`), `Script.raw_serialize`/`parse_raw`.
+  Verified OFFLINE against a real mainnet legacy-P2PKH tx fetched from blockstream (fba398fa…) —
+  our sighash+DER verify its on-chain signature. 37/37 pytest. `cli.py` + testnet fetch/broadcast
+  helpers built. (Note: caught a transcription typo in my first hardcoded reference tx → switched
+  to a live-fetched, code-verified fixture.) **7b PENDING USER FUNDING:** addr
+  `mnGLT42un82fQGtWpC7K6pppWcjSf2wpi6`. Next: user funds via faucet → `cli.py info` → build+confirm
+  +broadcast → capture txid → build `web/testnet/` (7c).
