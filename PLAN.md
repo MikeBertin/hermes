@@ -272,7 +272,11 @@ Each stage has a **Definition of Done (DoD)**. Tick the box when met.
       PBKDF2); `web/wallet/` derivation-tree demo (generate 12/24, passphrase, mainnet/testnet).
       DoD MET — JS reproduces all vectors + canonical abandon…about address (fp 73c5da0a, addr
       1LqBGSKuX5y…); verified in-browser, console clean. Wordlist fetched at web/wallet/wordlist.txt.
-- [~] **Stage 7 — Testnet.** *7a DONE:* `hermes/transaction.py` (real wire-format Tx/TxIn/TxOut,
+- [x] **Stage 7 — Testnet. DONE — a real tx is on-chain.** txid
+      `f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08` (confirmed, testnet,
+      102507 sat self-send, 300 sat fee). `web/testnet/` narrates it from baked
+      `web/testnet/data/tx.json` (13-field byte breakdown). Card live.
+      *7a:* `hermes/transaction.py` (real wire-format Tx/TxIn/TxOut,
       varint, SIGHASH_ALL, sign/verify), DER in `ecdsa.py` (`der`/`parse_der`), `Script.raw_serialize`/
       `parse_raw`. `tests/test_transaction.py` proves it against a REAL on-chain legacy P2PKH tx
       (fba398fa…, block 955925) — our sighash+DER verify its live signature (37/37 pytest).
@@ -372,3 +376,9 @@ _Append a dated entry every session: what changed · what's next · new decision
   to a live-fetched, code-verified fixture.) **7b PENDING USER FUNDING:** addr
   `mnGLT42un82fQGtWpC7K6pppWcjSf2wpi6`. Next: user funds via faucet → `cli.py info` → build+confirm
   +broadcast → capture txid → build `web/testnet/` (7c).
+- **2026-06-29** — **Stage 7 COMPLETE.** User funded the testnet address; built+signed a self-send,
+  user confirmed, broadcast via blockstream — **accepted & confirmed on-chain**: txid
+  `f3771bf9…c46e08`. Baked `web/testnet/data/tx.json` (13-field byte breakdown) and built
+  `web/testnet/` narrating the real tx (annotated raw hex, explorer link). All 8 demo cards now
+  live. 37/37 pytest. **ONLY Stage 8 left — polish & ship:** og.png (1200×630 social card), then
+  GitHub Pages (serve `web/` — repo is already public). Optionally add sibling cross-links.

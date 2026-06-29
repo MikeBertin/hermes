@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Real Testnet Transaction — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="A Real Bitcoin Transaction — Hermes">
+<meta property="og:description" content="Built from scratch with Hermes and broadcast to the Bitcoin testnet — a genuine, on-chain transaction, byte by byte.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#58d68d;--accent-ink:#04210f}
+  .realbar{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;background:rgba(88,214,141,.1);
+    border:1px solid rgba(88,214,141,.4);border-radius:12px;padding:14px 18px;margin-bottom:22px}
+  .realbar .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(88,214,141,.2)}
+  .realbar b{color:var(--ink)} .realbar .txid{font-family:var(--mono);font-size:12.5px;word-break:break-all;color:var(--accent)}
+  .realbar a{margin-left:auto;font-weight:600;white-space:nowrap}
+  .rawhex{font-family:var(--mono);font-size:13px;line-height:1.9;word-break:break-all;
+    background:#0e0e16;border:1px solid var(--line);border-radius:11px;padding:16px}
+  .seg{padding:2px 0;border-radius:3px;cursor:pointer;transition:.1s}
+  .seg:hover,.seg.active{outline:2px solid var(--accent);outline-offset:1px;background:rgba(88,214,141,.12)}
+  .k-version{color:#7cc4ff} .k-count{color:#8a8a9c} .k-prevtx{color:#ffc266}
+  .k-sig{color:#ff6b6b} .k-pubkey{color:#b58cff} .k-seq{color:#6a6a7c}
+  .k-value{color:#58d68d} .k-script{color:#5fd0c5} .k-locktime{color:#ff9f43}
+  .fields{margin-top:6px}
+  .field{display:flex;gap:12px;padding:8px 10px;border-radius:8px;cursor:pointer;align-items:baseline}
+  .field:hover,.field.active{background:var(--panel)}
+  .field .fl{font-family:var(--mono);font-size:12px;flex:0 0 122px}
+  .field .fd{color:var(--muted);font-size:12.5px;line-height:1.45}
+  .detail{min-height:40px;font-size:13px;color:var(--muted);line-height:1.5;margin-top:10px}
+  .copy{cursor:pointer;font-size:11px;color:var(--accent);font-family:var(--mono)}
+  pre.cli{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);background:#0e0e16;
+    border:1px solid var(--line);border-radius:9px;padding:13px 14px;overflow-x:auto;margin:0}
+  pre.cli b{color:var(--accent);font-weight:400}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Real Testnet</div>
+  <header class="hero">
+    <h1>A Real Transaction</h1>
+    <p class="sub">
+      Everything else in Hermes is a model. This isn't. The transaction below was assembled by the
+      <b>from-scratch code</b> in this project — the same curve, signatures and serialization you've
+      been watching — signed, and <b>broadcast to the Bitcoin testnet</b>. It's on a real
+      blockchain, right now. Here it is, byte by byte.
+    </p>
+  </header>
+
+  <div class="realbar">
+    <span class="dot"></span>
+    <span><b>Confirmed</b> on Bitcoin testnet</span>
+    <span class="txid" id="txid">…</span>
+    <a id="explorer" target="_blank" rel="noopener">View on explorer →</a>
+  </div>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="panel">
+        <h2>The raw transaction <span class="copy" id="copyRaw" style="float:right">copy hex</span></h2>
+        <div class="rawhex" id="rawhex"></div>
+        <div class="detail" id="detail">Hover a coloured field to see what it is.</div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <h2>Every byte, decoded</h2>
+        <div class="fields" id="fields"></div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>This transaction</h2>
+        <div class="stats">
+          <div class="stat wide"><div class="k">amount</div><div class="v accent" id="amount">–</div></div>
+          <div class="stat"><div class="k">fee</div><div class="v" id="fee">–</div></div>
+          <div class="stat"><div class="k">size</div><div class="v" id="size">–</div></div>
+          <div class="stat wide"><div class="k">network</div><div class="v" style="font-size:15px">Bitcoin testnet</div></div>
+        </div>
+        <p class="hint">A self-send: it spends one funded output and creates a new one back to the
+          same address, minus the miner fee. Nothing here used a wallet library.</p>
+      </div>
+      <div class="panel">
+        <h2>How it was made</h2>
+        <pre class="cli">$ <b>hermes.cli new</b>
+  → testnet address
+# fund it from a faucet
+$ <b>hermes.cli info</b>
+  → 1 UTXO, 102807 sat
+$ <b>hermes.cli send &lt;addr&gt; --broadcast</b>
+  → signed, relayed, accepted ✓</pre>
+        <p class="hint">Keys from the <a href="../address/">address</a> demo, the signature from
+          <a href="../sign/">Sign &amp; Forge</a>, the lock from <a href="../script/">Script</a> —
+          all assembled into bytes a real node accepted.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>It's just bytes</h3>
+        <p>A transaction is a short, rigid byte string — version, inputs, outputs, locktime. No
+          accounts, no balances; only outputs being spent into new outputs.</p></div>
+      <div class="ncard"><h3>The signature commits to everything</h3>
+        <p>SIGHASH_ALL means the signature covers the whole transaction. Change any output by one
+          satoshi and the signature — and this txid — are instantly invalid.</p></div>
+      <div class="ncard"><h3>No permission needed</h3>
+        <p>We didn't ask anyone. A valid, fee-paying transaction is simply relayed and mined. That
+          openness is the entire point of the system.</p></div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/demo.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  fetch("data/tx.json").then(r => r.json()).then(tx => {
+    $("txid").textContent = tx.txid;
+    $("explorer").href = tx.explorer;
+    $("amount").textContent = tx.amount.toLocaleString() + " sat";
+    $("fee").textContent = tx.fee + " sat";
+    $("size").textContent = (tx.raw.length / 2) + " B";
+
+    // annotated raw hex
+    $("rawhex").innerHTML = tx.segments.map((s, i) =>
+      `<span class="seg k-${s.kind}" data-i="${i}">${s.hex}</span>`).join(" ");
+    // field list
+    $("fields").innerHTML = tx.segments.map((s, i) =>
+      `<div class="field" data-i="${i}"><span class="fl k-${s.kind}">${s.label}</span>
+        <span class="fd">${s.desc}</span></div>`).join("");
+
+    function activate(i) {
+      document.querySelectorAll(".seg,.field").forEach(el =>
+        el.classList.toggle("active", el.dataset.i === String(i)));
+      $("detail").innerHTML = `<b style="color:var(--ink)">${tx.segments[i].label}</b> — ${tx.segments[i].desc}`;
+    }
+    document.querySelectorAll(".seg,.field").forEach(el =>
+      el.addEventListener("mouseenter", () => activate(el.dataset.i)));
+
+    $("copyRaw").addEventListener("click", () => {
+      navigator.clipboard?.writeText(tx.raw);
+      $("copyRaw").textContent = "copied ✓";
+      setTimeout(() => $("copyRaw").textContent = "copy hex", 1200);
+    });
+  });
+})();
+</script>
+</body>
+</html>
