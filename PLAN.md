@@ -416,3 +416,17 @@ _Append a dated entry every session: what changed · what's next · new decision
   **46/46 pytest, 48/48 in-browser, console clean.** **Next: 2-of-3 P2WSH multisig custody demo** —
   the direct "this is what Sovereign's Phase-1 custody actually is" card (builds on this SegWit work;
   P2WSH = the witness-script form of multisig that Unchained/Sparrow use).
+- **2026-06-30** — **2-of-3 multisig custody DONE — a 9th demo card shipped** (enhancement #4, the
+  Sovereign-aligned capstone). `transaction.py`: `multisig_script` (OP_m … OP_n CHECKMULTISIG),
+  `p2wsh_script`/`p2wsh_address` (bech32 of SHA-256(witnessScript)), `sign_input_p2wsh_multisig`/
+  `verify_input_p2wsh_multisig` (BIP-143 scriptCode = the witnessScript; witness = empty + m sigs +
+  script). JS mirror in `btc.js`: `multisigScript`, `p2wshAddress`, and a compact `sigHashBip143`
+  for the demo's real spend. **New `web/multisig/` card** ("Multisig Vault", accent #ef88c8): three
+  cosigners → one P2WSH `bc1q…` address, an adjustable m-of-3 policy, and a "who signs the
+  withdrawal" panel that runs the real threshold (any 2 of 3 release; the broadcast witness carries
+  exactly m sigs). Landing page now 9 cards; README updated (8→9, 52 vectors). **Validation:** anchored
+  to a **real on-chain native-P2WSH 2-of-3 tx** (txid 440fe853…, libbitcoin example) — our BIP-143
+  sighash verifies its on-chain witness signatures; plus self-built threshold/ordering/roundtrip
+  tests. **52/52 pytest, 51/51 in-browser, console clean.** Framing kept generic (a "why treasuries
+  custody this way" note), no private project named. **The post-ship arc (RFC 6979 → SegWit →
+  multisig) is complete.** Remaining menu options: Merkle/SPV, Taproot/Schnorr, Lightning.

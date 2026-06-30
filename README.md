@@ -7,9 +7,10 @@ A from-scratch Bitcoin implementation (in the spirit of Karpathy's *"A from-scra
 of Bitcoin in Python"*) turned into a suite of interactive browser visualisations. No crypto
 libraries: the secp256k1 curve, SHA-256, RIPEMD-160, SHA-512, Base58Check, ECDSA — all by hand.
 
-**▶ Live:** https://mikebertin.github.io/hermes/ — eight self-contained demos, from the elliptic
+**▶ Live:** https://mikebertin.github.io/hermes/ — nine self-contained demos, from the elliptic
 curve through to a **real transaction broadcast to the Bitcoin testnet**
-([on-chain proof](https://blockstream.info/testnet/tx/f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08)).
+([on-chain proof](https://blockstream.info/testnet/tx/f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08))
+and a 2-of-3 multisig vault.
 
 Companion to [Chiron](https://mikebertin.github.io/chiron/) (computational physics),
 [Empedocles](https://mikebertin.github.io/empedocles/) (evolutionary algorithms), and
@@ -20,7 +21,7 @@ Companion to [Chiron](https://mikebertin.github.io/chiron/) (computational physi
 Hermes was the Greek god of commerce *and* of boundaries, messages, and secrets — whence
 *hermetic*, "sealed". Money, cryptography, and signed messages are his exact portfolio.
 
-## The eight demos
+## The nine demos
 
 Each is a single self-contained `index.html` — no build step, no framework, no dependencies.
 
@@ -34,6 +35,7 @@ Each is a single self-contained `index.html` — no build step, no framework, no
 | 6 | **Real Testnet** | It's real. A captured Bitcoin testnet transaction narrated byte by byte, with the live explorer link. |
 | 7 | **Script VM** | Bitcoin Script is a tiny stack language. Step a debugger through P2PKH, multisig, hashlock and timelock scripts. |
 | 8 | **HD Wallet** | One seed phrase → a whole tree of addresses: BIP-39 mnemonic → seed → BIP-32 derivation, unfolding node by node. |
+| 9 | **Multisig Vault** | Three keys, one `bc1q…` address, a 2-of-3 rule. A real P2WSH vault built by hand — choose who signs a withdrawal and watch the threshold decide. The shape of corporate Bitcoin custody. |
 
 ## The Python core
 
@@ -43,7 +45,7 @@ source of truth the browser demos visualise, cross-checked against official prot
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install pytest
-.venv/bin/python -m pytest        # 37 known-answer vectors, all green
+.venv/bin/python -m pytest        # 52 known-answer vectors, all green
 ```
 
 The testnet CLI builds, signs and broadcasts a real (valueless) testnet transaction:

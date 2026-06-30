@@ -18,9 +18,9 @@ import io
 from .ecdsa import Signature, der, parse_der, sign, verify
 from .keys import PublicKey, hash160
 from .script import (
-    Script, OP_0, OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160,
+    Script, OP_0, OP_CHECKMULTISIG, OP_CHECKSIG, OP_DUP, OP_EQUALVERIFY, OP_HASH160,
 )
-from .sha256 import double_sha256
+from .sha256 import double_sha256, sha256
 
 SIGHASH_ALL = 1
 
@@ -66,6 +66,38 @@ def p2pkh_script(h160: bytes) -> Script:
 def p2wpkh_script(h160: bytes) -> Script:
     """The native-SegWit P2WPKH locking script: ``OP_0 <20-byte key hash>``."""
     return Script([OP_0, h160])
+
+
+def _op_n(k: int) -> int:
+    """The small-integer opcode pushing ``k`` (OP_1..OP_16 = 0x51..0x60)."""
+    if not 1 <= k <= 16:
+        raise ValueError("OP_N only encodes 1..16")
+    return 80 + k
+
+
+def multisig_script(m: int, pubkeys: list[bytes]) -> Script:
+    """An ``m``-of-``n`` bare multisig script: ``OP_m <pub1>..<pubn> OP_n
+    OP_CHECKMULTISIG``. This is the *witnessScript* a P2WSH locks to — the policy
+    that says "any m of these n keys must sign". Treasuries use it (e.g. 2-of-3)
+    so no single lost or stolen key can move — or freeze — the funds."""
+    n = len(pubkeys)
+    if not 1 <= m <= n <= 16:
+        raise ValueError("need 1 <= m <= n <= 16")
+    return Script([_op_n(m), *pubkeys, _op_n(n), OP_CHECKMULTISIG])
+
+
+def p2wsh_script(sha256_of_witness_script: bytes) -> Script:
+    """The native-SegWit P2WSH locking script: ``OP_0 <32-byte script hash>``."""
+    return Script([OP_0, sha256_of_witness_script])
+
+
+def p2wsh_address(witness_script: Script, testnet: bool = False) -> str:
+    """The bech32 ``bc1.../tb1...`` address that commits to a witnessScript.
+    Note the hash is a single SHA-256 (32 bytes), not HASH160 — P2WSH wants the
+    extra collision resistance because a script can encode anyone's policy."""
+    from .bech32 import encode_segwit
+    program = sha256(witness_script.raw_serialize())
+    return encode_segwit("tb" if testnet else "bc", 0, program)
 
 
 # --- inputs / outputs --------------------------------------------------------
@@ -248,6 +280,47 @@ class Tx:
         sig_bytes, sec = self.inputs[index].witness
         z = self.sig_hash_bip143(index, p2pkh_script(hash160(sec)), amount)
         return verify(PublicKey.parse(sec).point, z, parse_der(sig_bytes[:-1]))
+
+    def sign_input_p2wsh_multisig(
+        self, index: int, secrets: list[int], witness_script: Script, amount: int
+    ) -> None:
+        """Sign a P2WSH multisig input with ``secrets`` (a subset of the cosigners).
+
+        For P2WSH the BIP-143 scriptCode *is* the witnessScript. The signatures
+        must appear in the same order as their pubkeys inside the script, since
+        OP_CHECKMULTISIG walks both lists in lockstep; this signs in the order
+        ``secrets`` is given, so pass them ordered by pubkey position. The witness
+        stack starts with an empty item — OP_CHECKMULTISIG's famous off-by-one
+        pops one element too many, so a dummy must sit at the bottom."""
+        z = self.sig_hash_bip143(index, witness_script, amount)
+        sigs = [der(sign(s, z, low_s=True)) + SIGHASH_ALL.to_bytes(1, "big") for s in secrets]
+        self.inputs[index].script_sig = Script([])
+        self.inputs[index].witness = [b"", *sigs, witness_script.raw_serialize()]
+
+    def verify_input_p2wsh_multisig(self, index: int, amount: int) -> bool:
+        """Check that the witness carries m valid signatures, in pubkey order,
+        for the m-of-n policy in its trailing witnessScript."""
+        witness = self.inputs[index].witness
+        sigs, raw_script = witness[1:-1], witness[-1]
+        script = Script.parse_raw(raw_script)
+        # witnessScript = OP_m <pub..> OP_n OP_CHECKMULTISIG
+        m = script.cmds[0] - 80
+        pubkeys = [c for c in script.cmds[1:-2] if isinstance(c, (bytes, bytearray))]
+        if len(sigs) < m:
+            return False
+        z = self.sig_hash_bip143(index, script, amount)
+        points = [PublicKey.parse(p).point for p in pubkeys]
+        matched = 0
+        i = 0
+        for sig in sigs:                       # advance through keys in order
+            parsed = parse_der(bytes(sig)[:-1])
+            while i < len(points):
+                if verify(points[i], z, parsed):
+                    matched += 1
+                    i += 1
+                    break
+                i += 1
+        return matched >= m
 
 
 def _g_mul(secret: int):

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multisig Vault — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Multisig Vault — Hermes">
+<meta property="og:description" content="Three keys, one address, a 2-of-3 rule. Build a real P2WSH multisig vault by hand and watch the threshold decide.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#ef88c8;--accent-ink:#2a0a1f}
+  .stg{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+  .stg-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+  .stg-h .meta{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.5px}
+  .arrow-d{color:var(--muted);text-align:center;font-size:15px;margin:-2px 0;line-height:1.2}
+  .val-big{font-family:var(--mono);font-size:13px;color:var(--accent);word-break:break-all}
+  .signers{display:flex;flex-direction:column;gap:9px;margin:2px 0}
+  .signer{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);
+    border-radius:11px;padding:11px 13px;cursor:pointer;transition:border-color .15s,background .15s}
+  .signer:hover{border-color:var(--accent)}
+  .signer.on{border-color:var(--accent);background:linear-gradient(0deg,rgba(239,136,200,.09),rgba(239,136,200,.09))}
+  .signer .dot{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:700;
+    font-family:var(--mono);background:#1c1c27;color:var(--muted);flex:none}
+  .signer.on .dot{background:var(--accent);color:var(--accent-ink)}
+  .signer .who{flex:1;min-width:0}
+  .signer .who b{font-size:13.5px}
+  .signer .who .pk{font-family:var(--mono);font-size:10.5px;color:var(--muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .signer .mark{font-family:var(--mono);font-size:12px;color:var(--muted);flex:none}
+  .signer.on .mark{color:var(--accent)}
+  .verdict{margin-top:12px;border-radius:11px;padding:14px 16px;border:1px solid var(--line);
+    font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+  .verdict.ok{border-color:#58d68d;background:rgba(88,214,141,.08);color:#7ee0a4}
+  .verdict.no{border-color:#ff6b6b;background:rgba(255,107,107,.07);color:#ff8f8f}
+  .verdict .big{font-size:20px}
+  .wstack{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.7;margin:0}
+  .wstack span{color:var(--ink)}
+  .keytag{font-weight:700}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Multisig Vault</div>
+  <header class="hero">
+    <h1>Multisig Vault</h1>
+    <p class="sub">
+      A single private key is a single point of failure: lose it and the coins are gone; let it
+      leak and they're stolen. A <b>multisig</b> vault fixes both. Three cosigners each hold a key,
+      but the coins live at <b>one address</b> governed by a rule — <span class="x" data-pop="thresh">2 of 3
+      must sign</span>. Below is a real <span class="x" data-pop="p2wsh">P2WSH</span> vault, its address
+      built by hand from the three keys. Choose who signs a withdrawal and watch the threshold decide.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="stg" style="border-color:var(--accent)">
+        <div class="stg-h"><span class="tag">The vault address</span><span class="meta" id="m-net">mainnet · P2WSH</span></div>
+        <div class="val-big" id="addr"></div>
+      </div>
+      <div class="arrow-d">↑ &nbsp;bech32 of &nbsp;SHA-256( witnessScript )</div>
+      <div class="stg">
+        <div class="stg-h"><span class="tag">witnessScript — the 2-of-3 rule</span><span class="meta" id="m-policy"></span></div>
+        <div class="bytes" id="wscript" style="font-size:11px"></div>
+        <p class="hint" style="margin:8px 0 0">
+          <code>OP_2</code> &lt;key A&gt; &lt;key B&gt; &lt;key C&gt; <code>OP_3</code> <code>OP_CHECKMULTISIG</code>
+          — "any 2 of these 3 keys".</p>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>The three cosigners</h2>
+        <p class="hint" style="margin:-2px 0 11px">Tap a cosigner to add or remove their signature on the withdrawal.</p>
+        <div class="signers" id="signers"></div>
+        <label style="margin-top:13px">Vault policy</label>
+        <div class="seg" id="policy" style="margin:0 0 11px">
+          <button data-m="1">1-of-3</button>
+          <button data-m="2" aria-pressed="true">2-of-3</button>
+          <button data-m="3">3-of-3</button>
+        </div>
+        <button id="rotate">New keys</button>
+      </div>
+
+      <div class="panel">
+        <h2>Authorize a withdrawal</h2>
+        <p class="hint" style="margin:-2px 0 10px">
+          Spend the vault's UTXO. Each selected cosigner signs the real BIP-143 sighash; the network
+          checks them against the script.</p>
+        <div id="verdict" class="verdict no"><span class="big">✗</span><span id="verdict-txt"></span></div>
+        <p class="wstack" id="wstack" style="margin-top:12px"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Why treasuries hold coins this way</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Lose a key, keep your coins</h3>
+        <p>A 2-of-3 vault survives one lost or destroyed key — the other two still spend. No single
+          backup whose loss is fatal.</p></div>
+      <div class="ncard"><h3>Steal a key, steal nothing</h3>
+        <p>An attacker who compromises one cosigner gets one signature — not enough. The threshold
+          turns a catastrophic breach into a recoverable one (rotate the lost key).</p></div>
+      <div class="ncard"><h3>One address, many guards</h3>
+        <p>The keys can sit in different places — an office, a vault, a lawyer — yet the world sends
+          to a single <code>bc1q…</code> address. This is exactly how corporate Bitcoin custody is built.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  thresh: "<h4>m-of-n threshold</h4><p>The rule baked into the script: of the n keys, any m must sign. 2-of-3 is the workhorse — redundant against loss, resistant to a single theft.</p>",
+  p2wsh: "<h4>Pay-to-Witness-Script-Hash</h4><p>The address commits to a SHA-256 of the spending <em>script</em>, not a single key. To spend, you reveal the script and satisfy it. Native SegWit, so the address is bech32 (<code>bc1q…</code>).</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const NAMES = ["Cosigner A", "Cosigner B", "Cosigner C"];
+  const SUB = ["laptop wallet", "hardware wallet", "off-site vault"];
+
+  let m = 2;
+  let keys = [];          // {secret, point, sec}
+  let signing = [];       // bool per cosigner
+
+  // a fixed sample withdrawal this vault is authorizing (real BIP-143 sighash)
+  const SPEND = {
+    prevout: { txid: "ab".repeat(32), index: 0, sequence: 0xffffffff },
+    amount: 100000,
+    output: { amount: 90000, scriptPubKey: H.concatBytes(Uint8Array.of(0x00, 0x14), new Uint8Array(20)) },
+  };
+
+  function newKeys() {
+    keys = [0, 1, 2].map(() => {
+      const secret = H.randScalar();
+      const point = H.pubFromSecret(secret);
+      return { secret, point };
+    });
+    signing = [true, true, false];
+    render();
+  }
+
+  function compute() {
+    const points = keys.map((k) => k.point);
+    const wscript = H.multisigScript(m, points);
+    const addr = H.p2wshAddress(wscript, false);
+    const z = H.sigHashBip143(SPEND.prevout, wscript, SPEND.amount, SPEND.output);
+    // each signing cosigner produces a real signature; count those that verify
+    const valid = keys.map((k, i) => signing[i] && H.verify(k.point, z, H.sign(k.secret, z)));
+    const have = valid.filter(Boolean).length;
+    return { wscript, addr, z, valid, have };
+  }
+
+  function render() {
+    const { wscript, addr, valid, have } = compute();
+    $("addr").textContent = addr;
+    $("wscript").textContent = H.bytesToHex(wscript).replace(/(.{2})/g, "$1 ").trim();
+    $("m-policy").textContent = m + "-of-3 · " + wscript.length + " bytes";
+
+    $("signers").innerHTML = keys.map((k, i) => {
+      const pk = H.bytesToHex(H.sec(k.point, true));
+      const on = signing[i];
+      return `<div class="signer ${on ? "on" : ""}" data-i="${i}">
+        <div class="dot">${"ABC"[i]}</div>
+        <div class="who"><b>${NAMES[i]}</b> <span style="color:var(--muted);font-size:11.5px">· ${SUB[i]}</span>
+          <div class="pk">${pk}</div></div>
+        <div class="mark">${on ? "✓ signs" : "— idle"}</div></div>`;
+    }).join("");
+    $("signers").querySelectorAll(".signer").forEach((el) =>
+      el.addEventListener("click", () => { const i = +el.dataset.i; signing[i] = !signing[i]; render(); }));
+
+    const ok = have >= m;
+    const v = $("verdict");
+    v.className = "verdict " + (ok ? "ok" : "no");
+    v.querySelector(".big").textContent = ok ? "✓" : "✗";
+    $("verdict-txt").textContent = ok
+      ? `Released — ${have} valid signature${have > 1 ? "s" : ""} meets the ${m}-of-3 rule.`
+      : `Rejected — need ${m} signatures, have ${have}.`;
+
+    // the witness stack the spender broadcasts — exactly m signatures (extra
+    // ones would actually fail OP_CHECKMULTISIG), in cosigner order
+    const chosen = valid.map((good, i) => (good ? i : -1)).filter((i) => i >= 0).slice(0, m);
+    const sigLines = chosen.map((i) => `  <span>&lt;signature ${"ABC"[i]}&gt;</span>`);
+    $("wstack").innerHTML = ok
+      ? [`witness stack:`, `  &lt;empty&gt;  <span style="color:var(--muted)">(OP_CHECKMULTISIG off-by-one)</span>`,
+         ...sigLines, `  <span>&lt;witnessScript&gt;</span>`].join("<br>")
+      : `witness stack: <span style="color:var(--muted)">incomplete — not enough signatures to build a valid spend</span>`;
+  }
+
+  // controls
+  $("rotate").addEventListener("click", newKeys);
+  document.querySelectorAll("#policy button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#policy button").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+      m = +b.dataset.m;
+      render();
+    }));
+
+  newKeys();
+})();
+</script>
+</body>
+</html>

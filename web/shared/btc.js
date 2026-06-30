@@ -374,6 +374,50 @@
     return encodeSegwit(testnet ? "tb" : "bc", 0, hash160(sec(point, true)));
   }
 
+  // --- P2WSH multisig (the witness-script form treasuries use) ---------------
+  function encodeVarint(i) {
+    if (i < 0xfd) return Uint8Array.of(i);
+    if (i <= 0xffff) return Uint8Array.of(0xfd, i & 0xff, i >> 8);
+    return Uint8Array.of(0xfe, i & 0xff, (i >> 8) & 0xff, (i >> 16) & 0xff, (i >> 24) & 0xff);
+  }
+  // push a data item the way Script does (length byte, then bytes; <76 only here)
+  function pushData(b) { return concatBytes(Uint8Array.of(b.length), b); }
+  // m-of-n witnessScript: OP_m <pub1..pubn> OP_n OP_CHECKMULTISIG
+  function multisigScript(m, points) {
+    const parts = [Uint8Array.of(0x50 + m)];
+    for (const p of points) parts.push(pushData(sec(p, true)));
+    parts.push(Uint8Array.of(0x50 + points.length), Uint8Array.of(0xae)); // OP_n, OP_CHECKMULTISIG
+    return concatBytes(...parts);
+  }
+  function p2wshAddress(witnessScript, testnet = false) {
+    return encodeSegwit(testnet ? "tb" : "bc", 0, sha256(witnessScript));
+  }
+  // u64 little-endian (amounts / values), via two 32-bit halves to dodge BigInt-bit ops
+  function u64le(n) {
+    const b = new Uint8Array(8);
+    let v = BigInt(n);
+    for (let i = 0; i < 8; i++) { b[i] = Number(v & 0xffn); v >>= 8n; }
+    return b;
+  }
+  function u32le(n) { return Uint8Array.of(n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >>> 24) & 0xff); }
+  // BIP-143 SIGHASH_ALL digest for a single-input witness spend (what the demo signs).
+  // prevout = {txid: hex, index, sequence}, output = {amount, scriptPubKey: bytes}
+  function sigHashBip143(prevout, scriptCode, amount, output, version = 2, locktime = 0) {
+    const txidLE = hexToBytes(prevout.txid).reverse();
+    const outpoint = concatBytes(txidLE, u32le(prevout.index));
+    const hashPrevouts = doubleSha256(outpoint);
+    const hashSequence = doubleSha256(u32le(prevout.sequence));
+    const out = concatBytes(u64le(output.amount), encodeVarint(output.scriptPubKey.length), output.scriptPubKey);
+    const hashOutputs = doubleSha256(out);
+    const preimage = concatBytes(
+      u32le(version), hashPrevouts, hashSequence, outpoint,
+      encodeVarint(scriptCode.length), scriptCode,
+      u64le(amount), u32le(prevout.sequence), hashOutputs, u32le(locktime),
+      u32le(1) // SIGHASH_ALL
+    );
+    return bytesToBigInt(doubleSha256(preimage));
+  }
+
   // --- ECDSA -----------------------------------------------------------------
   function randScalar() {
     const b = new Uint8Array(32);
@@ -446,6 +490,8 @@
     pubFromSecret, sec, secDecode, address, wif,
     // bech32 / segwit
     encodeSegwit, p2wpkhAddress, convertBits,
+    // p2wsh multisig
+    multisigScript, p2wshAddress, sigHashBip143, encodeVarint,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };

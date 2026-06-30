@@ -6,16 +6,17 @@
 
 ## TL;DR — the project is COMPLETE and SHIPPED
 
-All 8 stages done. A from-scratch Bitcoin implementation (no crypto libraries) + 8 interactive
-browser demos, culminating in a **real transaction broadcast to the Bitcoin testnet**.
+All 8 stages done, plus a post-ship enhancement arc (RFC 6979 → SegWit → multisig). A from-scratch
+Bitcoin implementation (no crypto libraries) + 9 interactive browser demos, culminating in a **real
+transaction broadcast to the Bitcoin testnet** and a 2-of-3 multisig vault.
 
 - **Live:** https://mikebertin.github.io/hermes/
 - **Repo:** https://github.com/MikeBertin/hermes (public)
 - **On-chain proof:** testnet txid `f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08`
-- **Tests:** `37/37` pytest green; JS cross-checked against the same vectors in-browser.
+- **Tests:** `52/52` pytest green; JS cross-checked against the same vectors in-browser (51/51).
 
-The 8 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
-Script VM · HD Wallet.
+The 9 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
+Script VM · HD Wallet · Multisig Vault.
 
 ## How to resume
 
@@ -89,7 +90,11 @@ web/               self-contained static site (this is what Pages serves)
    `cli.py send` now pays `bc1…`/`tb1…` via `address_to_script`. Mirrored in `btc.js`; the address
    demo shows the `bc1…` form. Reproduces the **BIP-143 worked example byte-for-byte** (46 pytest /
    48 in-browser). **Next bridge to Sovereign: 2-of-3 P2WSH multisig custody demo.**
-4. **Merkle trees + SPV demo (a 9th card)** — was the deferred alternate in §7 of PLAN.md. Build a
+3b. ✅ **2-of-3 multisig custody (9th demo card)** — DONE (2026-06-30). P2WSH multisig in
+   `transaction.py` (`multisig_script`, `p2wsh_address`, `sign/verify_input_p2wsh_multisig`),
+   mirrored in `btc.js`; new `web/multisig/` "Multisig Vault" card. Anchored to a real on-chain
+   native-P2WSH 2-of-3 tx (txid 440fe853…). 52 pytest / 51 in-browser. **The site is now 9 demos.**
+4. **Merkle trees + SPV demo (a 10th card)** — was the deferred alternate in §7 of PLAN.md. Build a
    block's merkle root, show a merkle proof / how SPV wallets verify inclusion. Self-contained.
 5. **Taproot / Schnorr signatures** — advanced; new signature scheme + key tweaking. Big but cool.
 6. **Lightning / HTLC** — builds directly on the Script VM (hashlocks + timelocks are already there).

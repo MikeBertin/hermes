@@ -21,6 +21,7 @@
     --ink:#e7e7ef; --muted:#8a8a9c;
     --curve:#7cc4ff; --address:#ffc266; --sign:#ff6b6b; --mine:#ff9f43;
     --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
+    --multisig:#ef88c8;
     --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
@@ -60,6 +61,7 @@
 
   .c1{--c:var(--curve)} .c2{--c:var(--address)} .c3{--c:var(--sign)} .c4{--c:var(--mine)}
   .c5{--c:var(--network)} .c6{--c:var(--testnet)} .c7{--c:var(--script)} .c8{--c:var(--wallet)}
+  .c9{--c:var(--multisig)}
   a.card:hover{border-color:var(--c)} .card .tag,.card .open{color:var(--c)}
 
   footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);
@@ -76,7 +78,7 @@
     <p class="lede">
       Bitcoin, built from <b>nothing</b> — no crypto libraries, no magic. The
       <b>secp256k1</b> curve, the hashes, the signatures, the proof of work, the
-      network, all rebuilt by hand and turned into things you can <b>touch</b>. Eight
+      network, all rebuilt by hand and turned into things you can <b>touch</b>. Nine
       interactive windows onto how a chain of numbers becomes money nobody can forge.
     </p>
   </header>
@@ -133,6 +135,12 @@
       <div class="num">08</div><div class="tag">BIP-32 / 39</div>
       <h2>HD Wallet</h2>
       <p>One seed phrase unfolds into a whole tree of addresses.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+    <a class="card c9" href="multisig/">
+      <div class="num">09</div><div class="tag">P2WSH custody</div>
+      <h2>Multisig Vault</h2>
+      <p>Three keys, one address, a 2-of-3 rule. Lose a key and your coins are safe; lose a thief's, and so are they.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
   </div>
