@@ -62,6 +62,10 @@ web/               self-contained static site (this is what Pages serves)
 - **Use `.venv`** — never the system python (3.14, externally-managed/PEP-668).
 - **Two tx modules on purpose:** `hermes/tx.py` is the *simplified* UTXO model for the network
   sim; `hermes/transaction.py` is the *real* broadcastable wire format. Don't merge them.
+- **`transaction.py` now does both legacy and SegWit.** Legacy P2PKH: `sign_input`/`sig_hash`.
+  SegWit P2WPKH: `sign_input_p2wpkh`/`sig_hash_bip143` (commits to the input amount). `Tx.serialize()`
+  auto-adds the marker/flag + witness when any input has one; `txid()` always hashes the legacy
+  (witness-stripped) bytes.
 - **`sign()` is deterministic (RFC 6979)** — re-signing the same tx reproduces the identical
   signature and txid. (Pass an explicit `k` only for the nonce-reuse demo.)
 - **Pages = workflow, not legacy root.** Siblings (chiron/empedocles) serve from main-root; Hermes
@@ -80,9 +84,11 @@ web/               self-contained static site (this is what Pages serves)
 2. ✅ **RFC 6979 deterministic nonces** — DONE (2026-06-30). `ecdsa.rfc6979_k` + `hmac_sha256`;
    `sign()` is now deterministic by default. Mirrored in `btc.js`. Verified against the canonical
    secp256k1+SHA-256 vector (40 pytest / 45 in-browser).
-3. **SegWit (P2WPKH + bech32 + BIP-143 sighash)** — the biggest "make it modern" step. Adds
-   `tb1…`/`bc1…` addresses and the witness serialization. Would also let `cli.py send` pay bech32
-   faucet-return addresses (currently P2PKH/base58 only). Medium build, fully vector-testable.
+3. ✅ **SegWit (P2WPKH + bech32 + BIP-143)** — DONE (2026-06-30). `bech32.py` (BIP-173/350),
+   `PublicKey.p2wpkh_address`, and `transaction.py` segwit sighash + witness serialization;
+   `cli.py send` now pays `bc1…`/`tb1…` via `address_to_script`. Mirrored in `btc.js`; the address
+   demo shows the `bc1…` form. Reproduces the **BIP-143 worked example byte-for-byte** (46 pytest /
+   48 in-browser). **Next bridge to Sovereign: 2-of-3 P2WSH multisig custody demo.**
 4. **Merkle trees + SPV demo (a 9th card)** — was the deferred alternate in §7 of PLAN.md. Build a
    block's merkle root, show a merkle proof / how SPV wallets verify inclusion. Self-contained.
 5. **Taproot / Schnorr signatures** — advanced; new signature scheme + key tweaking. Big but cool.

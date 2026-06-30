@@ -323,6 +323,57 @@
     return b58checkEncode(payload);
   }
 
+  // --- bech32 / native SegWit addresses (BIP-173 / BIP-350) ------------------
+  const BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+  function bech32Polymod(values) {
+    const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+    let chk = 1;
+    for (const v of values) {
+      const top = chk >> 25;
+      chk = ((chk & 0x1ffffff) << 5) ^ v;
+      for (let i = 0; i < 5; i++) if ((top >> i) & 1) chk ^= GEN[i];
+    }
+    return chk;
+  }
+  function bech32HrpExpand(hrp) {
+    const hi = [], lo = [];
+    for (const c of hrp) { hi.push(c.charCodeAt(0) >> 5); lo.push(c.charCodeAt(0) & 31); }
+    return hi.concat([0], lo);
+  }
+  function bech32Checksum(hrp, data, spec) {
+    const C = spec === "bech32m" ? 0x2bc830a3 : 1;
+    const mod = bech32Polymod(bech32HrpExpand(hrp).concat(data, [0, 0, 0, 0, 0, 0])) ^ C;
+    const ret = [];
+    for (let i = 0; i < 6; i++) ret.push((mod >> (5 * (5 - i))) & 31);
+    return ret;
+  }
+  function bech32Encode(hrp, data, spec) {
+    const combined = data.concat(bech32Checksum(hrp, data, spec));
+    return hrp + "1" + combined.map((d) => BECH32_CHARSET[d]).join("");
+  }
+  // regroup an 8-bit byte array into 5-bit groups (or back), per BIP-173
+  function convertBits(data, fromBits, toBits, pad) {
+    let acc = 0, bits = 0;
+    const ret = [], maxv = (1 << toBits) - 1, maxAcc = (1 << (fromBits + toBits - 1)) - 1;
+    for (const value of data) {
+      if (value < 0 || value >> fromBits) return null;
+      acc = ((acc << fromBits) | value) & maxAcc;
+      bits += fromBits;
+      while (bits >= toBits) { bits -= toBits; ret.push((acc >> bits) & maxv); }
+    }
+    if (pad) { if (bits) ret.push((acc << (toBits - bits)) & maxv); }
+    else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv)) return null;
+    return ret;
+  }
+  function encodeSegwit(hrp, witver, witprog) {
+    const spec = witver === 0 ? "bech32" : "bech32m";
+    return bech32Encode(hrp, [witver].concat(convertBits(Array.from(witprog), 8, 5, true)), spec);
+  }
+  // native SegWit P2WPKH address (always from the compressed pubkey)
+  function p2wpkhAddress(point, testnet = false) {
+    return encodeSegwit(testnet ? "tb" : "bc", 0, hash160(sec(point, true)));
+  }
+
   // --- ECDSA -----------------------------------------------------------------
   function randScalar() {
     const b = new Uint8Array(32);
@@ -393,6 +444,8 @@
     P, A, B, N, G, INFINITY, mod, modInv, ptAdd, ptDouble, ptMul,
     // keys
     pubFromSecret, sec, secDecode, address, wif,
+    // bech32 / segwit
+    encodeSegwit, p2wpkhAddress, convertBits,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };

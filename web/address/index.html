@@ -52,7 +52,9 @@
         <div class="arrow-d">↓ &nbsp;prepend version byte, append 4-byte checksum, Base58</div>
         <div class="stg" style="border-color:var(--accent)">
           <div class="stg-h"><span class="tag">⑤ Address</span><span class="meta" id="m-addr"></span></div>
-          <div class="val-big" id="s-addr"></div></div>
+          <div class="val-big" id="s-addr"></div>
+          <div class="stg-h" style="margin-top:12px"><span class="tag">⑤′ SegWit address</span><span class="meta" id="m-segwit"></span></div>
+          <div class="val-big" id="s-segwit" style="font-size:13px"></div></div>
       </div>
     </div>
 
@@ -108,7 +110,7 @@ window.POPS = {
   const H = window.Hermes;
   const $ = (id) => document.getElementById(id);
   let compressed = true, testnet = false;
-  let prevAddr = "", prevH160 = "";
+  let prevAddr = "", prevH160 = "", prevSegwit = "";
 
   const fmtHex = (bytes) => H.bytesToHex(bytes).replace(/(..)/g, "$1 ").trim();
   const randHex = () => { const b = new Uint8Array(32); crypto.getRandomValues(b); return H.bytesToHex(b); };
@@ -152,6 +154,11 @@ window.POPS = {
     $("s-h160").innerHTML = diff(h160hex.replace(/(..)/g, "$1 ").trim(), prevH160);
     $("s-addr").innerHTML = diff(addr, prevAddr);
     $("m-addr").textContent = (testnet ? "testnet" : "mainnet") + " P2PKH";
+    // native SegWit (P2WPKH) — bech32 of the same key hash; always compressed
+    const segwit = H.p2wpkhAddress(point, testnet);
+    $("s-segwit").innerHTML = diff(segwit, prevSegwit);
+    $("m-segwit").textContent = (testnet ? "tb" : "bc") + "1… · bech32 · P2WPKH";
+    prevSegwit = segwit;
     $("s-wif").textContent = wif;
     prevAddr = addr; prevH160 = h160hex.replace(/(..)/g, "$1 ").trim();
   }
@@ -166,8 +173,8 @@ window.POPS = {
   seg("comp", (v) => compressed = v === "c");
   seg("net", (v) => testnet = v === "test");
 
-  $("priv").addEventListener("input", () => { prevAddr = ""; prevH160 = ""; compute(); });
-  $("rand").addEventListener("click", () => { prevAddr = ""; prevH160 = ""; $("priv").value = randHex(); compute(); });
+  $("priv").addEventListener("input", () => { prevAddr = ""; prevH160 = ""; prevSegwit = ""; compute(); });
+  $("rand").addEventListener("click", () => { prevAddr = ""; prevH160 = ""; prevSegwit = ""; $("priv").value = randHex(); compute(); });
   $("flip").addEventListener("click", () => {
     const hex = $("priv").value.trim().replace(/^0x/, "").padStart(64, "0");
     let secret = BigInt("0x" + hex);

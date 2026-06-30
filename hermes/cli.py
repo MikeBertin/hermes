@@ -19,7 +19,7 @@ import sys
 
 from .keys import PrivateKey
 from .transaction import (
-    Tx, TxInput, TxOutput, broadcast, fetch_utxos, p2pkh_from_address, p2pkh_script,
+    Tx, TxInput, TxOutput, address_to_script, broadcast, fetch_utxos, p2pkh_script,
 )
 
 KEYFILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".testnet-key.json")
@@ -77,7 +77,7 @@ def cmd_send(dest: str, do_broadcast: bool, fee: int = 300) -> None:
     tx = Tx(
         version=1,
         inputs=[TxInput(bytes.fromhex(u["txid"]), u["vout"]) for u in utxos],
-        outputs=[TxOutput(send_amount, p2pkh_from_address(dest))],
+        outputs=[TxOutput(send_amount, address_to_script(dest))],
         testnet=TESTNET,
     )
     for i in range(len(tx.inputs)):

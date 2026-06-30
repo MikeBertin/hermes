@@ -403,3 +403,16 @@ _Append a dated entry every session: what changed · what's next · new decision
   the hermes root. **Next on the Sovereign-aligned arc: SegWit (P2WPKH + bech32 + BIP-143)** →
   then 2-of-3 multisig custody. (RFC 6979 was the warm-up; SegWit is the real bridge to how modern
   custody — the thing Sovereign sets up in Phase 1 — actually works.)
+- **2026-06-30** — **SegWit DONE** (post-ship enhancement #3, the Sovereign-aligned bridge).
+  New `hermes/bech32.py` (BIP-173 bech32 + BIP-350 bech32m: encode/decode/convertbits + segwit
+  address validation). `PublicKey.p2wpkh_address` (native `bc1…`/`tb1…`). `transaction.py` gained
+  the BIP-143 segwit sighash (`sig_hash_bip143`, commits to the spent amount), per-input witness
+  fields, marker/flag serialization (txid still hashes the legacy form), and `sign_input_p2wpkh`/
+  `verify_input_p2wpkh`. `address_to_script` routes base58↔bech32 so `cli.py send` now pays
+  `bc1…`/`tb1…`. JS mirror in `btc.js` (`encodeSegwit`/`p2wpkhAddress` + bech32 machinery); the
+  `address/` demo shows the `bc1…` form beside the legacy address. **Validation:** reproduces the
+  **BIP-143 worked example byte-for-byte** (parsed its unsigned tx → our sighash + RFC 6979 + DER +
+  low-s == its published sigHash *and* witness signature), plus BIP-173/350 address vectors.
+  **46/46 pytest, 48/48 in-browser, console clean.** **Next: 2-of-3 P2WSH multisig custody demo** —
+  the direct "this is what Sovereign's Phase-1 custody actually is" card (builds on this SegWit work;
+  P2WSH = the witness-script form of multisig that Unchained/Sparrow use).

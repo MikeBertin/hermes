@@ -6,6 +6,7 @@ dependencies, to be visualised in the browser. See PLAN.md.
 """
 
 from .base58 import b58check_decode, b58check_encode, b58decode, b58encode
+from .bech32 import bech32_decode, bech32_encode, decode_segwit, encode_segwit
 from .curve import G, N, P, INFINITY, Point
 from .ecdsa import (
     Signature, parse_sig, recover_secret_from_reused_nonce, rfc6979_k, ser_sig, sign, verify,
@@ -25,6 +26,7 @@ __all__ = [
     "Point", "G", "N", "P", "INFINITY",
     "sha256", "double_sha256", "hmac_sha256", "ripemd160",
     "b58encode", "b58decode", "b58check_encode", "b58check_decode",
+    "bech32_encode", "bech32_decode", "encode_segwit", "decode_segwit",
     "PrivateKey", "PublicKey", "hash160",
     "Signature", "sign", "verify", "recover_secret_from_reused_nonce",
     "rfc6979_k", "ser_sig", "parse_sig",

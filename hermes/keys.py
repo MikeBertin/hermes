@@ -12,6 +12,7 @@ itself.
 from __future__ import annotations
 
 from .base58 import b58check_encode
+from .bech32 import encode_segwit
 from .curve import G, N, P, Point
 from .ripemd160 import ripemd160
 from .sha256 import sha256
@@ -19,6 +20,7 @@ from .sha256 import sha256
 # version bytes
 _ADDR_VERSION = {False: b"\x00", True: b"\x6f"}  # mainnet / testnet P2PKH
 _WIF_VERSION = {False: b"\x80", True: b"\xef"}
+_HRP = {False: "bc", True: "tb"}                 # mainnet / testnet bech32 prefix
 
 
 def hash160(data: bytes) -> bytes:
@@ -64,6 +66,11 @@ class PublicKey:
     def address(self, compressed: bool = True, testnet: bool = False) -> str:
         payload = _ADDR_VERSION[testnet] + self.hash160(compressed)
         return b58check_encode(payload)
+
+    def p2wpkh_address(self, testnet: bool = False) -> str:
+        """Native SegWit (P2WPKH) address: bech32 of witness v0 + the key hash.
+        Always uses the *compressed* pubkey — SegWit forbids uncompressed keys."""
+        return encode_segwit(_HRP[testnet], 0, self.hash160(compressed=True))
 
 
 class PrivateKey:
