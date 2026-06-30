@@ -8,12 +8,12 @@ dependencies, to be visualised in the browser. See PLAN.md.
 from .base58 import b58check_decode, b58check_encode, b58decode, b58encode
 from .curve import G, N, P, INFINITY, Point
 from .ecdsa import (
-    Signature, parse_sig, recover_secret_from_reused_nonce, ser_sig, sign, verify,
+    Signature, parse_sig, recover_secret_from_reused_nonce, rfc6979_k, ser_sig, sign, verify,
 )
 from .field import FieldElement
 from .keys import PrivateKey, PublicKey, hash160
 from .ripemd160 import ripemd160
-from .sha256 import double_sha256, sha256
+from .sha256 import double_sha256, hmac_sha256, sha256
 from .sha512 import hmac_sha512, pbkdf2_hmac_sha512, sha512
 from .bip32 import HDKey
 from .bip39 import (
@@ -23,11 +23,11 @@ from .bip39 import (
 __all__ = [
     "FieldElement",
     "Point", "G", "N", "P", "INFINITY",
-    "sha256", "double_sha256", "ripemd160",
+    "sha256", "double_sha256", "hmac_sha256", "ripemd160",
     "b58encode", "b58decode", "b58check_encode", "b58check_decode",
     "PrivateKey", "PublicKey", "hash160",
     "Signature", "sign", "verify", "recover_secret_from_reused_nonce",
-    "ser_sig", "parse_sig",
+    "rfc6979_k", "ser_sig", "parse_sig",
     "sha512", "hmac_sha512", "pbkdf2_hmac_sha512",
     "HDKey", "entropy_to_mnemonic", "mnemonic_to_entropy", "mnemonic_to_seed", "is_valid",
 ]

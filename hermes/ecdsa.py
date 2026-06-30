@@ -9,10 +9,10 @@ code-signing). :func:`recover_secret_from_reused_nonce` does exactly that.
 
 from __future__ import annotations
 
-import secrets
 from typing import NamedTuple
 
 from .curve import G, N, Point
+from .sha256 import hmac_sha256
 
 
 class Signature(NamedTuple):
@@ -24,15 +24,46 @@ def _inv(a: int) -> int:
     return pow(a, -1, N)
 
 
+def rfc6979_k(secret: int, z: int) -> int:
+    """Derive the signing nonce deterministically from the key and message hash
+    (RFC 6979, HMAC-SHA256 variant — the one Bitcoin uses).
+
+    Random nonces are dangerous: a single repeat leaks the private key (see
+    :func:`recover_secret_from_reused_nonce`), and a biased RNG has drained real
+    wallets. RFC 6979 sidesteps the RNG entirely — ``k`` is a deterministic
+    function of ``(secret, z)``, so it's reproducible *and* unique per message.
+
+    Since secp256k1's order and SHA-256's output are both 256 bits, ``bits2int``
+    and ``bits2octets`` reduce to plain 32-byte big-endian encodings.
+    """
+    x = secret.to_bytes(32, "big")
+    h1 = (z % N).to_bytes(32, "big")  # bits2octets(H(m)): hash reduced mod n
+    v = b"\x01" * 32
+    k = b"\x00" * 32
+    k = hmac_sha256(k, v + b"\x00" + x + h1)
+    v = hmac_sha256(k, v)
+    k = hmac_sha256(k, v + b"\x01" + x + h1)
+    v = hmac_sha256(k, v)
+    while True:
+        v = hmac_sha256(k, v)
+        candidate = int.from_bytes(v, "big")  # T is exactly 32 bytes here
+        if 1 <= candidate < N:
+            return candidate
+        k = hmac_sha256(k, v + b"\x00")
+        v = hmac_sha256(k, v)
+
+
 def sign(secret: int, z: int, k: int | None = None, low_s: bool = True) -> Signature:
     """Sign message hash ``z`` with ``secret``.
 
+    By default the nonce ``k`` is derived deterministically via RFC 6979, so
+    signing the same message twice yields the identical signature (and txid).
     Pass an explicit ``k`` to demonstrate nonce reuse. ``low_s`` applies BIP-62
     canonicalization (real Bitcoin requires it) — turn it off for the reuse demo
     so the recovery algebra stays clean.
     """
     if k is None:
-        k = secrets.randbelow(N - 1) + 1
+        k = rfc6979_k(secret, z)
     r = (k * G).x.num % N
     if r == 0:
         raise ValueError("bad nonce produced r == 0; choose another k")

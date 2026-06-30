@@ -62,8 +62,8 @@ web/               self-contained static site (this is what Pages serves)
 - **Use `.venv`** — never the system python (3.14, externally-managed/PEP-668).
 - **Two tx modules on purpose:** `hermes/tx.py` is the *simplified* UTXO model for the network
   sim; `hermes/transaction.py` is the *real* broadcastable wire format. Don't merge them.
-- **`sign()` uses a random nonce**, so a re-signed tx has a different txid than a dry run. (See
-  "deterministic nonces" below.)
+- **`sign()` is deterministic (RFC 6979)** — re-signing the same tx reproduces the identical
+  signature and txid. (Pass an explicit `k` only for the nonce-reuse demo.)
 - **Pages = workflow, not legacy root.** Siblings (chiron/empedocles) serve from main-root; Hermes
   serves `web/` via the Actions workflow because it's a Python+site hybrid. Editing `web/` and
   pushing to `main` auto-redeploys.
@@ -77,8 +77,9 @@ web/               self-contained static site (this is what Pages serves)
 1. **[quick win] Update `README.md`** — it still says "work in progress / demos coming". Refresh to
    "shipped & live", add the 8-demo table (mirror Plutus's README), and drop/keep sibling links as
    you like (the landing-page footer companion line was removed earlier per your call).
-2. **RFC 6979 deterministic nonces** in `ecdsa.sign` — makes signing reproducible and is what real
-   wallets do; removes the "different txid each run" caveat. Small, self-contained, testable.
+2. ✅ **RFC 6979 deterministic nonces** — DONE (2026-06-30). `ecdsa.rfc6979_k` + `hmac_sha256`;
+   `sign()` is now deterministic by default. Mirrored in `btc.js`. Verified against the canonical
+   secp256k1+SHA-256 vector (40 pytest / 45 in-browser).
 3. **SegWit (P2WPKH + bech32 + BIP-143 sighash)** — the biggest "make it modern" step. Adds
    `tb1…`/`bc1…` addresses and the witness serialization. Would also let `cli.py send` pay bech32
    faucet-return addresses (currently P2PKH/base58 only). Medium build, fully vector-testable.

@@ -98,6 +98,20 @@ const s2 = H.sign(WIF_SECRET, z2, k, false);
 check("nonce-reuse recovers secret",
   H.recoverNonceReuse(z1, s1, z2, s2) === WIF_SECRET, true);
 
+// --- RFC 6979 deterministic nonce: canonical secp256k1 + SHA-256 vector ---
+const RFC_SECRET = 0xc9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721n;
+const zSample = H.bytesToBigInt(H.sha256(H.utf8("sample")));
+check("rfc6979 k (sample)", H.rfc6979K(RFC_SECRET, zSample).toString(16),
+  "a6e3c57dd01abe90086538398355dd4c3b17aa873382b0f24d6129493d8aad60");
+const rfcSig = H.sign(RFC_SECRET, zSample);
+check("rfc6979 r (sample)", rfcSig.r.toString(16),
+  "432310e32cb80eb6503a26ce83cc165c783b870845fb8aad6d970889fcd7a6c8");
+check("rfc6979 s (sample)", rfcSig.s.toString(16),
+  "530128b6b81c548874a6305d93ed071ca6e05074d85863d4056ce89b02bfab69");
+// deterministic: signing the same message twice is byte-identical
+const detA = H.sign(WIF_SECRET, z1), detB = H.sign(WIF_SECRET, z1);
+check("rfc6979 deterministic", detA.r === detB.r && detA.s === detB.s, true);
+
 // --- async: cross-check sha256 vs native crypto.subtle on random inputs ---
 async function crossCheck() {
   for (let t = 0; t < 25; t++) {

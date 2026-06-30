@@ -329,8 +329,36 @@
     crypto.getRandomValues(b);
     return (mod(bytesToBigInt(b), N - 1n)) + 1n;
   }
+  // HMAC-SHA256 (RFC 2104), built on the from-scratch sha256 above.
+  function hmacSha256(key, msg) {
+    if (key.length > 64) key = sha256(key);
+    const k = new Uint8Array(64);
+    k.set(key);
+    const ipad = new Uint8Array(64), opad = new Uint8Array(64);
+    for (let i = 0; i < 64; i++) { ipad[i] = k[i] ^ 0x36; opad[i] = k[i] ^ 0x5c; }
+    return sha256(concatBytes(opad, sha256(concatBytes(ipad, msg))));
+  }
+  // RFC 6979: derive the signing nonce deterministically from (secret, z) so a
+  // signature is reproducible and no RNG can leak the key via a repeated nonce.
+  function rfc6979K(secret, z) {
+    const x = bigIntToBytes(secret, 32);
+    const h1 = bigIntToBytes(mod(z, N), 32);
+    let v = new Uint8Array(32).fill(1);
+    let k = new Uint8Array(32).fill(0);
+    k = hmacSha256(k, concatBytes(v, Uint8Array.of(0x00), x, h1));
+    v = hmacSha256(k, v);
+    k = hmacSha256(k, concatBytes(v, Uint8Array.of(0x01), x, h1));
+    v = hmacSha256(k, v);
+    while (true) {
+      v = hmacSha256(k, v);
+      const cand = bytesToBigInt(v);
+      if (cand >= 1n && cand < N) return cand;
+      k = hmacSha256(k, concatBytes(v, Uint8Array.of(0x00)));
+      v = hmacSha256(k, v);
+    }
+  }
   function sign(secret, z, k = null, lowS = true) {
-    if (k === null) k = randScalar();
+    if (k === null) k = rfc6979K(secret, z);
     const r = mod(ptMul(k, G).x, N);
     let s = mod(modInv(k, N) * (z + r * secret), N);
     if (lowS && s > N / 2n) s = N - s;
@@ -366,6 +394,6 @@
     // keys
     pubFromSecret, sec, secDecode, address, wif,
     // ecdsa
-    sign, verify, recoverNonceReuse, randScalar, messageHash,
+    sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };
 })();

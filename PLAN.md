@@ -393,3 +393,13 @@ _Append a dated entry every session: what changed · what's next · new decision
   table (Plutus-style), the `cli.py` testnet usage, and a local-run section. Docs now match reality;
   no code change. (Remaining items are all optional — see HANDOFF.md menu: RFC 6979, SegWit, Merkle/
   SPV, Taproot, Lightning.)
+- **2026-06-30** — **RFC 6979 deterministic nonces DONE** (post-ship enhancement #2). Added
+  `hmac_sha256` (sha256.py) and `ecdsa.rfc6979_k`; `sign()` now derives `k` deterministically by
+  default, so signing is reproducible (same tx → same txid) — removes the random-nonce caveat and is
+  what real wallets do. Mirrored in `web/shared/btc.js` (`hmacSha256`/`rfc6979K`). Verified against
+  the canonical secp256k1 + SHA-256 vector (message "sample", k=a6e3c57d…), cross-checked our
+  from-scratch HMAC vs stdlib over random inputs: **40/40 pytest, 45/45 in-browser, console clean.**
+  Added project-local `.claude/launch.json` (serves `web/` on 8011) so the preview tool works from
+  the hermes root. **Next on the Sovereign-aligned arc: SegWit (P2WPKH + bech32 + BIP-143)** →
+  then 2-of-3 multisig custody. (RFC 6979 was the warm-up; SegWit is the real bridge to how modern
+  custody — the thing Sovereign sets up in Phase 1 — actually works.)

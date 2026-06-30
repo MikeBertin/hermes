@@ -76,3 +76,17 @@ def sha256(message: bytes) -> bytes:
 def double_sha256(message: bytes) -> bytes:
     """SHA-256 applied twice — Bitcoin's workhorse (a.k.a. HASH256)."""
     return sha256(sha256(message))
+
+
+_BLOCK = 64
+
+
+def hmac_sha256(key: bytes, message: bytes) -> bytes:
+    """HMAC with SHA-256 as the PRF (RFC 2104). Used by RFC 6979 to turn the
+    private key + message hash into a deterministic signing nonce."""
+    if len(key) > _BLOCK:
+        key = sha256(key)
+    key = key + b"\x00" * (_BLOCK - len(key))
+    ipad = bytes(b ^ 0x36 for b in key)
+    opad = bytes(b ^ 0x5C for b in key)
+    return sha256(opad + sha256(ipad + message))

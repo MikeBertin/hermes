@@ -12,8 +12,8 @@ from hermes import (
     G, N, INFINITY, Point,
     PrivateKey, PublicKey, hash160,
     b58check_encode, b58check_decode,
-    sha256, double_sha256, ripemd160,
-    sign, verify, recover_secret_from_reused_nonce,
+    sha256, double_sha256, hmac_sha256, ripemd160,
+    sign, verify, recover_secret_from_reused_nonce, rfc6979_k,
 )
 
 
@@ -143,3 +143,39 @@ def test_nonce_reuse_recovers_private_key():
     sig2 = sign(priv.secret, z2, k=k, low_s=False)
     recovered = recover_secret_from_reused_nonce(z1, sig1, z2, sig2)
     assert recovered == WIF_SECRET
+
+
+# --- RFC 6979 deterministic nonces -------------------------------------------
+
+def test_hmac_sha256_matches_stdlib_random():
+    import hmac, os
+    for _ in range(50):
+        key = os.urandom(os.urandom(1)[0] % 80)   # vary length, incl. > block size
+        msg = os.urandom(os.urandom(1)[0])
+        assert hmac_sha256(key, msg) == hmac.new(key, msg, hashlib.sha256).digest()
+
+
+def test_rfc6979_official_secp256k1_vector():
+    """The canonical secp256k1 + SHA-256 RFC 6979 vector (message "sample").
+    Same private key the RFC uses for P-256 in Appendix A.2.5, re-derived on
+    secp256k1. Reproduced across many independent implementations."""
+    secret = 0xC9AFA9D845BA75166B5C215767B1D6934E50C3DB36E89B127B8A622B120F6721
+    z = int.from_bytes(sha256(b"sample"), "big")
+    assert rfc6979_k(secret, z) == (
+        0xA6E3C57DD01ABE90086538398355DD4C3B17AA873382B0F24D6129493D8AAD60
+    )
+    sig = sign(secret, z)
+    assert sig.r == 0x432310E32CB80EB6503A26CE83CC165C783B870845FB8AAD6D970889FCD7A6C8
+    assert sig.s == 0x530128B6B81C548874A6305D93ED071CA6E05074D85863D4056CE89B02BFAB69
+
+
+def test_rfc6979_is_deterministic_and_verifies():
+    priv = PrivateKey(WIF_SECRET)
+    pub = priv.public_key().point
+    z = int.from_bytes(sha256(b"Hermes flies"), "big")
+    # signing twice yields byte-identical signatures (no RNG involved)
+    assert sign(priv.secret, z) == sign(priv.secret, z)
+    assert verify(pub, z, sign(priv.secret, z))
+    # distinct messages get distinct nonces (otherwise the key would leak)
+    z2 = int.from_bytes(sha256(b"Hermes flies again"), "big")
+    assert rfc6979_k(priv.secret, z) != rfc6979_k(priv.secret, z2)
