@@ -111,6 +111,19 @@ const MZ = H.sigHashBip143(
 check("p2wsh BIP-143 sighash", MZ.toString(16),
   "f2f927bc438fa96a58bce4a7b92e4e2920f3df372f810d69f4adaf086d3d3584");
 
+// --- Merkle root of a real block (block 100000, 4 txs) ---
+const B100K = [
+  "8c14f0db3df150123e6f3dbbf30f8b955a8249b62ac1d1ff16284aefa3d06d87",
+  "fff2525b8931402dd09222c50775608f75787bd2b87e56995a7bdd30f79702c4",
+  "6359f0868171b1d194cbee1af2f16ea598ae8fad666d9b012c8ed2b79a236ec4",
+  "e9a66845e05d5abc0ad04ec80f774a7e585c6e8db975962d069a522137b80c1d"];
+const B100K_LEAVES = B100K.map((t) => H.hexToBytes(t).reverse());
+const B100K_ROOT = H.merkleRoot(B100K_LEAVES);
+check("block 100000 merkle root", H.bytesToHex(B100K_ROOT.slice().reverse()),
+  "f3e94742aca4b5ef85488dc37c06c3282295ffec960994b2c0d5ac2a25a95766");
+check("merkle proof verifies",
+  H.verifyMerkleProof(B100K_LEAVES[2], H.merkleProof(B100K_LEAVES, 2), B100K_ROOT), true);
+
 // --- ECDSA sign / verify ---
 
 // --- ECDSA sign / verify ---

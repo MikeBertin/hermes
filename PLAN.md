@@ -430,3 +430,13 @@ _Append a dated entry every session: what changed · what's next · new decision
   tests. **52/52 pytest, 51/51 in-browser, console clean.** Framing kept generic (a "why treasuries
   custody this way" note), no private project named. **The post-ship arc (RFC 6979 → SegWit →
   multisig) is complete.** Remaining menu options: Merkle/SPV, Taproot/Schnorr, Lightning.
+- **2026-06-30** — **Merkle trees + SPV DONE — a 10th demo card shipped** (enhancement #5). New
+  `hermes/merkle.py`: `merkle_root`/`merkle_levels` (Bitcoin odd-duplication), `merkle_proof`/
+  `verify_merkle_proof` (O(log n) inclusion proof), `root_from_txids` (display↔internal byte order).
+  JS mirror in `btc.js` (`merkleRoot`/`merkleProof`/`merkleLevels`/`verifyMerkleProof`). **New
+  `web/merkle/` card** ("Merkle Proofs", accent #4dc9e6): an SVG tree over an adjustable 5–8-tx
+  block; click a tx to light up its proof path (selected→cyan, siblings→amber, computed-up→pink),
+  with a tamper toggle and a proof-of-reserves note. Landing page now 10 cards; README updated.
+  **Validation:** anchored to **real Bitcoin block 100000's merkle root** (4 txs → header root
+  f3e94742…), + proof/tamper/odd-duplication/single-leaf tests. **57/57 pytest, 53/53 in-browser,
+  console clean.** Remaining optional menu: Taproot/Schnorr, Lightning.

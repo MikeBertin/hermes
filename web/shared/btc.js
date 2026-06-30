@@ -474,6 +474,40 @@
     return mod((sig1.s * k - z1) * modInv(r, N), N);
   }
 
+  // --- Merkle trees + inclusion proofs (SPV) ---------------------------------
+  const bytesEqual = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const merkleParent = (l, r) => doubleSha256(concatBytes(l, r));
+  function merkleParentLevel(hashes) {
+    if (hashes.length === 1) return hashes;
+    if (hashes.length % 2 === 1) hashes = hashes.concat([hashes[hashes.length - 1]]);
+    const out = [];
+    for (let i = 0; i < hashes.length; i += 2) out.push(merkleParent(hashes[i], hashes[i + 1]));
+    return out;
+  }
+  function merkleLevels(hashes) {
+    const levels = [hashes.slice()];
+    while (levels[levels.length - 1].length > 1) levels.push(merkleParentLevel(levels[levels.length - 1]));
+    return levels;
+  }
+  const merkleRoot = (hashes) => merkleLevels(hashes).slice(-1)[0][0];
+  // proof for leaf `index`: [{hash, left}] siblings up to the root (left = sibling on the left)
+  function merkleProof(hashes, index) {
+    const proof = [];
+    let level = hashes.slice(), i = index;
+    while (level.length > 1) {
+      if (level.length % 2 === 1) level = level.concat([level[level.length - 1]]);
+      proof.push(i % 2 === 0 ? { hash: level[i + 1], left: false } : { hash: level[i - 1], left: true });
+      level = merkleParentLevel(level);
+      i = Math.floor(i / 2);
+    }
+    return proof;
+  }
+  function verifyMerkleProof(leaf, proof, root) {
+    let h = leaf;
+    for (const { hash, left } of proof) h = left ? merkleParent(hash, h) : merkleParent(h, hash);
+    return bytesEqual(h, root);
+  }
+
   // hash of a message string, as the integer z that ECDSA signs
   const messageHash = (str) => bytesToBigInt(doubleSha256(utf8(str)));
 
@@ -492,6 +526,8 @@
     encodeSegwit, p2wpkhAddress, convertBits,
     // p2wsh multisig
     multisigScript, p2wshAddress, sigHashBip143, encodeVarint,
+    // merkle / spv
+    merkleRoot, merkleProof, merkleLevels, verifyMerkleProof,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };

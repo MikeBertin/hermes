@@ -6,17 +6,18 @@
 
 ## TL;DR — the project is COMPLETE and SHIPPED
 
-All 8 stages done, plus a post-ship enhancement arc (RFC 6979 → SegWit → multisig). A from-scratch
-Bitcoin implementation (no crypto libraries) + 9 interactive browser demos, culminating in a **real
-transaction broadcast to the Bitcoin testnet** and a 2-of-3 multisig vault.
+All 8 stages done, plus a post-ship enhancement arc (RFC 6979 → SegWit → multisig → Merkle/SPV). A
+from-scratch Bitcoin implementation (no crypto libraries) + 10 interactive browser demos, culminating
+in a **real transaction broadcast to the Bitcoin testnet**, a 2-of-3 multisig vault, and trustless
+Merkle inclusion proofs.
 
 - **Live:** https://mikebertin.github.io/hermes/
 - **Repo:** https://github.com/MikeBertin/hermes (public)
 - **On-chain proof:** testnet txid `f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08`
-- **Tests:** `52/52` pytest green; JS cross-checked against the same vectors in-browser (51/51).
+- **Tests:** `57/57` pytest green; JS cross-checked against the same vectors in-browser (53/53).
 
-The 9 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
-Script VM · HD Wallet · Multisig Vault.
+The 10 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
+Script VM · HD Wallet · Multisig Vault · Merkle Proofs.
 
 ## How to resume
 
@@ -94,8 +95,10 @@ web/               self-contained static site (this is what Pages serves)
    `transaction.py` (`multisig_script`, `p2wsh_address`, `sign/verify_input_p2wsh_multisig`),
    mirrored in `btc.js`; new `web/multisig/` "Multisig Vault" card. Anchored to a real on-chain
    native-P2WSH 2-of-3 tx (txid 440fe853…). 52 pytest / 51 in-browser. **The site is now 9 demos.**
-4. **Merkle trees + SPV demo (a 10th card)** — was the deferred alternate in §7 of PLAN.md. Build a
-   block's merkle root, show a merkle proof / how SPV wallets verify inclusion. Self-contained.
+4. ✅ **Merkle trees + SPV (10th demo card)** — DONE (2026-06-30). `hermes/merkle.py` (root/proof/
+   verify, odd-duplication) mirrored in `btc.js`; new `web/merkle/` "Merkle Proofs" card (SVG tree +
+   highlighted proof path + tamper toggle). Anchored to real block 100000's root. 57 pytest / 53
+   in-browser. **The site is now 10 demos.**
 5. **Taproot / Schnorr signatures** — advanced; new signature scheme + key tweaking. Big but cool.
 6. **Lightning / HTLC** — builds directly on the Script VM (hashlocks + timelocks are already there).
 7. **Polish:** add Hermes to the siblings' footers (chiron/empedocles READMEs) if you want

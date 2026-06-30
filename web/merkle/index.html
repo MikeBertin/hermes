@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merkle Proofs — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Merkle Proofs — Hermes">
+<meta property="og:description" content="How a block fingerprints every transaction in 32 bytes — and how a light wallet proves one is included without downloading the rest.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#4dc9e6;--accent-ink:#04222a;--proof:#ffc266;--path:#ef88c8}
+  .tree-wrap{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:10px 8px}
+  svg{width:100%;height:auto;display:block}
+  .node rect{transition:fill .12s,stroke .12s}
+  .node text{font-family:var(--mono);font-size:10px;fill:var(--muted);pointer-events:none}
+  .node.leaf rect{cursor:pointer}
+  .edge{stroke:var(--line);stroke-width:1.4}
+  .edge.on{stroke:var(--accent);stroke-width:2.4}
+  .lvl-label{font-family:var(--mono);font-size:10px;fill:var(--muted)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--muted)}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .proof-row{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.9;word-break:break-all}
+  .proof-row b{color:var(--ink);font-weight:600}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:5px;
+    background:#1c1c27;color:var(--muted);margin-right:7px}
+  .pill.L{color:var(--path)} .pill.R{color:var(--proof)}
+  .verdict{margin-top:6px;border-radius:11px;padding:13px 15px;border:1px solid var(--line);
+    font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px}
+  .verdict.ok{border-color:var(--accent);background:rgba(77,201,230,.08);color:#9fe6f4}
+  .verdict.no{border-color:#ff6b6b;background:rgba(255,107,107,.07);color:#ff8f8f}
+  .verdict .big{font-size:19px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Merkle Proofs</div>
+  <header class="hero">
+    <h1>Merkle Proofs</h1>
+    <p class="sub">
+      A block can hold thousands of transactions, yet its header commits to all of them in a single
+      32-byte <b>merkle root</b> — hash them in pairs, then hash the pairs, up to one value. The
+      reward is the <span class="x" data-pop="proof">merkle proof</span>: to prove a transaction is
+      in the block you reveal only the handful of sibling hashes on its path to the root. A phone
+      can verify a payment against a header it trusts, without ever downloading the block — that's
+      <span class="x" data-pop="spv">SPV</span>. Click any transaction below to see its proof.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="tree-wrap"><div id="tree"></div></div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>selected tx → root path</span>
+        <span><i style="background:var(--proof)"></i>proof (sibling hashes)</span>
+        <span><i style="background:var(--path)"></i>computed up the path</span>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>Block</h2>
+        <label>Transactions in the block</label>
+        <div class="seg" id="count">
+          <button data-n="5">5</button>
+          <button data-n="6">6</button>
+          <button data-n="7">7</button>
+          <button data-n="8" aria-pressed="true">8</button>
+        </div>
+        <p class="hint" style="margin-top:9px">Odd levels duplicate the last hash — try 5 or 7.</p>
+        <div class="stg" style="margin-top:12px;background:var(--panel);border:1px solid var(--accent);border-radius:11px;padding:11px 13px">
+          <div style="font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.5px;margin-bottom:5px">MERKLE ROOT (in the block header)</div>
+          <div id="root" style="font-family:var(--mono);font-size:12px;color:var(--accent);word-break:break-all"></div>
+        </div>
+        <button id="rotate" style="margin-top:12px">New transactions</button>
+      </div>
+
+      <div class="panel">
+        <h2>Inclusion proof <span id="sel-tag" style="color:var(--muted);font-weight:400;font-size:13px"></span></h2>
+        <p class="hint" style="margin:-2px 0 10px">The siblings a light wallet needs — just these, not the block.</p>
+        <div class="proof-row" id="proof"></div>
+        <div id="verdict" class="verdict ok"><span class="big">✓</span><span id="verdict-txt"></span></div>
+        <label style="margin-top:13px">Tamper check</label>
+        <div class="seg" id="tamper">
+          <button data-t="0" aria-pressed="true">Honest tx</button>
+          <button data-t="1">Forge the tx</button>
+        </div>
+        <p class="hint" style="margin-top:8px">Change one bit of the selected transaction and the
+          proof no longer rebuilds the committed root.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Why this matters</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Phones don't store the chain</h3>
+        <p>An SPV wallet keeps only block headers (80 bytes each). To trust a payment it asks a node
+          for a merkle proof and checks it against the header's root — verification without the data.</p></div>
+      <div class="ncard"><h3>log₂(n), not n</h3>
+        <p>A block of a thousand transactions needs a proof of about ten hashes. The cost of proving
+          inclusion grows with the <em>depth</em> of the tree, not its width.</p></div>
+      <div class="ncard"><h3>Proof of reserves</h3>
+        <p>The same primitive lets a custodian prove a specific holding is committed on-chain — a
+          tiny, verifiable receipt anyone can check against the public block, no trust required.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  proof: "<h4>Merkle proof</h4><p>The list of sibling hashes along a leaf's path to the root. Re-hashing the leaf with each sibling in turn must reproduce the root — otherwise the leaf isn't in the tree.</p>",
+  spv: "<h4>SPV — simplified payment verification</h4><p>From the Bitcoin whitepaper: verify a transaction by keeping only block headers and requesting a merkle branch linking it to a header whose proof-of-work you trust.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  let n = 8, selected = 0, tamper = false;
+  let leaves = [];          // internal-order Uint8Array txids
+
+  const randTxid = () => { const b = new Uint8Array(32); crypto.getRandomValues(b); return b; };
+  const short = (b) => H.bytesToHex(b).slice(0, 8);
+  const disp = (b) => H.bytesToHex(b.slice().reverse());   // big-endian display
+
+  function newTxs() { leaves = Array.from({ length: n }, randTxid); selected = 0; render(); }
+
+  function render() {
+    // honest vs tampered copy of the leaves
+    const live = leaves.slice();
+    if (tamper) { const b = live[selected].slice(); b[0] ^= 0x01; live[selected] = b; }
+    const levels = H.merkleLevels(live);
+    const honestRoot = H.merkleRoot(leaves);
+    const proof = H.merkleProof(live, selected);
+    const ok = H.verifyMerkleProof(live[selected], proof, honestRoot);
+
+    $("root").textContent = disp(honestRoot);
+    drawTree(levels);
+    drawProof(proof, live[selected]);
+
+    const v = $("verdict");
+    v.className = "verdict " + (ok ? "ok" : "no");
+    v.querySelector(".big").textContent = ok ? "✓" : "✗";
+    $("verdict-txt").textContent = ok
+      ? "Proof rebuilds the committed root — transaction is in the block."
+      : "Proof fails — the rebuilt root doesn't match the header. Not in the block.";
+    $("sel-tag").textContent = "· tx #" + selected;
+  }
+
+  function drawTree(levels) {
+    const W = 900, padX = 18, rowH = 78, topPad = 26, botPad = 24;
+    const L = levels.length;
+    const H_ = topPad + (L - 1) * rowH + botPad;
+    const xs = levels.map((lvl) => lvl.map((_, j) => padX + (j + 0.5) * (W - 2 * padX) / lvl.length));
+    const yOf = (k) => topPad + (L - 1 - k) * rowH;     // k=0 leaves at bottom
+
+    // which node index is on the proof path at level k
+    const pathIdx = (k) => Math.floor(selected / (2 ** k));
+
+    let svg = `<svg viewBox="0 0 ${W} ${H_}" xmlns="http://www.w3.org/2000/svg">`;
+    // edges
+    for (let k = 0; k < L - 1; k++) {
+      levels[k + 1].forEach((_, p) => {
+        [2 * p, 2 * p + 1].forEach((c) => {
+          if (c >= levels[k].length) return;
+          const onPath = (pathIdx(k) === c) && (pathIdx(k + 1) === p);
+          svg += `<line class="edge ${onPath ? "on" : ""}" x1="${xs[k][c]}" y1="${yOf(k)}" x2="${xs[k + 1][p]}" y2="${yOf(k + 1)}"/>`;
+        });
+      });
+    }
+    // nodes
+    const bw = Math.min(96, (W - 2 * padX) / levels[0].length - 8), bh = 26;
+    for (let k = 0; k < L; k++) {
+      levels[k].forEach((hash, j) => {
+        const cx = xs[k][j], cy = yOf(k);
+        const isPath = pathIdx(k) === j;
+        const isSibling = k < L - 1 && (j === (pathIdx(k) ^ 1)) && !isPath;
+        let fill = "#16161f", stroke = "var(--line)", tcol = "var(--muted)";
+        if (k === L - 1) { stroke = "var(--accent)"; fill = "rgba(77,201,230,.12)"; tcol = "var(--accent)"; }
+        if (isSibling) { stroke = "var(--proof)"; fill = "rgba(255,194,102,.10)"; tcol = "var(--proof)"; }
+        if (isPath && k > 0) { stroke = "var(--path)"; fill = "rgba(239,136,200,.12)"; tcol = "var(--path)"; }
+        if (isPath && k === 0) { stroke = "var(--accent)"; fill = "rgba(77,201,230,.18)"; tcol = "var(--accent)"; }
+        const cls = k === 0 ? "node leaf" : "node";
+        svg += `<g class="${cls}" ${k === 0 ? `data-i="${j}"` : ""}>
+          <rect x="${cx - bw / 2}" y="${cy - bh / 2}" width="${bw}" height="${bh}" rx="6"
+            fill="${fill}" stroke="${stroke}" stroke-width="1.6"/>
+          <text x="${cx}" y="${cy + 3.5}" text-anchor="middle" style="fill:${tcol}">${k === L - 1 ? "root " : ""}${short(hash)}</text></g>`;
+      });
+      const ly = yOf(k);
+      svg += `<text class="lvl-label" x="2" y="${ly + 3}">${k === 0 ? "tx" : k === L - 1 ? "root" : "h" + k}</text>`;
+    }
+    svg += `</svg>`;
+    $("tree").innerHTML = svg;
+    $("tree").querySelectorAll(".node.leaf").forEach((g) =>
+      g.addEventListener("click", () => { selected = +g.dataset.i; render(); }));
+  }
+
+  function drawProof(proof, leaf) {
+    const rows = [`<div style="margin-bottom:7px"><b>tx #${selected}</b> &nbsp;<span style="color:var(--accent)">${disp(leaf)}</span></div>`];
+    proof.forEach((step, k) => {
+      rows.push(`<div><span class="pill ${step.left ? "L" : "R"}">${step.left ? "left" : "right"}</span>h${k} sibling &nbsp;${short(step.hash)}…</div>`);
+    });
+    rows.push(`<div style="margin-top:7px;color:var(--muted)">${proof.length} hashes prove inclusion among ${(2 ** proof.length)} possible leaves.</div>`);
+    $("proof").innerHTML = rows.join("");
+  }
+
+  // controls
+  document.querySelectorAll("#count button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#count button").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+      n = +b.dataset.n; tamper = false;
+      document.querySelectorAll("#tamper button").forEach((x, idx) => x.setAttribute("aria-pressed", idx === 0));
+      newTxs();
+    }));
+  document.querySelectorAll("#tamper button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#tamper button").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+      tamper = b.dataset.t === "1"; render();
+    }));
+  $("rotate").addEventListener("click", () => {
+    tamper = false;
+    document.querySelectorAll("#tamper button").forEach((x, idx) => x.setAttribute("aria-pressed", idx === 0));
+    newTxs();
+  });
+
+  newTxs();
+})();
+</script>
+</body>
+</html>

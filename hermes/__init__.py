@@ -20,6 +20,9 @@ from .transaction import (
     Tx, TxInput, TxOutput, multisig_script, p2wpkh_script, p2wsh_script,
     p2wsh_address, p2pkh_script, address_to_script,
 )
+from .merkle import (
+    merkle_root, merkle_proof, merkle_levels, verify_merkle_proof, root_from_txids,
+)
 from .bip32 import HDKey
 from .bip39 import (
     entropy_to_mnemonic, is_valid, mnemonic_to_entropy, mnemonic_to_seed,
@@ -37,5 +40,6 @@ __all__ = [
     "sha512", "hmac_sha512", "pbkdf2_hmac_sha512",
     "Tx", "TxInput", "TxOutput", "multisig_script", "p2pkh_script",
     "p2wpkh_script", "p2wsh_script", "p2wsh_address", "address_to_script",
+    "merkle_root", "merkle_proof", "merkle_levels", "verify_merkle_proof", "root_from_txids",
     "HDKey", "entropy_to_mnemonic", "mnemonic_to_entropy", "mnemonic_to_seed", "is_valid",
 ]
