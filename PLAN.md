@@ -388,3 +388,8 @@ _Append a dated entry every session: what changed · what's next · new decision
   (`.github/workflows/pages.yml`, build_type=workflow) deploying `web/`. Live at
   https://mikebertin.github.io/hermes/. All 8 stages done; flagship shipped. (Siblings serve Pages
   from main-root legacy; Hermes uses a workflow since it's a Python+site hybrid.)
+- **2026-06-30** — **README refreshed to shipped state.** Replaced the stale "🚧 work in progress /
+  demos coming" framing with the live Pages link + on-chain testnet proof link, added the 8-demo
+  table (Plutus-style), the `cli.py` testnet usage, and a local-run section. Docs now match reality;
+  no code change. (Remaining items are all optional — see HANDOFF.md menu: RFC 6979, SegWit, Merkle/
+  SPV, Taproot, Lightning.)
