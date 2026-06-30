@@ -19,6 +19,56 @@ Merkle inclusion proofs.
 The 10 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
 Script VM · HD Wallet · Multisig Vault · Merkle Proofs.
 
+---
+
+## ▶ NEXT SESSION: Taproot / Schnorr (the planned pick-up)
+
+Build an **11th demo card**. This is the biggest of the remaining options (a brand-new signature
+scheme), so do it in vector-anchored phases — same discipline as the rest of the repo: Python core
+first, anchored to official vectors, then JS mirror, then the card. Mirror everything in `btc.js`.
+
+**Phase A — Schnorr signatures (BIP-340), the foundation.** New file `hermes/schnorr.py`. Don't
+touch the existing ECDSA path (`ecdsa.py`) — Schnorr is separate.
+- **Tagged hashes:** `tagged_hash(tag, msg) = sha256(sha256(tag) + sha256(tag) + msg)`. We already
+  have `sha256`. Every BIP-340/341 hash is tagged (tags: `"BIP0340/aux"`, `"BIP0340/nonce"`,
+  `"BIP0340/challenge"`, later `"TapTweak"`, `"TapLeaf"`, `"TapBranch"`).
+- **x-only pubkeys (32 bytes) + even-Y convention.** A pubkey is just `P.x`; whoever uses it assumes
+  the even-Y point. When signing, if `P.y` is odd negate `d` (`d = n - d`); if the nonce point `R.y`
+  is odd negate `k`.
+- **Sign:** `e = int(tagged_hash("BIP0340/challenge", R.x ‖ P.x ‖ m)) mod n`; `sig = R.x ‖ ((k + e·d) mod n)`.
+  Nonce: BIP-340 derives `k` from a tagged hash of (aux_rand ⊕ d) ‖ P.x ‖ m (deterministic; aux_rand
+  may be 32 zero bytes). Implement that nonce function — it's what the test vectors use.
+- **Verify:** `e = tagged_hash(challenge, r ‖ P.x ‖ m)`; check `s·G == R + e·P` with x-only/even-Y
+  lifting (`lift_x`: given x, take the even-Y root — `P` is `≡3 mod 4` so `y = pow(c,(p+1)//4,p)`,
+  we already do this in `PublicKey.parse`).
+- **Anchor:** the official **BIP-340 test-vector CSV**
+  (`github.com/bitcoin/bips/blob/master/bip-0340/test-vectors.csv`) — index/secret/pubkey/aux_rand/
+  message/signature/result rows, incl. must-fail cases. Fetch + bake like the other vectors.
+
+**Phase B — P2TR address (BIP-341 key tweak).** Output key `Q = P + t·G`, where for a key-path-only
+output `t = int(tagged_hash("TapTweak", P.x)) mod n`. The address is **witness v1 + `Q.x` (32 bytes)
+→ bech32m** — and `bech32.py`'s `encode_segwit` ALREADY emits bech32m for witver ≥ 1, so a P2TR
+address is `encode_segwit(hrp, 1, Q.x)` → `bc1p…`. Anchor against a known P2TR address vector (or the
+BIP-341 test vectors). Add `PublicKey.p2tr_address` or a `taproot.py` helper.
+
+**Phase C — the card** `web/taproot/` (an 11th card; accent unused so far — try a gold/orange like
+`#f7a14b` or a magenta). Suggested content: Schnorr sign/verify (and the contrast with ECDSA —
+linear, so signatures *add*), the x-only key + even-Y idea, the key-tweak → `bc1p…` address. Update
+landing page (10→11, lede "Eleven", add `.c11`/`--taproot`), README table, and **re-render og.png**
+(the card text says the demo count — see the og note in Gotchas; source is
+`og-card.html` at repo root).
+
+**Phase D — optional, the Sovereign tie-in.** **MuSig(2) key aggregation** — aggregate N pubkeys into
+one Taproot output so an n-of-n multisig looks (and costs) like single-sig on-chain. This is the modern
+custody frontier (where 2-of-3 vaults are heading) and pairs with the Multisig Vault card. Advanced;
+only if Phases A–C land with room to spare. (Full BIP-341 key-path *sighash* + a real spend is also
+optional — the address + Schnorr sig are the headline.)
+
+**Effort:** Phase A is the real work (a from-scratch sig scheme); B is small (bech32m is done); C is a
+standard card. Likely one focused session for A–C, MuSig as a stretch/second session.
+
+---
+
 ## How to resume
 
 ```bash
@@ -77,6 +127,15 @@ web/               self-contained static site (this is what Pages serves)
   self-send output; spend it again anytime with `cli.py send`.
 - **The testnet demo is baked** (`web/testnet/data/tx.json`) so it survives faucet/API rot — the
   live tx is captured statically, not re-fetched.
+- **`web/og.png` lists the demo count + a pill per demo, so it goes stale when a card is added.**
+  Source is committed at **`og-card.html`** (repo root). To regenerate: edit it (the "…interactive
+  demos" line + add a `.pill`), then render via headless Chrome and downscale 2×→1×:
+  ```bash
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu \
+    --force-device-scale-factor=2 --window-size=1200,630 --screenshot=og-2x.png \
+    "file://$PWD/og-card.html"
+  sips -z 630 1200 og-2x.png --out web/og.png
+  ```
 
 ## Next steps (menu — nothing is required; the project is done)
 
