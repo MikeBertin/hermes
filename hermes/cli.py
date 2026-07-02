@@ -77,7 +77,7 @@ def cmd_send(dest: str, do_broadcast: bool, fee: int = 300) -> None:
     tx = Tx(
         version=1,
         inputs=[TxInput(bytes.fromhex(u["txid"]), u["vout"]) for u in utxos],
-        outputs=[TxOutput(send_amount, address_to_script(dest))],
+        outputs=[TxOutput(send_amount, address_to_script(dest, testnet=TESTNET))],
         testnet=TESTNET,
     )
     for i in range(len(tx.inputs)):

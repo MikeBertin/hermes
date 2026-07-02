@@ -376,6 +376,7 @@
 
   // --- P2WSH multisig (the witness-script form treasuries use) ---------------
   function encodeVarint(i) {
+    if (i > 0xffffffff) throw new Error("varint > 4 bytes not supported here"); // 32-bit shifts below
     if (i < 0xfd) return Uint8Array.of(i);
     if (i <= 0xffff) return Uint8Array.of(0xfd, i & 0xff, i >> 8);
     return Uint8Array.of(0xfe, i & 0xff, (i >> 8) & 0xff, (i >> 16) & 0xff, (i >> 24) & 0xff);
@@ -455,7 +456,9 @@
   function sign(secret, z, k = null, lowS = true) {
     if (k === null) k = rfc6979K(secret, z);
     const r = mod(ptMul(k, G).x, N);
+    if (r === 0n) throw new Error("bad nonce produced r == 0; choose another k");
     let s = mod(modInv(k, N) * (z + r * secret), N);
+    if (s === 0n) throw new Error("bad nonce produced s == 0; choose another k");
     if (lowS && s > N / 2n) s = N - s;
     return { r, s };
   }

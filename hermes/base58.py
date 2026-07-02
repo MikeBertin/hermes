@@ -28,6 +28,8 @@ def b58encode(data: bytes) -> str:
 def b58decode(string: str) -> bytes:
     n = 0
     for ch in string:
+        if ch not in _INDEX:
+            raise ValueError(f"invalid base58 character {ch!r}")
         n = n * 58 + _INDEX[ch]
     # recover the bytes, then restore leading-zero bytes from leading '1's
     body = n.to_bytes((n.bit_length() + 7) // 8, "big")

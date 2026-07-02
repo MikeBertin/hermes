@@ -43,7 +43,12 @@ class HDKey:
         else:
             data = self.public_sec() + index.to_bytes(4, "big")
         I = hmac_sha512(self.chain_code, data)
-        child_secret = (int.from_bytes(I[:32], "big") + self.secret) % N
+        IL = int.from_bytes(I[:32], "big")
+        child_secret = (IL + self.secret) % N
+        if IL >= N or child_secret == 0:
+            # probability ~2^-128; BIP-32 says such a child is invalid and the
+            # caller should proceed with the next index
+            raise ValueError(f"invalid child key at index {index}; use the next index")
         return HDKey(child_secret, I[32:], self.depth + 1, self.fingerprint(), index)
 
     def derive_path(self, path: str) -> "HDKey":

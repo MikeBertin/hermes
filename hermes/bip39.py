@@ -48,6 +48,8 @@ def mnemonic_to_entropy(mnemonic: str) -> bytes:
     words = wordlist()
     index = {w: i for i, w in enumerate(words)}
     parts = mnemonic.split()
+    if len(parts) not in (12, 15, 18, 21, 24):
+        raise ValueError(f"mnemonic must be 12/15/18/21/24 words, got {len(parts)}")
     bits = 0
     for w in parts:
         if w not in index:

@@ -14,7 +14,8 @@ Merkle inclusion proofs.
 - **Live:** https://mikebertin.github.io/hermes/
 - **Repo:** https://github.com/MikeBertin/hermes (public)
 - **On-chain proof:** testnet txid `f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08`
-- **Tests:** `57/57` pytest green; JS cross-checked against the same vectors in-browser (53/53).
+- **Tests:** `89/89` pytest green (57 known-answer vectors + 32 negative-path); JS cross-checked
+  against the same vectors in-browser (53/53).
 
 The 10 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
 Script VM · HD Wallet · Multisig Vault · Merkle Proofs.
@@ -166,7 +167,7 @@ web/               self-contained static site (this is what Pages serves)
 ## Verify-it-still-works checklist
 
 ```bash
-.venv/bin/python -m pytest -q                                  # 37 passed
+.venv/bin/python -m pytest -q                                  # 89 passed
 # dev server up, then open web/shared/test.html → "all 41 vectors pass"
 # spot-check live: https://mikebertin.github.io/hermes/ and /testnet/ (real txid + explorer link)
 ```

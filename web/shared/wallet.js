@@ -137,7 +137,10 @@
       ? H.concatBytes(new Uint8Array(1), H.bigIntToBytes(k.secret, 32), ser32(index))
       : H.concatBytes(pubSec(k), ser32(index));
     const I = hmac512(k.chain, data);
-    const secret = (H.bytesToBigInt(I.slice(0,32)) + k.secret) % H.N;
+    const IL = H.bytesToBigInt(I.slice(0,32));
+    const secret = (IL + k.secret) % H.N;
+    if (IL >= H.N || secret === 0n) // ~2^-128; BIP-32 says skip to the next index
+      throw new Error(`invalid child key at index ${index}; use the next index`);
     return { secret, chain: I.slice(32), depth: k.depth+1, parentFp: fingerprint(k), childNum: index };
   }
   function derivePath(k, path) {

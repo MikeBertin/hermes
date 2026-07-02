@@ -298,29 +298,34 @@ class Tx:
         self.inputs[index].witness = [b"", *sigs, witness_script.raw_serialize()]
 
     def verify_input_p2wsh_multisig(self, index: int, amount: int) -> bool:
-        """Check that the witness carries m valid signatures, in pubkey order,
-        for the m-of-n policy in its trailing witnessScript."""
+        """Check that the witness carries exactly m valid signatures, in pubkey
+        order, for the m-of-n policy in its trailing witnessScript — the same
+        semantics as OP_CHECKMULTISIG, where every provided signature must
+        consume a key (a single bad or out-of-order signature fails the spend)."""
         witness = self.inputs[index].witness
+        if not witness or witness[0] != b"":   # the NULLDUMMY empty element
+            return False
         sigs, raw_script = witness[1:-1], witness[-1]
         script = Script.parse_raw(raw_script)
         # witnessScript = OP_m <pub..> OP_n OP_CHECKMULTISIG
         m = script.cmds[0] - 80
         pubkeys = [c for c in script.cmds[1:-2] if isinstance(c, (bytes, bytearray))]
-        if len(sigs) < m:
+        if len(sigs) != m:
             return False
         z = self.sig_hash_bip143(index, script, amount)
-        points = [PublicKey.parse(p).point for p in pubkeys]
-        matched = 0
+        try:
+            points = [PublicKey.parse(bytes(p)).point for p in pubkeys]
+            parsed = [parse_der(bytes(s)[:-1]) for s in sigs]
+        except Exception:
+            return False
         i = 0
-        for sig in sigs:                       # advance through keys in order
-            parsed = parse_der(bytes(sig)[:-1])
-            while i < len(points):
-                if verify(points[i], z, parsed):
-                    matched += 1
-                    i += 1
-                    break
+        for sig in parsed:                     # each sig must consume a key, in order
+            while i < len(points) and not verify(points[i], z, sig):
                 i += 1
-        return matched >= m
+            if i == len(points):
+                return False
+            i += 1
+        return True
 
 
 def _g_mul(secret: int):
@@ -329,28 +334,50 @@ def _g_mul(secret: int):
 
 
 # --- locking script from an address ------------------------------------------
-def address_to_h160(address: str) -> bytes:
+_P2PKH_VERSIONS = {0x00: False, 0x6F: True}  # version byte -> is-testnet
+_P2SH_VERSIONS = {0x05, 0xC4}                # mainnet '3...' / testnet '2...'
+
+
+def address_to_h160(address: str, testnet: bool | None = None) -> bytes:
+    """Decode a base58 P2PKH address to its 20-byte key hash, rejecting anything
+    that merely *looks* like one — a P2SH address decodes fine but locks to a
+    script hash, and paying it with a P2PKH script would strand the coins."""
     from .base58 import b58check_decode
-    return b58check_decode(address)[1:]      # drop the version byte
+    payload = b58check_decode(address)
+    if len(payload) != 21:
+        raise ValueError(f"bad base58 address payload length: {address}")
+    version, h160 = payload[0], payload[1:]
+    if version in _P2SH_VERSIONS:
+        raise ValueError(f"P2SH addresses are not supported: {address}")
+    if version not in _P2PKH_VERSIONS:
+        raise ValueError(f"unknown address version byte {version:#04x}: {address}")
+    if testnet is not None and _P2PKH_VERSIONS[version] != testnet:
+        net = "testnet" if _P2PKH_VERSIONS[version] else "mainnet"
+        raise ValueError(f"{net} address given for the other network: {address}")
+    return h160
 
 
-def p2pkh_from_address(address: str) -> Script:
-    return p2pkh_script(address_to_h160(address))
+def p2pkh_from_address(address: str, testnet: bool | None = None) -> Script:
+    return p2pkh_script(address_to_h160(address, testnet))
 
 
-def address_to_script(address: str) -> Script:
+def address_to_script(address: str, testnet: bool | None = None) -> Script:
     """The locking script for paying any supported address — base58 P2PKH
-    (``1.../m.../n...``) or native-SegWit P2WPKH (``bc1.../tb1...``)."""
+    (``1.../m.../n...``) or native-SegWit P2WPKH (``bc1.../tb1...``). Pass
+    ``testnet`` to also reject addresses for the wrong network."""
     from .bech32 import decode_segwit
     if address[:3].lower() in ("bc1", "tb1"):
         hrp = address[:2].lower()
+        if testnet is not None and (hrp == "tb") != testnet:
+            net = "testnet" if hrp == "tb" else "mainnet"
+            raise ValueError(f"{net} address given for the other network: {address}")
         witver, prog = decode_segwit(hrp, address)
         if witver is None:
             raise ValueError(f"invalid bech32 address: {address}")
         if witver != 0 or len(prog) != 20:
             raise ValueError("only witness-v0 P2WPKH payments are supported")
         return p2wpkh_script(prog)
-    return p2pkh_from_address(address)
+    return p2pkh_from_address(address, testnet)
 
 
 # --- testnet network I/O (read-only fetch + broadcast) -----------------------

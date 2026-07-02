@@ -150,22 +150,36 @@ def evaluate(script: Script, z: int = 0, locktime: int | None = None, trace: lis
                 return False
             stack.append(stack[-1])
         elif cmd == OP_DROP:
+            if not stack:
+                return False
             stack.pop()
         elif cmd == OP_EQUAL:
+            if len(stack) < 2:
+                return False
             stack.append(b"\x01" if stack.pop() == stack.pop() else b"")
         elif cmd == OP_EQUALVERIFY:
+            if len(stack) < 2:
+                return False
             if stack.pop() != stack.pop():
                 snap(cmd_label(cmd) + "  ✗")
                 return False
         elif cmd == OP_VERIFY:
+            if not stack:
+                return False
             if not is_truthy(stack.pop()):
                 snap(cmd_label(cmd) + "  ✗")
                 return False
         elif cmd == OP_SHA256:
+            if not stack:
+                return False
             stack.append(sha256(stack.pop()))
         elif cmd == OP_HASH160:
+            if not stack:
+                return False
             stack.append(hash160(stack.pop()))
         elif cmd == OP_CHECKSIG:
+            if len(stack) < 2:
+                return False
             sec, sig = stack.pop(), stack.pop()
             try:
                 ok = ecdsa_verify(PublicKey.parse(sec).point, z, parse_sig(sig))
@@ -190,12 +204,16 @@ def evaluate(script: Script, z: int = 0, locktime: int | None = None, trace: lis
 
 
 def _checkmultisig(stack: list, z: int) -> bool:
-    n = decode_num(stack.pop())
-    sec_keys = [stack.pop() for _ in range(n)]        # popped top-first
-    m = decode_num(stack.pop())
-    sigs = [stack.pop() for _ in range(m)]            # popped top-first
     if not stack:
         return False
+    n = decode_num(stack.pop())
+    if n < 0 or len(stack) < n + 1:
+        return False
+    sec_keys = [stack.pop() for _ in range(n)]        # popped top-first
+    m = decode_num(stack.pop())
+    if m < 0 or m > n or len(stack) < m + 1:
+        return False
+    sigs = [stack.pop() for _ in range(m)]            # popped top-first
     stack.pop()                                       # the off-by-one dummy element
     try:
         points = [PublicKey.parse(s).point for s in sec_keys]
