@@ -81,6 +81,9 @@ web/               self-contained static site (this is what Pages serves)
 ## Gotchas a cold session needs
 
 - **Use `.venv`** — never the system python (3.14, externally-managed/PEP-668).
+- **The local dev server caches.** `python -m http.server` sends no cache headers, so the preview
+  browser happily serves a stale `index.html` after edits. If a change "isn't showing", hard-bypass:
+  `fetch("/", {cache:"reload"}).then(() => location.reload())` (or add a `?nocache=` query).
 - **Two tx modules on purpose:** `hermes/tx.py` is the *simplified* UTXO model for the network
   sim; `hermes/transaction.py` is the *real* broadcastable wire format. Don't merge them.
 - **`transaction.py` now does both legacy and SegWit.** Legacy P2PKH: `sign_input`/`sig_hash`.
