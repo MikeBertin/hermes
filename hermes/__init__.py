@@ -27,6 +27,8 @@ from .bip32 import HDKey
 from .bip39 import (
     entropy_to_mnemonic, is_valid, mnemonic_to_entropy, mnemonic_to_seed,
 )
+from . import schnorr
+from .taproot import output_key, p2tr_address, tap_tweak, tweak_secret
 
 __all__ = [
     "FieldElement",
@@ -42,4 +44,5 @@ __all__ = [
     "p2wpkh_script", "p2wsh_script", "p2wsh_address", "address_to_script",
     "merkle_root", "merkle_proof", "merkle_levels", "verify_merkle_proof", "root_from_txids",
     "HDKey", "entropy_to_mnemonic", "mnemonic_to_entropy", "mnemonic_to_seed", "is_valid",
+    "schnorr", "tap_tweak", "output_key", "p2tr_address", "tweak_secret",
 ]

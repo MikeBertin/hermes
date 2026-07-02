@@ -440,3 +440,28 @@ _Append a dated entry every session: what changed · what's next · new decision
   **Validation:** anchored to **real Bitcoin block 100000's merkle root** (4 txs → header root
   f3e94742…), + proof/tamper/odd-duplication/single-leaf tests. **57/57 pytest, 53/53 in-browser,
   console clean.** Remaining optional menu: Taproot/Schnorr, Lightning.
+- **2026-07-02** — **Review hardening: rejection paths (Python + JS) + negative tests.** Fixed three
+  review-found bugs: `address_to_script` silently paid P2SH addresses as P2PKH (now validates the
+  version byte + optional network check, CLI passes testnet); `bip39` accepted 6-word mnemonics /
+  crashed on other bad word counts (now requires 12/15/18/21/24); `verify_input_p2wsh_multisig` was
+  laxer than consensus (now OP_CHECKMULTISIG-strict: exactly m sigs, each consumes a key in order,
+  NULLDUMMY enforced). Plus: Script-VM stack underflow returns False (was IndexError), b58decode
+  raises ValueError on bad chars, BIP-32 invalid-child guard (Python + JS), JS `encodeVarint` 4-byte
+  guard, JS `sign()` r/s zero guards. New `tests/test_negative.py` (32 cases). **89/89 pytest,
+  53/53 in-browser.**
+- **2026-07-02** — **Taproot & Schnorr DONE — an 11th demo card shipped** (enhancement #6, the big
+  one: a from-scratch signature scheme). New `hermes/schnorr.py` (BIP-340: `tagged_hash`, `lift_x`,
+  x-only `pubkey_gen`, deterministic-nonce `sign`, `verify`) and `hermes/taproot.py` (BIP-341 key
+  path: `tap_tweak`, `output_key` Q = P + t·G, `p2tr_address` via the existing bech32m encoder,
+  `tweak_secret` for key-path spends). JS mirror in `btc.js` (`taggedHash`/`liftX`/`schnorrPubkey`/
+  `schnorrSign`/`schnorrVerify`/`tapTweak`/`taprootOutputKey`/`p2trAddress`/`taprootTweakSecret`).
+  **New `web/taproot/` card** ("Taproot & Schnorr", accent #f7a14b): Schnorr sign/verify with the
+  ECDSA-vs-Schnorr equation contrast, a "signatures add" key-aggregation demo (two cosigners → one
+  joint key → one 64-byte sig; the MuSig doorway), and the live TapTweak pipeline P.x → t → Q.x →
+  `bc1p…`. Landing page now 11 cards; README + og.png refreshed. **Validation:** the complete
+  official **BIP-340 test-vector CSV** (all 19 rows: signing byte-for-byte incl. the 2022-12
+  variable-length messages, and every must-fail verification row), the **BIP-341 wallet vector**
+  (internal → tweak → output key → bc1p address), and **BIP-86** end-to-end (standard mnemonic →
+  our BIP-39/32 stack at m/86'/0'/0'/0/0 → published internal/output keys and address), plus a
+  tweaked-secret key-path-spend roundtrip. **124/124 pytest, 62/62 in-browser, console clean.**
+  Remaining optional menu: MuSig2 aggregation, Lightning/HTLC.

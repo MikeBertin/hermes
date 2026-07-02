@@ -111,6 +111,56 @@ const MZ = H.sigHashBip143(
 check("p2wsh BIP-143 sighash", MZ.toString(16),
   "f2f927bc438fa96a58bce4a7b92e4e2920f3df372f810d69f4adaf086d3d3584");
 
+// --- Schnorr (BIP-340 official vectors) ---
+const sv = (hex) => H.hexToBytes(hex);
+// vector 1: sign byte-for-byte
+check("bip340 sign (vector 1)",
+  H.bytesToHex(H.schnorrSign(
+    0xB7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEFn,
+    sv("243f6a8885a308d313198a2e03707344a4093822299f31d0082efa98ec4e6c89"),
+    sv("0000000000000000000000000000000000000000000000000000000000000001"))),
+  "6896bd60eeae296db48a229ff71dfe071bde413e6d43f917dc8dcf8c78de33418906d11ac976abccb20b091292bff4ea897efcb639ea871cfa95f6de339e4b0a");
+check("bip340 pubkey (vector 0)",
+  H.bytesToHex(H.schnorrPubkey(3n)),
+  "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9");
+// vector 4: verify TRUE
+check("bip340 verify (vector 4)",
+  H.schnorrVerify(
+    sv("d69c3509bb99e412e68b0fe8544e72837dfa30746d8be2aa65975f29d22dc7b9"),
+    sv("4df3c3f68fcc83b27e9d42c90431a72499f17875c81a599b566c9889b9696703"),
+    sv("00000000000000000000003b78ce563f89a0ed9414f5aa28ad0d96d6795f9c6376afb1548af603b3eb45c9f8207dee1060cb71c04e80f593060b07d28308d7f4")), true);
+// vector 5: pubkey not on the curve -> FALSE
+check("bip340 rejects off-curve pubkey (vector 5)",
+  H.schnorrVerify(
+    sv("eefdea4cdb677750a420fee807eacf21eb9898ae79b9768766e4faa04a2d4a34"),
+    sv("243f6a8885a308d313198a2e03707344a4093822299f31d0082efa98ec4e6c89"),
+    sv("6cff5c3ba86c69ea4b7376f31a9bcb4f74c1976089b2d9963da2e5543e17776969e89b4c5564d00349106b8497785dd7d1d713a8ae82b32fa79d5f7fc407d39b")), false);
+// vector 8: negated s -> FALSE
+check("bip340 rejects negated s (vector 8)",
+  H.schnorrVerify(
+    sv("dff1d77f2a671c5f36183726db2341be58feae1da2deced843240f7b502ba659"),
+    sv("243f6a8885a308d313198a2e03707344a4093822299f31d0082efa98ec4e6c89"),
+    sv("6cff5c3ba86c69ea4b7376f31a9bcb4f74c1976089b2d9963da2e5543e177769961764b3aa9b2ffcb6ef947b6887a226e8d7c93e00c5ed0c1834ff0d0c2e6da6")), false);
+
+// --- Taproot (BIP-341 wallet vector + BIP-86 first address) ---
+const B341_INTERNAL = sv("d6889cb081036e0faefa3a35157ad71086b123b2b144b649798b494c300a961d");
+check("bip341 tweaked output key",
+  H.bytesToHex(H.taprootOutputKey(B341_INTERNAL)),
+  "53a1f6e454df1aa2776a2814a721372d6258050de330b3c6d10ee8f4e0dda343");
+check("bip341 p2tr address (bech32m)",
+  H.p2trAddress(B341_INTERNAL, false),
+  "bc1p2wsldez5mud2yam29q22wgfh9439spgduvct83k3pm50fcxa5dps59h4z5");
+check("bip86 first receiving address",
+  H.p2trAddress(sv("cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115"), false),
+  "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr");
+// the tweaked secret key-path-spends the tweaked output
+const TAP_D = 0xdeadbeefn;
+check("taproot key-path spend verifies",
+  H.schnorrVerify(
+    H.taprootOutputKey(H.schnorrPubkey(TAP_D)),
+    H.utf8("key-path spend"),
+    H.schnorrSign(H.taprootTweakSecret(TAP_D), H.utf8("key-path spend"))), true);
+
 // --- Merkle root of a real block (block 100000, 4 txs) ---
 const B100K = [
   "8c14f0db3df150123e6f3dbbf30f8b955a8249b62ac1d1ff16284aefa3d06d87",

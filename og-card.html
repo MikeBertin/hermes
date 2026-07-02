@@ -14,7 +14,7 @@
     --bg:#0a0a0f; --panel:#13131c; --line:#23232f; --ink:#e7e7ef; --muted:#8a8a9c;
     --curve:#7cc4ff; --address:#ffc266; --sign:#ff6b6b; --mine:#ff9f43;
     --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
-    --multisig:#ef88c8; --merkle:#4dc9e6;
+    --multisig:#ef88c8; --merkle:#4dc9e6; --taproot:#f7a14b;
     --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -48,7 +48,7 @@
 <body>
   <div class="badge">Hermes</div>
   <h1>Bitcoin from First Principles</h1>
-  <p class="lede">Keys, signatures &amp; proof of work — <b>built from nothing</b>. Ten interactive
+  <p class="lede">Keys, signatures &amp; proof of work — <b>built from nothing</b>. Eleven interactive
     demos, no crypto libraries.</p>
 
   <div class="pills">
@@ -62,6 +62,7 @@
     <span class="pill"><span class="dot" style="background:var(--wallet)"></span>HD wallet</span>
     <span class="pill"><span class="dot" style="background:var(--multisig)"></span>multisig</span>
     <span class="pill"><span class="dot" style="background:var(--merkle)"></span>Merkle / SPV</span>
+    <span class="pill"><span class="dot" style="background:var(--taproot)"></span>Taproot / Schnorr</span>
   </div>
 
   <div class="code">0488b21e · OP_CHECKSIG<br>y² = x³ + 7&nbsp;&nbsp;mod p<br>SHA-256 · RIPEMD-160 · Base58</div>

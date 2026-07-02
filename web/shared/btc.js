@@ -477,6 +477,68 @@
     return mod((sig1.s * k - z1) * modInv(r, N), N);
   }
 
+  // --- Schnorr signatures (BIP-340) -------------------------------------------
+  // The Taproot signature scheme: same curve, cleaner equation (s = k + e·d,
+  // no inverses), x-only 32-byte pubkeys with an implied even Y, and every
+  // hash domain-separated by a tag.
+  function taggedHash(tag, msg) {
+    const t = sha256(utf8(tag));
+    return sha256(concatBytes(t, t, msg));
+  }
+  // the point with this x and even y, or null if x isn't on the curve
+  function liftX(x) {
+    if (x <= 0n || x >= P) return null;
+    const c = mod(x * x * x + B, P);
+    const y = modPow(c, (P + 1n) / 4n, P);
+    if (mod(y * y, P) !== c) return null;
+    return { x, y: y % 2n === 0n ? y : P - y };
+  }
+  const schnorrPubkey = (secret) => bigIntToBytes(ptMul(secret, G).x, 32);
+  function schnorrSign(secret, msg, auxRand = new Uint8Array(32)) {
+    const pt = ptMul(secret, G);
+    const d = pt.y % 2n === 0n ? secret : N - secret;   // even-Y convention
+    const px = bigIntToBytes(pt.x, 32);
+    const aux = taggedHash("BIP0340/aux", auxRand);
+    const t = bigIntToBytes(d, 32).map((b, i) => b ^ aux[i]);
+    const k0 = mod(bytesToBigInt(taggedHash("BIP0340/nonce", concatBytes(t, px, msg))), N);
+    if (k0 === 0n) throw new Error("bad nonce: k == 0");
+    const R = ptMul(k0, G);
+    const k = R.y % 2n === 0n ? k0 : N - k0;            // even-Y for R too
+    const rx = bigIntToBytes(R.x, 32);
+    const e = mod(bytesToBigInt(taggedHash("BIP0340/challenge", concatBytes(rx, px, msg))), N);
+    return concatBytes(rx, bigIntToBytes(mod(k + e * d, N), 32));
+  }
+  function schnorrVerify(pubkey, msg, sig) {
+    if (pubkey.length !== 32 || sig.length !== 64) return false;
+    const pt = liftX(bytesToBigInt(pubkey));
+    if (!pt) return false;
+    const r = bytesToBigInt(sig.slice(0, 32));
+    const s = bytesToBigInt(sig.slice(32));
+    if (r >= P || s >= N) return false;
+    const e = mod(bytesToBigInt(taggedHash("BIP0340/challenge", concatBytes(sig.slice(0, 32), pubkey, msg))), N);
+    const R = ptAdd(ptMul(s, G), ptMul(e, { x: pt.x, y: P - pt.y })); // s·G - e·P
+    return R !== null && R.y % 2n === 0n && R.x === r;
+  }
+
+  // --- Taproot (BIP-341, key path) --------------------------------------------
+  // Q = P + t·G with t = taggedHash("TapTweak", P.x); the address is witness
+  // v1 + Q.x in bech32m (bc1p…).
+  const tapTweak = (internalKey) => mod(bytesToBigInt(taggedHash("TapTweak", internalKey)), N);
+  function taprootOutputKey(internalKey) {
+    const pt = liftX(bytesToBigInt(internalKey));
+    if (!pt) throw new Error("internal key is not on the curve");
+    const Q = ptAdd(pt, ptMul(tapTweak(internalKey), G));
+    return bigIntToBytes(Q.x, 32);
+  }
+  const p2trAddress = (internalKey, testnet = false) =>
+    encodeSegwit(testnet ? "tb" : "bc", 1, taprootOutputKey(internalKey));
+  // the secret that key-path-spends the tweaked output
+  function taprootTweakSecret(secret) {
+    const pt = ptMul(secret, G);
+    const d = pt.y % 2n === 0n ? secret : N - secret;
+    return mod(d + tapTweak(bigIntToBytes(pt.x, 32)), N);
+  }
+
   // --- Merkle trees + inclusion proofs (SPV) ---------------------------------
   const bytesEqual = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
   const merkleParent = (l, r) => doubleSha256(concatBytes(l, r));
@@ -529,6 +591,9 @@
     encodeSegwit, p2wpkhAddress, convertBits,
     // p2wsh multisig
     multisigScript, p2wshAddress, sigHashBip143, encodeVarint,
+    // schnorr / taproot
+    taggedHash, liftX, schnorrPubkey, schnorrSign, schnorrVerify,
+    tapTweak, taprootOutputKey, p2trAddress, taprootTweakSecret,
     // merkle / spv
     merkleRoot, merkleProof, merkleLevels, verifyMerkleProof,
     // ecdsa

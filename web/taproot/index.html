@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taproot &amp; Schnorr — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Taproot &amp; Schnorr — Hermes">
+<meta property="og:description" content="Bitcoin's cleaner signature — x-only keys, signatures that add, and the tweak that turns a key into a bc1p… address.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#f7a14b;--accent-ink:#2a1600}
+  .card2{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card2 + .card2{margin-top:16px}
+  .card2 h2{margin-top:0}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-family:var(--mono);font-size:12.5px;align-items:baseline}
+  .kv .lab{color:var(--muted);white-space:nowrap}
+  .kv .num{word-break:break-all;color:var(--ink)}
+  .kv .num.r{color:var(--accent)}
+  .badge2{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:13px;
+    padding:7px 12px;border-radius:8px;font-weight:600;margin-top:6px}
+  .badge2.ok{background:rgba(88,214,141,.14);color:var(--good)}
+  .badge2.no{background:rgba(255,107,107,.14);color:var(--bad)}
+  .formula{font-family:var(--mono);font-size:12.5px;color:var(--muted);line-height:1.9;margin:6px 0}
+  .formula b{color:var(--ink)}
+  .formula .a{color:var(--accent)}
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 2px}
+  .vs .side{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .vs .side h4{margin:0 0 6px;font-size:11px;font-family:var(--mono);letter-spacing:1.2px;
+    text-transform:uppercase;color:var(--muted)}
+  .vs .side.schnorr{border-color:rgba(247,161,75,.4)}
+  .vs .side.schnorr h4{color:var(--accent)}
+  .vs .side .formula{margin:0;font-size:12px}
+  .signerline{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;
+    padding:8px 0;border-bottom:1px solid var(--line)}
+  .signerline:last-of-type{border-bottom:none}
+  .signerline .dot{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+    font-weight:700;background:#1c1c27;color:var(--accent);flex:none}
+  .signerline .pk{color:var(--muted);word-break:break-all}
+  .agg{background:#0e0e16;border:1px dashed var(--accent);border-radius:10px;padding:12px 14px;margin-top:12px}
+  .agg .lab2{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:5px}
+  .agg .num{font-family:var(--mono);font-size:12px;color:var(--accent);word-break:break-all}
+  .arrow-d{color:var(--muted);text-align:center;font-size:15px;margin:2px 0;line-height:1.2}
+  .stg{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .stg .lab2{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:5px}
+  .stg .num{font-family:var(--mono);font-size:11.5px;color:var(--ink);word-break:break-all}
+  .stg.final{border-color:var(--accent)}
+  .stg.final .num{color:var(--accent);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Taproot &amp; Schnorr</div>
+  <header class="hero">
+    <h1>Taproot &amp; Schnorr</h1>
+    <p class="sub">
+      Bitcoin launched with ECDSA because Schnorr's cleaner scheme was patented. The patent died,
+      and in 2021 the <b>Taproot</b> upgrade brought it home (<span class="x" data-pop="bip340">BIP-340</span>).
+      Same curve, same keys — but the equation is <b>linear</b>, so signatures and keys can
+      <b>add</b>; and every output hides behind one
+      <span class="x" data-pop="tweak">tweaked key</span>, so a plain payment, a multisig vault
+      and a secret script tree all look identical on-chain: <span class="mono">bc1p…</span>
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="card2">
+        <h2>1 · Schnorr sign &amp; verify</h2>
+        <label>Message to sign</label>
+        <input type="text" id="msg" value="Pay Alice 0.5 BTC" spellcheck="false">
+        <div class="row" style="margin-top:10px">
+          <button id="signBtn" class="primary">Sign</button>
+          <button id="tamper">Tamper the message</button>
+        </div>
+        <div class="kv" style="margin-top:16px">
+          <span class="lab">R.x =</span><span class="num r" id="sigr">–</span>
+          <span class="lab">s =</span><span class="num" id="sigs">–</span>
+        </div>
+        <div id="verBadge" class="badge2 no" style="margin-top:14px">not signed yet</div>
+        <div class="vs">
+          <div class="side">
+            <h4>ECDSA (old)</h4>
+            <div class="formula">s = k⁻¹(z + r·d)<br>verify needs s⁻¹ too</div>
+          </div>
+          <div class="side schnorr">
+            <h4>Schnorr (Taproot)</h4>
+            <div class="formula">s = k + <span class="a">e</span>·d<br>s·G == R + <span class="a">e</span>·P</div>
+          </div>
+        </div>
+        <p class="hint" style="margin:10px 0 0">No modular inverse anywhere —
+          <span class="mono">e</span> is a <span class="x" data-pop="tagged">tagged hash</span> of
+          <span class="mono">R.x ‖ P.x ‖ m</span>, and the nonce is derived deterministically from
+          the key and message, so the PS3 nonce-reuse bug (demo 3) is gone by construction.</p>
+      </div>
+
+      <div class="card2" style="border-color:rgba(247,161,75,.35)">
+        <h2>2 · The superpower — signatures add</h2>
+        <p class="hint" style="margin:-2px 0 8px">Because signing is linear, two cosigners can
+          <b>sum their keys</b> and produce one ordinary signature for the sum. The verifier — and
+          the blockchain — sees a single key, a single 64-byte signature.</p>
+        <div class="signerline"><span class="dot">A</span><span>Alice &nbsp;<span class="pk" id="p1">–</span></span></div>
+        <div class="signerline"><span class="dot">B</span><span>Bob &nbsp;&nbsp;&nbsp;<span class="pk" id="p2">–</span></span></div>
+        <div class="agg">
+          <div class="lab2">joint key &nbsp;P<sub>A</sub> + P<sub>B</sub> — one point, two owners</div>
+          <div class="num" id="pagg">–</div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button id="jointSign" class="primary">Sign jointly</button>
+          <button id="newPair">New cosigners</button>
+        </div>
+        <div id="aggBadge" class="badge2 no" style="margin-top:12px">not signed yet</div>
+        <p class="hint" style="margin:10px 0 0">This is the door to <b>MuSig2</b>: an n-of-n vault
+          that costs and looks exactly like a single-sig payment — compare the 253-byte witness in
+          demo 9. (Real MuSig adds hashing so a cosigner can't craft a malicious "rogue" key;
+          the algebra shown here is the heart of it.)</p>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>Your key pair</h2>
+        <label>Private key d</label>
+        <input type="text" id="priv" spellcheck="false">
+        <button id="rand" class="primary" style="margin-top:10px;width:100%">Random key</button>
+        <div class="kv" style="margin-top:14px">
+          <span class="lab">P.x</span><span class="num" id="pubx" style="font-size:11px">–</span>
+        </div>
+        <p class="hint">An <span class="x" data-pop="xonly">x-only pubkey</span>: 32 bytes, no
+          <span class="mono">02</span>/<span class="mono">03</span> prefix — of the two curve points
+          with this x, the even-Y one is implied.</p>
+      </div>
+
+      <div class="panel">
+        <h2>The Taproot address</h2>
+        <div class="stg">
+          <div class="lab2">internal key &nbsp;P.x</div>
+          <div class="num" id="tw-p">–</div>
+        </div>
+        <div class="arrow-d">↓ &nbsp;t = tagged_hash("TapTweak", P.x)</div>
+        <div class="stg">
+          <div class="lab2">tweak &nbsp;t</div>
+          <div class="num" id="tw-t">–</div>
+        </div>
+        <div class="arrow-d">↓ &nbsp;Q = P + t·G</div>
+        <div class="stg">
+          <div class="lab2">output key &nbsp;Q.x</div>
+          <div class="num" id="tw-q">–</div>
+        </div>
+        <div class="arrow-d">↓ &nbsp;witness v1 + bech32m</div>
+        <div class="stg final">
+          <div class="lab2">address</div>
+          <div class="num" id="tw-addr">–</div>
+        </div>
+        <p class="hint" style="margin-top:10px">The tweak can also commit to a whole
+          <b>tree of scripts</b> — but a key-path spend never reveals whether one exists.
+          Your wallet's <span class="mono">bc1p…</span> addresses are built exactly like this
+          (BIP-86).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Cleaner math, provable security</h3>
+        <p>ECDSA's <span class="mono">k⁻¹</span> was a patent workaround with a folklore security
+          argument. Schnorr's linear <span class="mono">s = k + e·d</span> has a clean proof — and
+          it's why signatures can be batch-verified and aggregated.</p></div>
+      <div class="ncard"><h3>Everyone looks the same</h3>
+        <p>Single sig, 2-of-2 MuSig vault, or a key hiding a script tree — every key-path spend is
+          the same 34-byte output and one 64-byte signature. Privacy for the vault, cheaper fees
+          for everyone.</p></div>
+      <div class="ncard"><h3>Tamper-proof, still</h3>
+        <p>Edit one character after signing and verification fails, exactly as with ECDSA — the
+          challenge <span class="mono">e</span> binds the signature to the message <em>and</em> to
+          both points. Different scheme, same guarantee.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  bip340: "<h4>BIP-340</h4><p>The Schnorr signature standard activated with Taproot (Nov 2021). 64-byte signatures, 32-byte x-only public keys, deterministic nonces, and every hash domain-separated by a tag.</p>",
+  xonly: "<h4>x-only public keys</h4><p>A curve point has an x and a y, but the y is redundant — it's one of two values, and BIP-340 fixes the choice: always the <em>even</em> one. So a Taproot pubkey is just 32 bytes of x.</p>",
+  tagged: "<h4>Tagged hashes</h4><p><code>sha256(sha256(tag) ‖ sha256(tag) ‖ msg)</code>. Every BIP-340/341 hash is prefixed with its purpose ("BIP0340/challenge", "TapTweak", …) so a digest from one context can never be replayed in another.</p>",
+  tweak: "<h4>The TapTweak</h4><p>The address key is never a bare wallet key: it's <code>Q = P + t·G</code> where <code>t</code> hashes the key itself (and optionally a tree of fallback scripts). Spending with the key reveals nothing about what else Q could have committed to.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hex = (b) => H.bytesToHex(b);
+  const short = (b) => { const h = hex(b); return h.slice(0, 16) + "…" + h.slice(-12); };
+
+  let secret = 0x0c28fca386c7a227600b2fe50b7cae11ec86d3bf1fbe471be89827e19d72aa1dn;
+  let signed = null;      // {sig, msg}
+
+  // --- card 1: sign / verify ------------------------------------------------
+  function doSign() {
+    const msg = $("msg").value;
+    const sig = H.schnorrSign(secret, H.utf8(msg));
+    signed = { sig, msg };
+    $("sigr").textContent = hex(sig.slice(0, 32));
+    $("sigs").textContent = hex(sig.slice(32));
+    verify();
+  }
+  function verify() {
+    if (!signed) return;
+    const ok = H.schnorrVerify(H.schnorrPubkey(secret), H.utf8($("msg").value), signed.sig);
+    const b = $("verBadge");
+    b.className = "badge2 " + (ok ? "ok" : "no");
+    b.textContent = ok ? "✓ signature VALID" : "✗ signature INVALID";
+  }
+  $("signBtn").addEventListener("click", doSign);
+  $("msg").addEventListener("input", verify);
+  $("tamper").addEventListener("click", () => { $("msg").value += "!"; verify(); });
+
+  // --- card 2: key aggregation ------------------------------------------------
+  let d1, d2;
+  function newPair() {
+    d1 = H.randScalar(); d2 = H.randScalar();
+    $("p1").textContent = short(H.schnorrPubkey(d1));
+    $("p2").textContent = short(H.schnorrPubkey(d2));
+    $("pagg").textContent = hex(H.schnorrPubkey((d1 + d2) % H.N));
+    const b = $("aggBadge");
+    b.className = "badge2 no"; b.textContent = "not signed yet";
+  }
+  function jointSign() {
+    const msg = H.utf8("Withdraw 1.0 BTC from the joint vault");
+    const dJoint = (d1 + d2) % H.N;                    // both secrets required
+    const pAgg = H.schnorrPubkey(dJoint);              // = (P1 + P2).x
+    const ok = H.schnorrVerify(pAgg, msg, H.schnorrSign(dJoint, msg));
+    const b = $("aggBadge");
+    b.className = "badge2 " + (ok ? "ok" : "no");
+    b.textContent = ok
+      ? "✓ one signature, verifies under the joint key — nobody can tell two people signed"
+      : "✗ verification failed";
+  }
+  $("newPair").addEventListener("click", newPair);
+  $("jointSign").addEventListener("click", jointSign);
+
+  // --- right: key panel + tweak pipeline ---------------------------------------
+  function refreshKey() {
+    $("priv").value = secret.toString(16).padStart(64, "0");
+    render();
+  }
+  function render() {
+    const internal = H.schnorrPubkey(secret);
+    $("pubx").textContent = hex(internal);
+    $("tw-p").textContent = hex(internal);
+    $("tw-t").textContent = H.tapTweak(internal).toString(16).padStart(64, "0");
+    $("tw-q").textContent = hex(H.taprootOutputKey(internal));
+    $("tw-addr").textContent = H.p2trAddress(internal, false);
+    signed = null;
+    $("sigr").textContent = "–"; $("sigs").textContent = "–";
+    const b = $("verBadge"); b.className = "badge2 no"; b.textContent = "not signed yet";
+  }
+  $("priv").addEventListener("input", () => {
+    const h = $("priv").value.trim().replace(/^0x/, "");
+    if (/^[0-9a-fA-F]{1,64}$/.test(h)) {
+      const v = BigInt("0x" + h);
+      if (v >= 1n && v < H.N) { secret = v; render(); }
+    }
+  });
+  $("rand").addEventListener("click", () => { secret = H.randScalar(); refreshKey(); });
+
+  refreshKey();
+  newPair();
+  doSign();
+})();
+</script>
+</body>
+</html>
