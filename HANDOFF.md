@@ -23,16 +23,44 @@ Script VM · HD Wallet · Multisig Vault · Merkle Proofs · Taproot & Schnorr.
 
 ---
 
-## ▶ NEXT SESSION (optional — the project is done)
+## ▶ NEXT SESSION: MuSig2 (the planned pick-up — optional, the project is done)
 
-The remaining menu, in rough order of payoff:
+**MuSig2 key aggregation (BIP-327)** — the thing the Taproot card's "signatures add" demo teases.
+Aggregate n pubkeys into ONE key, run a two-round signing ceremony, and the result is a plain
+BIP-340 signature: an n-of-n vault that looks (and costs) exactly like single-sig on-chain. Builds
+directly on `hermes/schnorr.py` + `taproot.py`. Same discipline as always: Python first, anchored
+to official vectors, then JS mirror, then the card.
 
-1. **MuSig2 key aggregation** (the Taproot card teases it): aggregate N pubkeys into one Taproot
-   output so an n-of-n vault looks (and costs) like single-sig. Builds directly on
-   `hermes/schnorr.py` + `taproot.py`; anchor to the BIP-327 reference vectors. Could extend the
-   existing `web/taproot/` card or become a 12th.
-2. **Lightning / HTLC** — builds on the Script VM (hashlocks + timelocks already exist there).
-3. **Polish** — README screen-capture GIF, sibling cross-links (chiron/empedocles footers).
+**Authority:** the BIP ships a reference implementation and JSON vectors — fetch both, don't work
+from memory: `github.com/bitcoin/bips/tree/master/bip-0327` (`reference.py` + `vectors/*.json`:
+`key_agg_vectors.json`, `nonce_agg_vectors.json`, `sign_verify_vectors.json`, `tweak_vectors.json`).
+
+**Phase A — KeyAgg.** New `hermes/musig.py`. Aggregate pubkeys → one x-only key.
+- Gotcha: BIP-327 inputs are **33-byte compressed ("plain") pubkeys, not x-only** — check against
+  the reference, this trips people up.
+- Shape: `L = tagged_hash("KeyAgg list", pk_1‖…‖pk_n)`; per-key coefficient
+  `a_i = tagged_hash("KeyAgg coefficient", L‖pk_i)` **except the second distinct key gets a_i = 1**
+  (an optimization in the spec); `Q = Σ a_i·P_i`. Anchor: `key_agg_vectors.json` (incl. its error
+  cases — fits our negative-test convention).
+
+**Phase B — the two-round signing ceremony.** Each signer makes TWO nonces (that's the "2" in
+MuSig2 — it kills the rogue-nonce/Wagner attack without extra rounds); nonces aggregate; a
+coefficient `b` (tagged hash of the session) combines them into one effective R; each signer emits
+a partial sig `s_i`; the sum is a standard 64-byte BIP-340 sig that `schnorr.verify` already
+accepts. Anchor: `sign_verify_vectors.json` + `nonce_agg_vectors.json` (the vectors supply fixed
+nonces, so everything is deterministic). **Scope control:** implement the n-of-n untweaked path +
+the Taproot tweak (`tweak_vectors.json`, ties into `taproot.tap_tweak`); SKIP adaptor signatures
+and deterministic-nonce signing — not needed for the story.
+
+**Phase C — the card.** Either upgrade the Taproot card's naive-sum demo into the real ceremony,
+or a 12th card (`web/musig/`, pick a fresh accent — unused: e.g. lime `#a8d94b` or coral).
+Suggested beats: n cosigners → KeyAgg → ONE `bc1p…` address (via `p2tr_address`); a round-1/round-2
+ceremony UI (nonces exchanged, partial sigs, combine); the payoff line "compare demo 9's 253-byte
+witness — this vault is 64 bytes and indistinguishable from a lone signer". If a 12th card lands:
+landing page (11→12, lede "Twelve", `.c12`), README table, **re-render og.png** (see Gotchas).
+
+Other menu options: **Lightning/HTLC** (builds on the Script VM's hashlocks + timelocks), or
+**polish** (README screen-capture GIF, sibling cross-links in chiron/empedocles footers).
 
 ---
 
@@ -95,6 +123,11 @@ web/               self-contained static site (this is what Pages serves)
 - **Pages = workflow, not legacy root.** Siblings (chiron/empedocles) serve from main-root; Hermes
   serves `web/` via the Actions workflow because it's a Python+site hybrid. Editing `web/` and
   pushing to `main` auto-redeploys.
+- **If the Pages deploy fails, do NOT `gh run rerun --failed`.** Seen 2026-07-02: the deploy step
+  timed out GitHub-side (`deployment_queued` for 10 min — their infra, not us), and the re-run then
+  failed with *"Multiple artifacts named github-pages"* because re-running the job uploads a second
+  artifact into the same run. The fix is a **fresh run**: `gh workflow run pages.yml` (the workflow
+  has `workflow_dispatch`).
 - **Throwaway testnet key** is in `.testnet-key.json` (gitignored). It still holds the ~0.001 tBTC
   self-send output; spend it again anytime with `cli.py send`.
 - **The testnet demo is baked** (`web/testnet/data/tx.json`) so it survives faucet/API rot — the
