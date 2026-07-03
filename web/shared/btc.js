@@ -805,6 +805,36 @@
       pushData(localDelayedPubkey),
       Uint8Array.of(0x68, 0xac));                    // OP_ENDIF OP_CHECKSIG
   }
+  const lnPaymentHash = (preimage) => sha256(preimage);
+  // BOLT-3 offered HTLC witnessScript (revocation / preimage / timeout branches)
+  function lnHtlcOfferedScript(revocationPubkey, remoteHtlcpubkey, localHtlcpubkey, paymentHash) {
+    return concatBytes(
+      Uint8Array.of(0x76, 0xa9), pushData(hash160(revocationPubkey)), Uint8Array.of(0x87),
+      Uint8Array.of(0x63, 0xac, 0x67),               // OP_IF OP_CHECKSIG OP_ELSE
+      pushData(remoteHtlcpubkey), Uint8Array.of(0x7c, 0x82), pushData(lnScriptNum(32)), Uint8Array.of(0x87),
+      Uint8Array.of(0x64, 0x75, 0x52, 0x7c), pushData(localHtlcpubkey), Uint8Array.of(0x52, 0xae),
+      Uint8Array.of(0x67, 0xa9), pushData(ripemd160(paymentHash)), Uint8Array.of(0x88, 0xac),
+      Uint8Array.of(0x68, 0x68));
+  }
+  // BOLT-3 received (accepted) HTLC witnessScript
+  function lnHtlcReceivedScript(revocationPubkey, remoteHtlcpubkey, localHtlcpubkey, paymentHash, cltvExpiry) {
+    return concatBytes(
+      Uint8Array.of(0x76, 0xa9), pushData(hash160(revocationPubkey)), Uint8Array.of(0x87),
+      Uint8Array.of(0x63, 0xac, 0x67),
+      pushData(remoteHtlcpubkey), Uint8Array.of(0x7c, 0x82), pushData(lnScriptNum(32)), Uint8Array.of(0x87),
+      Uint8Array.of(0x63, 0xa9), pushData(ripemd160(paymentHash)), Uint8Array.of(0x88),
+      Uint8Array.of(0x52, 0x7c), pushData(localHtlcpubkey), Uint8Array.of(0x52, 0xae),
+      Uint8Array.of(0x67, 0x75), pushData(lnScriptNum(cltvExpiry)), Uint8Array.of(0xb1, 0x75, 0xac),
+      Uint8Array.of(0x68, 0x68));
+  }
+  // the canonical hashlock-or-timeout HTLC the routing demo walks through
+  function lnHtlcScript(paymentHash, receiverPubkey, senderPubkey, cltvExpiry) {
+    return concatBytes(
+      Uint8Array.of(0x63, 0xa9), pushData(ripemd160(paymentHash)), Uint8Array.of(0x88),  // OP_IF OP_HASH160 <20> OP_EQUALVERIFY
+      pushData(receiverPubkey), Uint8Array.of(0xac, 0x67),                               // <receiver> OP_CHECKSIG OP_ELSE
+      pushData(lnScriptNum(cltvExpiry)), Uint8Array.of(0xb1, 0x75),                      // <cltv> OP_CLTV OP_DROP
+      pushData(senderPubkey), Uint8Array.of(0xac, 0x68));                                // <sender> OP_CHECKSIG OP_ENDIF
+  }
 
   // hash of a message string, as the integer z that ECDSA signs
   const messageHash = (str) => bytesToBigInt(doubleSha256(utf8(str)));
@@ -837,6 +867,7 @@
     // lightning (BOLT-3)
     lnDerivePubkey, lnDerivePrivkey, lnDeriveRevocationPubkey, lnDeriveRevocationPrivkey,
     lnPerCommitmentSecret, lnFundingScript, lnFundingAddress, lnToLocalScript, lnScriptNum,
+    lnPaymentHash, lnHtlcOfferedScript, lnHtlcReceivedScript, lnHtlcScript,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };

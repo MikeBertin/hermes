@@ -7,11 +7,12 @@ A from-scratch Bitcoin implementation (in the spirit of Karpathy's *"A from-scra
 of Bitcoin in Python"*) turned into a suite of interactive browser visualisations. No crypto
 libraries: the secp256k1 curve, SHA-256, RIPEMD-160, SHA-512, Base58Check, ECDSA — all by hand.
 
-**▶ Live:** https://mikebertin.github.io/hermes/ — thirteen self-contained demos, from the elliptic
+**▶ Live:** https://mikebertin.github.io/hermes/ — fourteen self-contained demos, from the elliptic
 curve through to a **real transaction broadcast to the Bitcoin testnet**
 ([on-chain proof](https://blockstream.info/testnet/tx/f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08)),
 a 2-of-3 multisig vault, trustless Merkle inclusion proofs, Taproot's Schnorr signatures, a
-MuSig2 signing ceremony, and a Lightning channel's revocation/penalty mechanism.
+MuSig2 signing ceremony, a Lightning channel's revocation/penalty mechanism, and a multi-hop HTLC
+routed payment.
 
 Companion to [Chiron](https://mikebertin.github.io/chiron/) (computational physics),
 [Empedocles](https://mikebertin.github.io/empedocles/) (evolutionary algorithms), and
@@ -22,7 +23,7 @@ Companion to [Chiron](https://mikebertin.github.io/chiron/) (computational physi
 Hermes was the Greek god of commerce *and* of boundaries, messages, and secrets — whence
 *hermetic*, "sealed". Money, cryptography, and signed messages are his exact portfolio.
 
-## The thirteen demos
+## The fourteen demos
 
 Each is a single self-contained `index.html` — no build step, no framework, no dependencies.
 
@@ -41,6 +42,7 @@ Each is a single self-contained `index.html` — no build step, no framework, no
 | 11 | **Taproot & Schnorr** | Bitcoin's 2021 signature upgrade (BIP-340/341): x-only keys, `s = k + e·d` with no inverses, keys that **add** (two owners, one signature — the MuSig idea), and the TapTweak that turns a key into a `bc1p…` address. |
 | 12 | **MuSig2** | Three cosigners aggregate into ONE key (BIP-327), run the two-round nonce/partial-signature ceremony, and produce a single 64-byte BIP-340 signature — an n-of-n vault indistinguishable from, and 4× cheaper than, demo 9's on-chain multisig. |
 | 13 | **Lightning Channels** | Layer 2 (BOLT-3): open a 2-of-2 channel, pay off-chain thousands of times, and see the **revocation/penalty** mechanism that makes it trustless — publish a revoked commitment and the counterparty's revocation key sweeps *everything*. The `to_local` script (`OP_IF`/`OP_CHECKSEQUENCEVERIFY`), the blinded revocation key, and per-commitment secrets, all real. |
+| 14 | **HTLC Routing** | Layer 2: Alice pays Carol *through* Bob with no direct channel. Each hop is a hash-time-locked contract (HTLC) on the same payment hash, so **one preimage settles the whole path** — and decreasing per-hop timelocks (`cltv_expiry_delta`) mean the router can never be left out of pocket. The BOLT-3 offered/received HTLC scripts are cross-checked byte-for-byte against the spec's Appendix C. |
 
 ## The Python core
 
@@ -50,7 +52,7 @@ source of truth the browser demos visualise, cross-checked against official prot
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install pytest
-.venv/bin/python -m pytest        # 188 tests — official BIP / BOLT vectors + rejection paths, all green
+.venv/bin/python -m pytest        # 194 tests — official BIP / BOLT vectors + rejection paths, all green
 ```
 
 The testnet CLI builds, signs and broadcasts a real (valueless) testnet transaction:

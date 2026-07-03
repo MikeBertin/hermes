@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTLC Routing — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="HTLC Routing — Hermes">
+<meta property="og:description" content="One payment hops across the Lightning Network trustlessly — a hash-time-locked contract per hop, one preimage settles the whole path (BOLT-3).">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#2dd4bf;--accent-ink:#04201b}
+  .card2{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card2 + .card2{margin-top:14px}
+  .card2 h2{margin-top:0}
+  /* the route diagram */
+  .route{display:flex;align-items:stretch;gap:0;margin:6px 0 4px}
+  .node{flex:0 0 84px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+  .node .disc{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-weight:700;
+    font-size:19px;background:#161620;border:2px solid var(--line);transition:border-color .25s,background .25s}
+  .node.lit .disc{border-color:var(--accent);color:var(--accent)}
+  .node .nm{font-family:var(--mono);font-size:12px;color:var(--ink)}
+  .node .role{font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .hop{flex:1;position:relative;display:flex;flex-direction:column;justify-content:center;
+    align-items:center;padding:0 4px;min-width:0}
+  .hop .wire{width:100%;height:3px;border-radius:2px;background:#23232f;position:relative;overflow:hidden}
+  .hop .wire i{position:absolute;inset:0;width:0;background:var(--accent);transition:width .5s}
+  .hop.locked .wire i{width:100%}
+  .hop .amt{font-family:var(--mono);font-size:12px;color:var(--ink);margin-bottom:6px}
+  .hop .tmo{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:6px}
+  .hop .flow{position:absolute;top:50%;font-size:15px;transform:translateY(-50%);opacity:0;transition:opacity .3s}
+  .hop.claim .flow.back{opacity:1;color:var(--accent)}
+  .hop.refund .wire i{background:var(--muted);width:100%}
+  .hop .st{font-family:var(--mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;margin-top:5px}
+  .hop.locked .st{color:var(--accent)} .hop.claim .st{color:var(--good)} .hop.refund .st{color:var(--muted)}
+  .steps{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0 6px}
+  .steps.three{grid-template-columns:1fr 1fr 1fr}
+  .steps button{padding:11px 8px}
+  .log{font-family:var(--mono);font-size:11.5px;line-height:1.7;margin-top:10px;
+    border-top:1px solid var(--line);padding-top:10px;min-height:20px}
+  .log .l{color:var(--muted)} .log .l b{color:var(--ink)} .log .l .g{color:var(--accent)}
+  .log .l.win{color:var(--good)}
+  .badge2{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;
+    padding:8px 12px;border-radius:8px;font-weight:600;margin-top:12px;line-height:1.4}
+  .badge2.ok{background:rgba(45,212,191,.15);color:var(--accent)}
+  .badge2.idle{background:#1c1c27;color:var(--muted)}
+  .stg{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .stg + .stg{margin-top:10px}
+  .stg .lab2{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .stg .num{font-family:var(--mono);font-size:11.5px;color:var(--ink);word-break:break-all}
+  .stg .num.hid{color:var(--muted)} .stg .num.rev{color:var(--accent)}
+  .scriptbox{font-family:var(--mono);font-size:11.5px;line-height:1.85;word-break:break-all}
+  .scriptbox .op{color:var(--accent)} .scriptbox .push{color:#8fb7e8}
+  .scriptbox .ifp{color:var(--good)} .scriptbox .elsep{color:var(--muted)}
+  .vrow{font-family:var(--mono);font-size:11.5px;margin-top:8px}
+  .vrow .ok3{color:var(--good);font-weight:700} .vrow .lab3{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / HTLC Routing</div>
+  <header class="hero">
+    <h1>Routing — one payment, many hops</h1>
+    <p class="sub">
+      Demo 13 built a <b>channel</b> between two people. But you don't have a channel with everyone —
+      you reach them <b>through</b> others. Alice pays Carol by routing across Bob, with no trust in
+      Bob and no channel between Alice and Carol. The trick is the
+      <span class="x" data-pop="htlc">HTLC</span>: each hop is locked to the same
+      <span class="x" data-pop="hash">payment hash</span>, so a single
+      <span class="x" data-pop="preimage">preimage</span> — Carol's secret — settles the entire path
+      at once. And <b>decreasing</b> per-hop <span class="x" data-pop="delta">timelocks</span> mean a
+      middle node can never be left out of pocket.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="card2">
+        <h2>The route</h2>
+        <div class="route">
+          <div class="node" id="nAlice"><div class="disc">A</div><div class="nm">Alice</div><div class="role">payer</div></div>
+          <div class="hop" id="hopAB">
+            <div class="amt" id="amtAB">0.0101</div>
+            <div class="wire"><i></i></div>
+            <div class="flow back" style="left:8px">◀</div>
+            <div class="tmo" id="tmoAB">expiry 800100</div>
+            <div class="st" id="stAB">&nbsp;</div>
+          </div>
+          <div class="node" id="nBob"><div class="disc">B</div><div class="nm">Bob</div><div class="role">router</div></div>
+          <div class="hop" id="hopBC">
+            <div class="amt" id="amtBC">0.0100</div>
+            <div class="wire"><i></i></div>
+            <div class="flow back" style="left:8px">◀</div>
+            <div class="tmo" id="tmoBC">expiry 800060</div>
+            <div class="st" id="stBC">&nbsp;</div>
+          </div>
+          <div class="node" id="nCarol"><div class="disc">C</div><div class="nm">Carol</div><div class="role">payee</div></div>
+        </div>
+        <p class="hint" style="margin-top:12px">Bob takes a <b>0.0001 BTC</b> routing fee — he forwards
+          0.0100 to Carol but is owed 0.0101 by Alice. He only ever pays out <em>after</em> he can
+          claim what he's owed, so forwarding is risk-free.</p>
+      </div>
+
+      <div class="card2">
+        <h2>Make the payment</h2>
+        <div class="steps" id="stepRow">
+          <button id="st1" class="primary">① Carol invoices</button>
+          <button id="st2" disabled>② Lock HTLCs forward →</button>
+        </div>
+        <div class="steps three" id="settleRow" style="display:none">
+          <button id="st3" class="primary">③ Carol reveals preimage ◀</button>
+          <button id="st3b">✗ Carol never reveals</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="log" id="log"><span class="l">Carol will generate a secret and invoice Alice for 0.01 BTC.</span></div>
+        <div id="mainBadge" class="badge2 idle">idle — start with Carol's invoice</div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>The invoice</h2>
+        <div class="stg">
+          <div class="lab2">payment hash &nbsp;H = SHA256(preimage) — sent to Alice</div>
+          <div class="num" id="phash">–</div>
+        </div>
+        <div class="stg">
+          <div class="lab2">preimage R &nbsp;— Carol's secret, revealed only to claim</div>
+          <div class="num hid" id="preimage">•••••••• hidden ••••••••</div>
+        </div>
+        <p class="hint">The same H locks <em>both</em> hops. Whoever learns R can claim from the hop
+          behind them — so when Carol pulls her payment, she hands Bob the key to pull his.</p>
+      </div>
+
+      <div class="panel">
+        <h2>One hop's HTLC contract</h2>
+        <div class="scriptbox" id="scriptbox"></div>
+        <div class="vrow" id="verify"></div>
+        <p class="hint" style="margin-top:8px">Two spend paths: the <span class="ifp">IF</span> branch
+          pays the receiver if they reveal a preimage hashing to H; the <span class="elsep">ELSE</span>
+          branch refunds the sender after the timeout (<span class="mono">OP_CHECKLOCKTIMEVERIFY</span>).
+          Real BOLT-3 wraps this in the channel's revocation machinery (demo 13); the logic is this.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>One secret, whole path</h3>
+        <p>Every hop commits to the <em>same</em> payment hash. Carol's single preimage unlocks the
+          Bob→Carol hop, which reveals it to Bob, who uses it on the Alice→Bob hop. The payment
+          settles backward, atomically — either all hops complete or none do.</p></div>
+      <div class="ncard"><h3>Why timelocks decrease</h3>
+        <p>Alice→Bob expires <em>later</em> than Bob→Carol. If Carol claims at the last second, Bob
+          still has a window to claim from Alice with the same preimage. Reverse the order and Bob
+          could pay Carol yet be unable to collect — so each hop subtracts a
+          <span class="mono">cltv_expiry_delta</span>.</p></div>
+      <div class="ncard"><h3>Trustless forwarding</h3>
+        <p>Bob never risks his money: he only forwards a payment he can immediately reclaim, and if
+          Carol vanishes, every HTLC simply times out and each sender is refunded. He isn't trusted —
+          he's <em>incentivised</em>, by the fee, and <em>protected</em>, by the script.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  htlc: "<h4>HTLC</h4><p>Hash-Time-Locked Contract: an output spendable two ways — by revealing a preimage whose hash matches (the receiver got paid), or by the sender after a timeout (a refund). Chain them and one preimage settles a multi-hop path.</p>",
+  hash: "<h4>Payment hash</h4><p>H = SHA256(preimage). Carol shares H in her invoice but keeps the preimage secret. Every hop locks to the same H, which is what ties the path together without anyone trusting anyone.</p>",
+  preimage: "<h4>Preimage</h4><p>Carol's random secret R. Revealing it is the receipt: it proves the payment reached her, and simultaneously lets each upstream hop pull its funds. In the script, OP_HASH160 checks RIPEMD160(SHA256(R)).</p>",
+  delta: "<h4>cltv_expiry_delta</h4><p>Each hop's refund timeout is set higher than the next hop's by a safety margin. This guarantees a routing node can always claim upstream after being claimed downstream — the invariant that makes forwarding safe.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hex = (b) => H.bytesToHex(b);
+  const short = (b, n = 16) => { const h = hex(b); return h.slice(0, n) + "…" + h.slice(-8); };
+
+  const CLTV_AB = 800100, CLTV_BC = 800060;   // Alice->Bob expires later than Bob->Carol
+  const AMT_BC = 1000000, AMT_AB = 1010000;   // sats: Bob forwards 0.01, is owed 0.0101 (0.0001 fee)
+
+  let alice, bob, carol, preimage, phash, hopAB, hopBC, stage;
+
+  function mkKey() { const d = H.randScalar(); return { d, pub: H.sec(H.pubFromSecret(d)) }; }
+
+  function reset() {
+    alice = mkKey(); bob = mkKey(); carol = mkKey();
+    preimage = null; phash = null; hopAB = hopBC = null; stage = 0;
+    $("phash").textContent = "–";
+    $("preimage").textContent = "•••••••• hidden ••••••••";
+    $("preimage").className = "num hid";
+    $("verify").innerHTML = "";
+    render();
+  }
+
+  function invoice() {
+    preimage = new Uint8Array(32); crypto.getRandomValues(preimage);
+    phash = H.lnPaymentHash(preimage);
+    $("phash").textContent = short(phash, 20);
+    stage = 1;
+    log(`<span class="l">Carol picks a secret preimage and sends Alice its hash <b>H</b>. Alice now knows <em>what</em> to pay for, not the secret.</span>`);
+    render();
+  }
+
+  function lock() {
+    // each hop is an HTLC to the same payment hash H, timeouts DECREASING along the route
+    hopAB = H.lnHtlcScript(phash, bob.pub, alice.pub, CLTV_AB);   // Alice pays Bob
+    hopBC = H.lnHtlcScript(phash, carol.pub, bob.pub, CLTV_BC);   // Bob pays Carol
+    stage = 2;
+    log(`<span class="l">HTLCs locked <b>forward</b>: Alice→Bob (expiry <b>${CLTV_AB}</b>) then Bob→Carol (expiry <b>${CLTV_BC}</b>). Money is committed but frozen — only the preimage or a timeout releases it.</span>`);
+    render();
+  }
+
+  // verify a preimage-claim of a hop the way the script would: hashlock + a real signature
+  function claimOk(hopScript, receiver, amount, idx) {
+    const spk = H.concatBytes(Uint8Array.of(0x00, 0x20), H.sha256(hopScript));
+    const prevout = { txid: hex(H.sha256(H.utf8("htlc" + idx))), index: 0, sequence: 0xffffffff };
+    const out = { amount: amount - 200, scriptPubKey: H.concatBytes(Uint8Array.of(0x00,0x14), H.hash160(receiver.pub)) };
+    const z = H.sigHashBip143(prevout, hopScript, amount, out);
+    const sig = H.sign(receiver.d, z);
+    const hashlock = hex(H.lnPaymentHash(preimage)) === hex(phash);   // sha256(R) == H
+    const sigOk = H.verify(H.pubFromSecret(receiver.d), z, sig);
+    return hashlock && sigOk;
+  }
+
+  function settle() {
+    // BACKWARD: Carol claims from Bob by revealing R, then Bob claims from Alice with the same R
+    $("preimage").textContent = short(preimage, 24);
+    $("preimage").className = "num rev";
+    const bcOk = claimOk(hopBC, carol, AMT_BC, "bc");
+    const abOk = claimOk(hopAB, bob, AMT_AB, "ab");
+    stage = 3;
+    render();
+    $("verify").innerHTML =
+      `<div><span class="lab3">SHA256(preimage) == H</span> &nbsp;<span class="ok3">${bcOk ? "✓" : "✗"}</span> — the hashlock opens</div>
+       <div style="margin-top:4px"><span class="lab3">receiver signature valid</span> &nbsp;<span class="ok3">${abOk && bcOk ? "✓" : "✗"}</span></div>`;
+    log(`<span class="l win">◀ Carol reveals R to claim <b>0.0100</b> from Bob. Bob now knows R and claims <b>0.0101</b> from Alice. One secret, both hops — the payment reached Carol and Bob earned his fee. ${bcOk && abOk ? "" : ""}</span>`);
+    $("mainBadge").className = "badge2 ok";
+    $("mainBadge").textContent = "✓ settled — the same preimage unlocked every hop, backward";
+  }
+
+  function timeout() {
+    stage = 4;
+    render();
+    $("verify").innerHTML =
+      `<div><span class="lab3">block height reaches ${CLTV_BC}</span> &nbsp;<span class="ok3">✓</span> — Bob→Carol refunds to Bob</div>
+       <div style="margin-top:4px"><span class="lab3">block height reaches ${CLTV_AB}</span> &nbsp;<span class="ok3">✓</span> — Alice→Bob refunds to Alice</div>`;
+    log(`<span class="l">Carol never reveals R. Each HTLC simply expires: Bob→Carol first (at ${CLTV_BC}), then Alice→Bob (at ${CLTV_AB}). Every sender is refunded — <b>nobody loses a satoshi</b>. This is why Bob can forward without trusting anyone.</span>`);
+    $("mainBadge").className = "badge2 idle";
+    $("mainBadge").textContent = "○ timed out — all HTLCs refunded, no funds lost";
+  }
+
+  function log(html) { $("log").innerHTML = html; }
+
+  function renderScript() {
+    // show the canonical HTLC script (built once we have a payment hash)
+    if (!phash) { $("scriptbox").innerHTML = '<span class="elsep">— waiting for the invoice —</span>'; return; }
+    const s = H.lnHtlcScript(phash, carol.pub, bob.pub, CLTV_BC);
+    // annotate opcode by opcode
+    const OPS = {0x63:"OP_IF",0x67:"OP_ELSE",0x68:"OP_ENDIF",0x75:"OP_DROP",0xa9:"OP_HASH160",
+      0x88:"OP_EQUALVERIFY",0xac:"OP_CHECKSIG",0xb1:"OP_CHECKLOCKTIMEVERIFY"};
+    const out = []; let i = 0;
+    while (i < s.length) {
+      const b = s[i];
+      if (OPS[b]) { out.push(`<span class="op">${OPS[b]}</span>`); i++; }
+      else if (b <= 75) {
+        const data = s.slice(i+1, i+1+b);
+        let label = b === 33 ? "&lt;pubkey&gt;" : b === 20 ? "&lt;RIPEMD160(H)&gt;" : "&lt;data&gt;";
+        if (b <= 4) { let n=0; for (let k=data.length-1;k>=0;k--) n=n*256+data[k]; label = `&lt;${n}&gt;`; }
+        out.push(`<span class="push">${label}</span>`); i += 1 + b;
+      } else { out.push(`<span class="op">0x${b.toString(16)}</span>`); i++; }
+    }
+    $("scriptbox").innerHTML = out.join(" ");
+  }
+
+  function render() {
+    // node/hop highlighting per stage
+    ["nAlice","nBob","nCarol"].forEach(id => $(id).classList.toggle("lit", stage >= 2));
+    const hAB = $("hopAB"), hBC = $("hopBC");
+    hAB.className = "hop" + (stage >= 2 ? " locked" : "") + (stage === 3 ? " claim" : "") + (stage === 4 ? " refund" : "");
+    hBC.className = "hop" + (stage >= 2 ? " locked" : "") + (stage === 3 ? " claim" : "") + (stage === 4 ? " refund" : "");
+    const stTxt = stage === 3 ? "claimed" : stage === 4 ? "refunded" : stage >= 2 ? "locked" : "";
+    $("stAB").textContent = stTxt; $("stBC").textContent = stTxt;
+
+    $("st1").disabled = stage !== 0;
+    $("st2").disabled = stage !== 1;
+    $("st1").className = stage === 0 ? "primary" : "";
+    $("st2").className = stage === 1 ? "primary" : "";
+    $("settleRow").style.display = stage >= 2 ? "grid" : "none";
+    $("stepRow").style.display = stage >= 2 ? "none" : "grid";
+    $("st3").disabled = stage !== 2; $("st3b").disabled = stage !== 2;
+
+    if (stage === 0) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "idle — start with Carol's invoice"; }
+    else if (stage === 1) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "invoice ready — lock the HTLCs forward"; }
+    else if (stage === 2) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "HTLCs locked — settle with the preimage, or let them time out"; }
+    renderScript();
+  }
+
+  $("st1").addEventListener("click", invoice);
+  $("st2").addEventListener("click", lock);
+  $("st3").addEventListener("click", settle);
+  $("st3b").addEventListener("click", timeout);
+  $("reset").addEventListener("click", reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>

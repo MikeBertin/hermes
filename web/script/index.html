@@ -115,8 +115,8 @@ window.POPS = {
 
   // opcodes (mirror hermes/script.py)
   const OP = { OP_0:0, OP_1:81, OP_2:82, OP_3:83, OP_IF:99, OP_NOTIF:100, OP_ELSE:103,
-    OP_ENDIF:104, OP_VERIFY:105, OP_DROP:117, OP_DUP:118, OP_EQUAL:135,
-    OP_EQUALVERIFY:136, OP_SHA256:168, OP_HASH160:169, OP_CHECKSIG:172,
+    OP_ENDIF:104, OP_VERIFY:105, OP_DROP:117, OP_DUP:118, OP_SWAP:124, OP_SIZE:130,
+    OP_EQUAL:135, OP_EQUALVERIFY:136, OP_SHA256:168, OP_HASH160:169, OP_CHECKSIG:172,
     OP_CHECKMULTISIG:174, OP_CHECKLOCKTIMEVERIFY:177, OP_CHECKSEQUENCEVERIFY:178 };
   const OPNAME = Object.fromEntries(Object.entries(OP).map(([k,v]) => [v,k]));
 
@@ -214,6 +214,8 @@ window.POPS = {
           else if (op === OP.OP_2) stack.push({ bytes:encodeNum(2), label:"2" });
           else if (op === OP.OP_3) stack.push({ bytes:encodeNum(3), label:"3" });
           else if (op === OP.OP_DROP) stack.pop();
+          else if (op === OP.OP_SWAP) { const n=stack.length; const t=stack[n-1]; stack[n-1]=stack[n-2]; stack[n-2]=t; }
+          else if (op === OP.OP_SIZE) stack.push({ bytes:encodeNum(stack[stack.length-1].bytes.length), label:"size" });
           else if (op === OP.OP_DUP) stack.push({ ...stack[stack.length-1] });
           else if (op === OP.OP_HASH160) { const x=stack.pop(); stack.push({ bytes:H.hash160(x.bytes), label:"hash160" }); }
           else if (op === OP.OP_SHA256) { const x=stack.pop(); stack.push({ bytes:H.sha256(x.bytes), label:"sha256" }); }

@@ -24,11 +24,13 @@ OP_IF = 99
 OP_NOTIF = 100
 OP_ELSE = 103
 OP_ENDIF = 104
+OP_VERIFY = 105
 OP_DROP = 117
 OP_DUP = 118
+OP_SWAP = 124
+OP_SIZE = 130
 OP_EQUAL = 135
 OP_EQUALVERIFY = 136
-OP_VERIFY = 105
 OP_SHA256 = 168
 OP_HASH160 = 169
 OP_CHECKSIG = 172
@@ -38,9 +40,10 @@ OP_CHECKSEQUENCEVERIFY = 178
 
 OP_NAMES = {
     0: "OP_0", 99: "OP_IF", 100: "OP_NOTIF", 103: "OP_ELSE", 104: "OP_ENDIF",
-    105: "OP_VERIFY", 117: "OP_DROP", 118: "OP_DUP", 135: "OP_EQUAL",
-    136: "OP_EQUALVERIFY", 168: "OP_SHA256", 169: "OP_HASH160", 172: "OP_CHECKSIG",
-    174: "OP_CHECKMULTISIG", 177: "OP_CHECKLOCKTIMEVERIFY", 178: "OP_CHECKSEQUENCEVERIFY",
+    105: "OP_VERIFY", 117: "OP_DROP", 118: "OP_DUP", 124: "OP_SWAP", 130: "OP_SIZE",
+    135: "OP_EQUAL", 136: "OP_EQUALVERIFY", 168: "OP_SHA256", 169: "OP_HASH160",
+    172: "OP_CHECKSIG", 174: "OP_CHECKMULTISIG", 177: "OP_CHECKLOCKTIMEVERIFY",
+    178: "OP_CHECKSEQUENCEVERIFY",
     **{80 + i: f"OP_{i}" for i in range(1, 17)},
 }
 
@@ -194,6 +197,14 @@ def evaluate(script: Script, z: int = 0, locktime: int | None = None,
             if not stack:
                 return False
             stack.pop()
+        elif cmd == OP_SWAP:
+            if len(stack) < 2:
+                return False
+            stack[-1], stack[-2] = stack[-2], stack[-1]
+        elif cmd == OP_SIZE:
+            if not stack:
+                return False
+            stack.append(encode_num(len(stack[-1])))   # push length, leave the item
         elif cmd == OP_EQUAL:
             if len(stack) < 2:
                 return False

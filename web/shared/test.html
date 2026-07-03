@@ -306,6 +306,20 @@ const LN_TL = H.lnToLocalScript(H.sec(LN_BP), 144, H.sec(LN_PP));
 check("bolt3 to_local script (OP_IF … OP_CSV OP_DROP … OP_ENDIF OP_CHECKSIG)",
   H.bytesToHex(LN_TL.slice(0, 1)) + H.bytesToHex(LN_TL.slice(-1)) +
   (H.bytesToHex(LN_TL).includes("b275") ? "-csv" : ""), "63ac-csv");
+// BOLT-3 Appendix C: HTLC witnessScripts, byte-for-byte
+const C_REVPUB = H.hexToBytes("0212a140cd0c6539d07cd08dfe09984dec3251ea808b892efeac3ede9402bf2b19");
+const C_REMOTE = H.hexToBytes("0394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b");
+const C_LOCAL = H.hexToBytes("030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e7");
+check("bolt3 offered HTLC script (Appendix C htlc #2)",
+  H.bytesToHex(H.lnHtlcOfferedScript(C_REVPUB, C_REMOTE, C_LOCAL, H.lnPaymentHash(new Uint8Array(32).fill(2)))),
+  "76a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d8825681" +
+  "6826d6231c068d4a5b7c820120876475527c21030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e7" +
+  "52ae67a914b43e1b38138a41b37f7cd9a1d274bc63e3a9b5d188ac6868");
+check("bolt3 received HTLC script (Appendix C htlc #0, cltv 500)",
+  H.bytesToHex(H.lnHtlcReceivedScript(C_REVPUB, C_REMOTE, C_LOCAL, H.lnPaymentHash(new Uint8Array(32)), 500)),
+  "76a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d8825681" +
+  "6826d6231c068d4a5b7c8201208763a914b8bcb07f6344b42ab04250c86a6e8b75d3fdbbc688527c21030d417a46946384f88d5f" +
+  "3337267c5e579765875dc4daca813e21734b140639e752ae677502f401b175ac6868");
 
 // --- Merkle root of a real block (block 100000, 4 txs) ---
 const B100K = [

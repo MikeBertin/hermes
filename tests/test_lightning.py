@@ -17,7 +17,9 @@ from hermes.lightning import (
     derive_pubkey, derive_privkey, derive_revocation_pubkey, derive_revocation_privkey,
     per_commitment_secret, funding_script, funding_address, to_local_script,
     commitment_tx, sign_funding, penalty_tx, sign_penalty, sign_to_local_delayed,
+    htlc_offered_script, htlc_received_script, htlc_script, payment_hash,
 )
+from hermes import PrivateKey, hash160, sha256, ripemd160
 
 
 def _pt(hexsec):
@@ -210,3 +212,93 @@ def test_penalty_witness_is_wire_serializable():
     from hermes import Tx
     raw = penalty.serialize()
     assert Tx.parse(raw).serialize() == raw
+
+
+# --- BOLT-3 Appendix C: HTLC witnessScripts, byte-for-byte -------------------
+# The commitment-tx test vectors publish these keys and the exact HTLC scripts.
+C_REVPUB = bytes.fromhex("0212a140cd0c6539d07cd08dfe09984dec3251ea808b892efeac3ede9402bf2b19")
+C_REMOTE_HTLC = bytes.fromhex("0394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b")
+C_LOCAL_HTLC = bytes.fromhex("030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e7")
+
+
+def test_bolt3_appendix_c_hash_precursors():
+    # RIPEMD160(SHA256(revocationpubkey)) baked into every HTLC script
+    assert hash160(C_REVPUB).hex() == "14011f7254d96b819c76986c277d115efce6f7b5"
+    # RIPEMD160(payment_hash) for htlc 2 (preimage 0x0202..02) and htlc 0 (0x00..00)
+    assert ripemd160(payment_hash(b"\x02" * 32)).hex() == "b43e1b38138a41b37f7cd9a1d274bc63e3a9b5d1"
+    assert ripemd160(payment_hash(b"\x00" * 32)).hex() == "b8bcb07f6344b42ab04250c86a6e8b75d3fdbbc6"
+
+
+def test_bolt3_appendix_c_offered_htlc_script():
+    # HTLC #2 (local->remote, offered), preimage 0x0202..02
+    script = htlc_offered_script(C_REVPUB, C_REMOTE_HTLC, C_LOCAL_HTLC, payment_hash(b"\x02" * 32))
+    assert script.raw_serialize().hex() == (
+        "76a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122c"
+        "c726e9dded053a2184d88256816826d6231c068d4a5b7c820120876475527c21030d417a4694638"
+        "4f88d5f3337267c5e579765875dc4daca813e21734b140639e752ae67a914b43e1b38138a41b37f"
+        "7cd9a1d274bc63e3a9b5d188ac6868")
+
+
+def test_bolt3_appendix_c_received_htlc_script():
+    # HTLC #0 (remote->local, received), preimage 0x00..00, cltv_expiry 500
+    script = htlc_received_script(C_REVPUB, C_REMOTE_HTLC, C_LOCAL_HTLC, payment_hash(b"\x00" * 32), 500)
+    assert script.raw_serialize().hex() == (
+        "76a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122c"
+        "c726e9dded053a2184d88256816826d6231c068d4a5b7c8201208763a914b8bcb07f6344b42ab04"
+        "250c86a6e8b75d3fdbbc688527c21030d417a46946384f88d5f3337267c5e579765875dc4daca81"
+        "3e21734b140639e752ae677502f401b175ac6868")
+
+
+# --- Multi-hop routing: one preimage settles a whole path -------------------
+HZ = int.from_bytes(sha256(b"htlc spend digest"), "big")
+
+
+def _claim(script, secret, preimage):
+    """Receiver spends an HTLC via the preimage (IF branch)."""
+    unlock = Script([ser_sig(sign(secret, HZ)), preimage, b"\x01"])
+    return evaluate(unlock + script, z=HZ)
+
+
+def _refund(script, secret, locktime):
+    """Sender reclaims an HTLC after the timeout (ELSE branch, needs locktime)."""
+    unlock = Script([ser_sig(sign(secret, HZ)), b""])
+    return evaluate(unlock + script, z=HZ, locktime=locktime)
+
+
+def test_htlc_routing_one_preimage_settles_the_path():
+    alice, bob, carol = PrivateKey(0xA11CE), PrivateKey(0xB0B), PrivateKey(0xCA401)
+    apk, bpk, cpk = (k.public_key().sec() for k in (alice, bob, carol))
+
+    # Carol invoices a payment: she picks the preimage, publishes only its hash.
+    preimage = sha256(b"carol's secret")
+    H = payment_hash(preimage)
+
+    # The route sets up HTLCs FORWARD with DECREASING timeouts (the safety margin
+    # each hop needs to claim upstream after being claimed downstream).
+    cltv_ab, cltv_bc = 800_100, 800_060           # Alice->Bob expires later than Bob->Carol
+    hop_ab = htlc_script(H, receiver_pubkey=bpk, sender_pubkey=apk, cltv_expiry=cltv_ab)
+    hop_bc = htlc_script(H, receiver_pubkey=cpk, sender_pubkey=bpk, cltv_expiry=cltv_bc)
+    assert cltv_ab > cltv_bc                       # the routing invariant
+
+    # SETTLE BACKWARD: Carol reveals the preimage to claim from Bob...
+    assert _claim(hop_bc, carol.secret, preimage) is True
+    # ...now Bob knows the preimage and claims the SAME payment from Alice.
+    assert _claim(hop_ab, bob.secret, preimage) is True
+
+    # A wrong preimage cannot claim (the hashlock holds).
+    assert _claim(hop_bc, carol.secret, sha256(b"guess")) is False
+    # The right preimage but the wrong signer also fails (still needs a valid sig).
+    assert _claim(hop_bc, alice.secret, preimage) is False
+
+
+def test_htlc_timeout_refund_respects_cltv():
+    alice, bob = PrivateKey(0xA11CE), PrivateKey(0xB0B)
+    apk, bpk = alice.public_key().sec(), bob.public_key().sec()
+    H = payment_hash(sha256(b"never revealed"))
+    hop = htlc_script(H, receiver_pubkey=bpk, sender_pubkey=apk, cltv_expiry=800_100)
+
+    # If Carol never reveals, Alice (the sender) refunds — but only after the timeout.
+    assert _refund(hop, alice.secret, locktime=800_100) is True    # matured
+    assert _refund(hop, alice.secret, locktime=800_099) is False   # one block too early
+    # and the receiver can't take the refund branch (it checks the sender's key)
+    assert _refund(hop, bob.secret, locktime=800_100) is False

@@ -506,3 +506,21 @@ _Append a dated entry every session: what changed · what's next · new decision
   trimmed to keep two rows: 13 pills, "testnet tx"/"Taproot"). **188/188 pytest, 90/90 in-browser,
   console clean.** Remaining optional menu: Lightning **HTLC routing** across hops (the sequel),
   FROST (threshold Schnorr), polish (README GIF, sibling cross-links).
+- **2026-07-03** — **HTLC routing DONE — a 14th demo card shipped** (enhancement #9, the sequel to
+  demo 13's channel half — the *routing* half of Lightning). **Script-VM prerequisite:** added the
+  last two opcodes BOLT-3 HTLC scripts need — `OP_SWAP` + `OP_SIZE` — to `hermes/script.py` and the
+  inline JS VM. `hermes/lightning.py` gained the real BOLT-3 `htlc_offered_script` +
+  `htlc_received_script` (revocation / preimage / timeout branches, using OP_SIZE-32 to pick the
+  preimage-vs-timeout path), a canonical `htlc_script` (hashlock-or-timeout — the logical contract a
+  hop enforces, which the card walks through), and `payment_hash`. **Validation:** the offered and
+  received HTLC witnessScripts match **BOLT-3 Appendix C byte-for-byte** (htlc #2 offered, htlc #0
+  received incl. the RIPEMD160(payment_hash) precursors), plus a multi-hop routing test (one preimage
+  settles Alice→Bob→Carol, both hops claimed through the Script VM; wrong preimage / wrong signer
+  fail; timeout refund respects CLTV; the cltv_AB > cltv_BC invariant). JS mirror (`lnHtlc*` in
+  `btc.js`) + 2 test.html checks anchoring the same Appendix C script hex. **New `web/routing/` card**
+  ("HTLC Routing", accent #2dd4bf teal, `--routing`/`.c14`): a 3-node A→B→C route, invoice→lock→
+  settle (the preimage revealed and flowing backward, real hashlock + signature verification) with a
+  "Carol never reveals" timeout path showing every sender refunded. Landing now 14 cards
+  ("Fourteen", two Layer-2 cards), README table + counts, og.png re-rendered (14 pills, 7+7).
+  **194/194 pytest, 92/92 in-browser, console clean.** Remaining optional menu: FROST (threshold
+  Schnorr), polish (README GIF, sibling cross-links).

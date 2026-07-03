@@ -33,9 +33,11 @@ from dataclasses import dataclass
 from .curve import G, N, Point
 from .ecdsa import der, sign
 from .keys import PublicKey, hash160
+from .ripemd160 import ripemd160
 from .script import (
-    Script, encode_num, OP_IF, OP_ELSE, OP_ENDIF, OP_DROP,
-    OP_CHECKSEQUENCEVERIFY, OP_CHECKSIG,
+    Script, encode_num, OP_IF, OP_NOTIF, OP_ELSE, OP_ENDIF, OP_DROP, OP_DUP,
+    OP_SWAP, OP_SIZE, OP_2, OP_EQUAL, OP_EQUALVERIFY, OP_HASH160,
+    OP_CHECKSIG, OP_CHECKMULTISIG, OP_CHECKLOCKTIMEVERIFY, OP_CHECKSEQUENCEVERIFY,
 )
 from .sha256 import sha256
 from .transaction import (
@@ -233,3 +235,92 @@ def sign_to_local_delayed(tx: Tx, index: int, commitment: Commitment,
     z = _to_local_z(tx, index, commitment)
     sig = der(sign(local_delayed_privkey, z, low_s=True)) + SIGHASH_ALL.to_bytes(1, "big")
     tx.inputs[index].witness = [sig, b"", commitment.to_local_script.raw_serialize()]
+
+
+# --- HTLCs: the contracts that route a payment across hops -------------------
+# A Hash-Time-Locked Contract pays out to whoever reveals a preimage R with
+# hash(R) == payment_hash, or refunds the sender after a timeout. Chain them
+# across channels (Alice→Bob→Carol) with *decreasing* timeouts and one preimage
+# settles the whole path trustlessly — the core of Lightning routing.
+
+def payment_hash(preimage: bytes) -> bytes:
+    """A payment is identified by ``SHA256(preimage)``. The receiver picks a
+    random preimage, shares only its hash (the invoice), and reveals the preimage
+    to claim — which simultaneously lets each hop claim from the one before it."""
+    return sha256(preimage)
+
+
+def htlc_offered_script(revocation_pubkey: bytes, remote_htlcpubkey: bytes,
+                        local_htlcpubkey: bytes, payment_hash: bytes) -> Script:
+    """The BOLT-3 *offered* HTLC witnessScript (the output on the paying side).
+
+    Three ways to spend: the counterparty with the **revocation key** (if this is
+    a revoked commitment), the counterparty with the **preimage** (they got paid),
+    or the owner via a timelocked HTLC-timeout transaction (a 2-of-2 that forces
+    the delay). The ``OP_SIZE 32 OP_EQUAL`` gate checks whether a 32-byte preimage
+    was supplied to pick the preimage vs timeout branch."""
+    return Script([
+        OP_DUP, OP_HASH160, hash160(revocation_pubkey), OP_EQUAL,
+        OP_IF,
+            OP_CHECKSIG,
+        OP_ELSE,
+            remote_htlcpubkey, OP_SWAP, OP_SIZE, encode_num(32), OP_EQUAL,
+            OP_NOTIF,
+                OP_DROP, OP_2, OP_SWAP, local_htlcpubkey, OP_2, OP_CHECKMULTISIG,
+            OP_ELSE,
+                OP_HASH160, ripemd160(payment_hash), OP_EQUALVERIFY,
+                OP_CHECKSIG,
+            OP_ENDIF,
+        OP_ENDIF,
+    ])
+
+
+def htlc_received_script(revocation_pubkey: bytes, remote_htlcpubkey: bytes,
+                         local_htlcpubkey: bytes, payment_hash: bytes,
+                         cltv_expiry: int) -> Script:
+    """The BOLT-3 *received* HTLC witnessScript (the output on the paid side).
+
+    Symmetric to the offered one, but the branches swap roles: the owner claims
+    with the **preimage** (via a 2-of-2 HTLC-success tx), or the counterparty
+    refunds after an absolute ``cltv_expiry`` (OP_CHECKLOCKTIMEVERIFY) — or sweeps
+    instantly with the revocation key. The decreasing ``cltv_expiry`` per hop is
+    what makes multi-hop routing safe for the middle nodes."""
+    return Script([
+        OP_DUP, OP_HASH160, hash160(revocation_pubkey), OP_EQUAL,
+        OP_IF,
+            OP_CHECKSIG,
+        OP_ELSE,
+            remote_htlcpubkey, OP_SWAP, OP_SIZE, encode_num(32), OP_EQUAL,
+            OP_IF,
+                OP_HASH160, ripemd160(payment_hash), OP_EQUALVERIFY,
+                OP_2, OP_SWAP, local_htlcpubkey, OP_2, OP_CHECKMULTISIG,
+            OP_ELSE,
+                OP_DROP, encode_num(cltv_expiry), OP_CHECKLOCKTIMEVERIFY, OP_DROP,
+                OP_CHECKSIG,
+            OP_ENDIF,
+        OP_ENDIF,
+    ])
+
+
+def htlc_script(payment_hash: bytes, receiver_pubkey: bytes,
+                sender_pubkey: bytes, cltv_expiry: int) -> Script:
+    """A *canonical* HTLC — the logical contract a hop enforces, stripped of the
+    channel's revocation/second-stage machinery (which BOLT-3's fuller scripts add
+    for unilateral closes). This is the classic hashlock-or-timeout also used by
+    cross-chain atomic swaps, and the form the routing demo walks through:
+
+        OP_IF   OP_HASH160 <ripemd160(payment_hash)> OP_EQUALVERIFY <receiver> OP_CHECKSIG
+        OP_ELSE <cltv_expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP <sender> OP_CHECKSIG
+        OP_ENDIF
+
+    Claim path (receiver, needs the preimage): witness ``<sig> <preimage> <1>``.
+    Refund path (sender, after the timeout):  witness ``<sig> <>``."""
+    return Script([
+        OP_IF,
+            OP_HASH160, ripemd160(payment_hash), OP_EQUALVERIFY,
+            receiver_pubkey, OP_CHECKSIG,
+        OP_ELSE,
+            encode_num(cltv_expiry), OP_CHECKLOCKTIMEVERIFY, OP_DROP,
+            sender_pubkey, OP_CHECKSIG,
+        OP_ENDIF,
+    ])

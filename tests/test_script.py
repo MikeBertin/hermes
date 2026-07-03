@@ -6,7 +6,7 @@ from hermes.script import (
     Script, evaluate, encode_num, decode_num,
     OP_0, OP_1, OP_2, OP_3, OP_DUP, OP_EQUAL, OP_EQUALVERIFY, OP_HASH160, OP_SHA256,
     OP_CHECKSIG, OP_CHECKMULTISIG, OP_CHECKLOCKTIMEVERIFY, OP_CHECKSEQUENCEVERIFY,
-    OP_IF, OP_NOTIF, OP_ELSE, OP_ENDIF, OP_DROP,
+    OP_IF, OP_NOTIF, OP_ELSE, OP_ENDIF, OP_DROP, OP_SWAP, OP_SIZE,
 )
 
 Z = int.from_bytes(sha256(b"a transaction to authorize"), "big")
@@ -98,3 +98,16 @@ def test_if_else_branches():
 
     # an OP_IF with no matching OP_ENDIF is invalid
     assert evaluate(Script([OP_1, OP_IF, OP_1])) is False
+
+
+# --- OP_SWAP / OP_SIZE (needed by the BOLT-3 HTLC scripts) ----------------
+def test_swap_and_size():
+    # OP_SWAP exchanges the top two items
+    assert evaluate(Script([OP_0, OP_1, OP_SWAP])) is False   # swaps 1 under 0 -> top is 0
+    assert evaluate(Script([OP_1, OP_0, OP_SWAP])) is True    # swaps 0 under 1 -> top is 1
+
+    # OP_SIZE pushes the length of the top item, leaving it in place. The HTLC
+    # scripts use "OP_SIZE 32 OP_EQUAL" to distinguish a 32-byte preimage.
+    thirty_two = b"\x00" * 32
+    assert evaluate(Script([thirty_two, OP_SIZE, encode_num(32), OP_EQUAL])) is True
+    assert evaluate(Script([b"\x00" * 20, OP_SIZE, encode_num(32), OP_EQUAL])) is False
