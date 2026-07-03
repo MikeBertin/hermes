@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FROST — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="FROST — threshold Schnorr — Hermes">
+<meta property="og:description" content="Any t of n key-holders sign — one Schnorr signature, the secret never assembled. FROST threshold signatures (RFC 9591), from scratch.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#c4b5fd;--accent-ink:#1a1338}
+  .card2{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card2 + .card2{margin-top:14px}
+  .card2 h2{margin-top:0}
+  .officer{display:flex;align-items:flex-start;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .officer:last-child{border-bottom:none}
+  .officer .box{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line);flex:none;
+    margin-top:2px;cursor:pointer;display:grid;place-items:center;font-size:12px;color:var(--accent-ink)}
+  .officer.on .box{background:var(--accent);border-color:var(--accent)}
+  .officer .body{min-width:0;flex:1}
+  .officer .who{font-family:var(--mono);font-size:13px;color:var(--ink)}
+  .officer.off .who{color:var(--muted)}
+  .officer .share{font-family:var(--mono);font-size:11px;color:var(--muted);word-break:break-all;margin-top:2px}
+  .officer .role{font-family:var(--mono);font-size:11px;margin-top:4px;display:none}
+  .officer .role .lab3{color:var(--muted)} .officer .role .v{color:var(--accent)}
+  .agg{background:#0e0e16;border:1px dashed var(--accent);border-radius:10px;padding:12px 14px;margin-top:12px}
+  .agg .lab2{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .agg .num{font-family:var(--mono);font-size:12px;color:var(--accent);word-break:break-all}
+  .thr{font-family:var(--mono);font-size:12px;color:var(--muted);margin:12px 0 2px}
+  .thr b{color:var(--ink)} .thr .bad{color:var(--bad)} .thr .ok{color:var(--good)}
+  .steps{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+  .steps button{padding:11px 8px}
+  .badge2{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;
+    padding:8px 12px;border-radius:8px;font-weight:600;margin-top:12px;line-height:1.4}
+  .badge2.ok{background:rgba(196,181,253,.16);color:var(--accent)}
+  .badge2.no{background:rgba(255,107,107,.14);color:var(--bad)}
+  .badge2.idle{background:#1c1c27;color:var(--muted)}
+  .stg{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .stg + .stg{margin-top:10px}
+  .stg .lab2{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .stg .num{font-family:var(--mono);font-size:11.5px;color:var(--ink);word-break:break-all}
+  .stg.final{border-color:var(--accent)} .stg.final .num{color:var(--accent)}
+  .weigh{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .weigh .side{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .weigh .side h4{margin:0 0 6px;font-size:11px;font-family:var(--mono);letter-spacing:1.1px;text-transform:uppercase;color:var(--muted)}
+  .weigh .side.win{border-color:rgba(196,181,253,.5)} .weigh .side.win h4{color:var(--accent)}
+  .weigh .big{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--ink)}
+  .weigh .side.win .big{color:var(--accent)}
+  .weigh .sub2{color:var(--muted);font-size:11px;margin-top:4px;line-height:1.45}
+  .formula{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.85;margin:10px 0 0}
+  .formula b{color:var(--ink)}.formula .a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / FROST</div>
+  <header class="hero">
+    <h1>FROST — any <em>t</em> of <em>n</em> can sign</h1>
+    <p class="sub">
+      MuSig2 (demo 12) was <b>n-of-n</b>: every cosigner had to sign. <b>FROST</b>
+      (<span class="x" data-pop="rfc">RFC 9591</span>) is <b>t-of-n</b> — any threshold, say <b>2 of
+      3</b>, can produce one signature, and any <b>1</b> alone cannot. The group secret is
+      <span class="x" data-pop="shamir">Shamir-shared</span> once and <em>never reassembled</em>;
+      signing folds the shares into the signature through
+      <span class="x" data-pop="lagrange">Lagrange interpolation</span>. Lose a key and the treasury
+      is safe; a thief with one share has nothing. It's the cryptographic shape of a real corporate
+      vault — as one ordinary Schnorr signature.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="card2">
+        <h2>1 · The dealer splits one key into three shares</h2>
+        <div id="officers"></div>
+        <div class="agg">
+          <div class="lab2">group public key &nbsp;— the vault, from a secret no one holds whole</div>
+          <div class="num" id="gpk">–</div>
+        </div>
+        <p class="hint" style="margin:10px 0 0">A trusted dealer draws one random group secret,
+          splits it across a degree-1 polynomial (so <b>any 2</b> points recover it), and hands each
+          officer a share. The dealer then forgets the secret. <span class="mono">New group</span>
+          re-runs the deal.</p>
+      </div>
+
+      <div class="card2">
+        <h2>2 · Choose who signs, then run the ceremony</h2>
+        <label style="margin-top:0">Message to sign</label>
+        <input type="text" id="msg" value="Release 5 BTC from the 2-of-3 treasury" spellcheck="false">
+        <div class="thr" id="thr">tick <b>any two</b> officers above</div>
+        <div class="steps">
+          <button id="run" class="primary">Run signing ceremony</button>
+          <button id="reset">New group</button>
+        </div>
+        <div id="mainBadge" class="badge2 idle">pick a signing set to begin</div>
+        <p class="hint" style="margin:10px 0 0">Two rounds (like MuSig2): each present officer commits
+          a nonce pair, then returns a signature share <span class="mono">z<sub>i</sub></span> weighted
+          by their Lagrange coefficient <span class="mono">λ<sub>i</sub></span>. The coordinator adds
+          the shares — out comes a single signature the whole group could have made.</p>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>The signature</h2>
+        <div class="stg final">
+          <div class="lab2">aggregate (R ‖ z) — 65 bytes, verifies under the group key</div>
+          <div class="num" id="sig">run the ceremony…</div>
+        </div>
+        <div class="formula" id="formula" style="display:none">
+          z = Σ <b>z<sub>i</sub></b> &nbsp;·&nbsp; z<sub>i</sub> = k<sub>i</sub> +
+          <span class="a">λ<sub>i</sub></span>·s<sub>i</sub>·c<br>
+          the <span class="a">λ<sub>i</sub></span> weights recombine the shares — the secret is never
+          formed
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>vs MuSig2 (demo 12)</h2>
+        <div class="weigh">
+          <div class="side"><h4>MuSig2</h4>
+            <div class="big">n-of-n</div>
+            <div class="sub2">every key must sign — a 2-of-2, or a full board. Miss one and there's no signature.</div></div>
+          <div class="side win"><h4>FROST</h4>
+            <div class="big">t-of-n</div>
+            <div class="sub2">any threshold signs — 2 of 3, 3 of 5. Keys can be lost or absent and the vault still works.</div></div>
+        </div>
+        <p class="hint" style="margin-top:10px">Both produce <em>one</em> Schnorr signature. FROST adds
+          fault-tolerance — the difference between "everyone, always" and "enough of us."</p>
+      </div>
+
+      <div class="panel">
+        <h2>Why the secret never exists</h2>
+        <p class="hint" style="margin-top:0">Shamir places the secret at <span class="mono">f(0)</span>
+          of a hidden polynomial; each officer holds one point <span class="mono">f(i)</span>. Any two
+          points fix the line and thus <span class="mono">f(0)</span> — but no single point reveals
+          anything. FROST does this recombination <em>inside</em> the signature math, so
+          <span class="mono">f(0)</span> is never actually computed anywhere.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>One short is a hard no</h3>
+        <p>Select a single officer and the ceremony can't even start: below the threshold there's no
+          valid Lagrange set. Two is enough; the third is redundant. That's the "flexible" in FROST.</p></div>
+      <div class="ncard"><h3>Same signature, either pair</h3>
+        <p>Officers {1,2}, {1,3} or {2,3} all sign for the <em>same</em> group key and produce a
+          valid signature under it. The verifier can't tell which two showed up — or that it was a
+          threshold scheme at all.</p></div>
+      <div class="ncard"><h3>Accountable shares</h3>
+        <p>Each share <span class="mono">z<sub>i</sub></span> verifies on its own before aggregation
+          (RFC 9591's identifiable abort), so a faulty or malicious signer is named rather than just
+          producing a dud signature.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  rfc: "<h4>RFC 9591</h4><p>The IETF FROST standard (2024). This demo implements the FROST(secp256k1, SHA-256) ciphersuite exactly — including its hash_to_field / expand_message_xmd construction — and reproduces the RFC's official test vector byte-for-byte.</p>",
+  shamir: "<h4>Shamir Secret Sharing</h4><p>Hide a secret as f(0) of a random degree t-1 polynomial; give each participant a point f(i). Any t points interpolate back to f(0); fewer reveal nothing. FROST uses t=2 here (a line), so any 2 of 3 suffice.</p>",
+  lagrange: "<h4>Lagrange interpolation</h4><p>The coefficient λ_i weights each signer's share so that Σ λ_i·f(i) = f(0) — recovering the group secret's effect on the signature without ever computing the secret itself. λ_i depends only on which signers show up.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hex = (b) => H.bytesToHex(b);
+  const short = (b, n = 14) => { const h = hex(b); return h.slice(0, n) + "…" + h.slice(-10); };
+  const shortHexN = (bi, n = 12) => { const h = H.bytesToHex(H.bigIntToBytes(bi, 32)); return h.slice(0, n) + "…" + h.slice(-8); };
+  const NAMES = ["Alice", "Bob", "Carol"];
+  const THRESHOLD = 2, TOTAL = 3;
+
+  let officers = [], groupPubkey = null, lambdas = {};
+
+  function reset() {
+    const secret = H.randScalar();
+    const coeffs = [H.randScalar()];                 // degree 1 => 2-of-3
+    const { shares, groupPubkey: gpk } = H.frostKeygen(secret, coeffs, TOTAL);
+    groupPubkey = gpk;
+    officers = shares.map(([id, share], i) => ({ id, share, name: NAMES[i], present: i !== 1 }));
+    lambdas = {};
+    $("gpk").textContent = hex(H.sec(groupPubkey, true));
+    $("sig").textContent = "run the ceremony…";
+    $("formula").style.display = "none";
+    render();
+  }
+
+  function toggle(i) { officers[i].present = !officers[i].present; lambdas = {}; $("sig").textContent = "run the ceremony…"; $("formula").style.display = "none"; render(); }
+
+  function present() { return officers.filter((o) => o.present); }
+
+  function run() {
+    const signers = present();
+    if (signers.length < THRESHOLD) return;
+    const msg = H.utf8($("msg").value);
+    const ids = signers.map((s) => BigInt(s.id));
+
+    // round 1: each signer commits a fresh nonce pair
+    const nonces = {};
+    const commitmentList = signers.map((s) => {
+      const hr = new Uint8Array(32), br = new Uint8Array(32);
+      crypto.getRandomValues(hr); crypto.getRandomValues(br);
+      const c = H.frostCommit(s.share, hr, br);
+      nonces[s.id] = c.nonces;
+      return [BigInt(s.id), c.commits[0], c.commits[1]];
+    }).sort((a, b) => (a[0] < b[0] ? -1 : 1));
+
+    // round 2: signature shares, each weighted by its Lagrange coefficient
+    const sigShares = signers.map((s) => {
+      lambdas[s.id] = H.frostLagrange(ids, BigInt(s.id));
+      return H.frostSign(BigInt(s.id), s.share, groupPubkey, nonces[s.id], msg, commitmentList);
+    });
+
+    const sig = H.frostAggregate(commitmentList, msg, groupPubkey, sigShares);
+    const ok = H.frostVerify(msg, sig, groupPubkey);
+    const enc = H.frostSerializeSig(sig);
+    $("sig").textContent = enc ? (hex(enc.slice(0, 33)) + " " + hex(enc.slice(33))) : "–";
+    $("formula").style.display = "block";
+    render();
+    $("mainBadge").className = "badge2 " + (ok ? "ok" : "no");
+    $("mainBadge").textContent = ok
+      ? `✓ valid Schnorr signature — ${signers.map((s) => s.name).join(" + ")} signed for the whole group`
+      : "✗ verification failed";
+  }
+
+  function render() {
+    $("officers").innerHTML = officers.map((o, i) => {
+      const lam = lambdas[o.id];
+      return `<div class="officer ${o.present ? "on" : "off"}">
+        <div class="box" data-i="${i}">${o.present ? "✓" : ""}</div>
+        <div class="body">
+          <span class="who">${o.name} &nbsp;·&nbsp; share #${o.id}</span>
+          <div class="share">s<sub>${o.id}</sub> = ${shortHexN(o.share)}</div>
+          <div class="role" style="display:${lam !== undefined ? "block" : "none"}">
+            <span class="lab3">λ<sub>${o.id}</sub></span> = <span class="v">${lam !== undefined ? shortHexN(lam, 10) : ""}</span></div>
+        </div></div>`;
+    }).join("");
+    $("officers").querySelectorAll(".box").forEach((b) => b.addEventListener("click", () => toggle(+b.dataset.i)));
+
+    const n = present().length;
+    const el = $("thr");
+    if (n < THRESHOLD) { el.innerHTML = `<span class="bad">below threshold</span> — ${n} of ${THRESHOLD} needed; tick another officer`; $("run").disabled = true; }
+    else { el.innerHTML = `<span class="ok">threshold met</span> — ${n} of ${TOTAL} signing (any ${THRESHOLD} suffice)`; $("run").disabled = false; }
+
+    if ($("mainBadge").className.includes("idle")) $("mainBadge").textContent = n < THRESHOLD ? "below threshold — pick any two" : "ready — run the ceremony";
+  }
+
+  $("run").addEventListener("click", run);
+  $("reset").addEventListener("click", reset);
+  $("msg").addEventListener("input", () => { lambdas = {}; $("sig").textContent = "run the ceremony…"; $("formula").style.display = "none"; $("mainBadge").className = "badge2 idle"; render(); });
+
+  reset();
+})();
+</script>
+</body>
+</html>

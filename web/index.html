@@ -22,7 +22,7 @@
     --curve:#7cc4ff; --address:#ffc266; --sign:#ff6b6b; --mine:#ff9f43;
     --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
     --multisig:#ef88c8; --merkle:#4dc9e6; --taproot:#f7a14b; --musig:#a8d94b;
-    --lightning:#ffd400; --routing:#2dd4bf;
+    --lightning:#ffd400; --routing:#2dd4bf; --frost:#c4b5fd;
     --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
@@ -63,7 +63,7 @@
   .c1{--c:var(--curve)} .c2{--c:var(--address)} .c3{--c:var(--sign)} .c4{--c:var(--mine)}
   .c5{--c:var(--network)} .c6{--c:var(--testnet)} .c7{--c:var(--script)} .c8{--c:var(--wallet)}
   .c9{--c:var(--multisig)} .c10{--c:var(--merkle)} .c11{--c:var(--taproot)} .c12{--c:var(--musig)}
-  .c13{--c:var(--lightning)} .c14{--c:var(--routing)}
+  .c13{--c:var(--lightning)} .c14{--c:var(--routing)} .c15{--c:var(--frost)}
   a.card:hover{border-color:var(--c)} .card .tag,.card .open{color:var(--c)}
 
   footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);
@@ -80,7 +80,7 @@
     <p class="lede">
       Bitcoin, built from <b>nothing</b> — no crypto libraries, no magic. The
       <b>secp256k1</b> curve, the hashes, the signatures, the proof of work, the
-      network, all rebuilt by hand and turned into things you can <b>touch</b>. Fourteen
+      network, all rebuilt by hand and turned into things you can <b>touch</b>. Fifteen
       interactive windows onto how a chain of numbers becomes money nobody can forge.
     </p>
   </header>
@@ -173,6 +173,12 @@
       <div class="num">14</div><div class="tag">HTLC · Layer 2</div>
       <h2>HTLC Routing</h2>
       <p>One payment hops Alice→Bob→Carol with no direct channel. A single preimage settles the whole path; decreasing timelocks keep the middle honest.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+    <a class="card c15" href="frost/">
+      <div class="num">15</div><div class="tag">RFC 9591</div>
+      <h2>FROST Threshold</h2>
+      <p>Any <em>t</em> of <em>n</em> key-holders sign — 2 of 3, and any one alone can't. One Schnorr signature, the group secret never assembled.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
   </div>

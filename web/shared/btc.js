@@ -836,6 +836,88 @@
       pushData(senderPubkey), Uint8Array.of(0xac, 0x68));                                // <sender> OP_CHECKSIG OP_ENDIF
   }
 
+  // --- FROST threshold Schnorr (RFC 9591, secp256k1/SHA-256) -----------------
+  const FROST_CTX = utf8("FROST-secp256k1-SHA256-v1");
+  const serScalar = (s) => bigIntToBytes(mod(s, N), 32);
+  // RFC 9380 expand_message_xmd with SHA-256
+  function expandMessageXmd(msg, dst, length) {
+    const bIn = 32, sIn = 64, ell = Math.ceil(length / bIn);
+    const dstPrime = concatBytes(dst, Uint8Array.of(dst.length));
+    const msgPrime = concatBytes(new Uint8Array(sIn), msg,
+      Uint8Array.of((length >> 8) & 0xff, length & 0xff), Uint8Array.of(0), dstPrime);
+    const b0 = sha256(msgPrime);
+    const blocks = [sha256(concatBytes(b0, Uint8Array.of(1), dstPrime))];
+    for (let i = 2; i <= ell; i++) {
+      const xored = b0.map((v, j) => v ^ blocks[blocks.length - 1][j]);
+      blocks.push(sha256(concatBytes(xored, Uint8Array.of(i), dstPrime)));
+    }
+    return concatBytes(...blocks).slice(0, length);
+  }
+  const frostScalarHash = (msg, suffix) =>
+    mod(bytesToBigInt(expandMessageXmd(msg, concatBytes(FROST_CTX, utf8(suffix)), 48)), N);
+  const frostH1 = (m) => frostScalarHash(m, "rho");
+  const frostH2 = (m) => frostScalarHash(m, "chal");
+  const frostH3 = (m) => frostScalarHash(m, "nonce");
+  const frostH4 = (m) => sha256(concatBytes(FROST_CTX, utf8("msg"), m));
+  const frostH5 = (m) => sha256(concatBytes(FROST_CTX, utf8("com"), m));
+
+  function frostPolyEval(x, coeffs) {          // Horner, constant term first
+    let v = 0n;
+    for (let i = coeffs.length - 1; i >= 0; i--) v = mod(v * x + coeffs[i], N);
+    return v;
+  }
+  function frostKeygen(secret, coefficients, maxParticipants) {
+    const poly = [secret, ...coefficients], shares = [];
+    for (let i = 1; i <= maxParticipants; i++) shares.push([BigInt(i), frostPolyEval(BigInt(i), poly)]);
+    return { shares, groupPubkey: ptMul(secret, G) };
+  }
+  function frostLagrange(ids, xi) {            // Lagrange coefficient λ_i
+    let num = 1n, den = 1n;
+    for (const xj of ids) { if (xj === xi) continue; num = mod(num * xj, N); den = mod(den * (xj - xi), N); }
+    return mod(num * modInv(den, N), N);
+  }
+  const frostNonceGenerate = (secret, randomness) => frostH3(concatBytes(randomness, serScalar(secret)));
+  function frostCommit(secret, hidingRand, bindingRand) {
+    const hn = frostNonceGenerate(secret, hidingRand), bn = frostNonceGenerate(secret, bindingRand);
+    return { nonces: [hn, bn], commits: [ptMul(hn, G), ptMul(bn, G)] };
+  }
+  const frostEncodeCommitments = (list) =>
+    concatBytes(...list.flatMap(([id, h, b]) => [serScalar(id), sec(h, true), sec(b, true)]));
+  function frostBindingFactors(groupPub, list, msg) {
+    const prefix = concatBytes(sec(groupPub, true), frostH4(msg), frostH5(frostEncodeCommitments(list)));
+    return list.map(([id]) => [id, frostH1(concatBytes(prefix, serScalar(id)))]);
+  }
+  function frostGroupCommitment(list, bfl) {
+    const bf = new Map(bfl); let R = null;
+    for (const [id, h, b] of list) {
+      const term = ptAdd(h, ptMul(bf.get(id), b));
+      R = R === null ? term : ptAdd(R, term);
+    }
+    return R;
+  }
+  const frostChallenge = (R, groupPub, msg) =>
+    frostH2(concatBytes(sec(R, true), sec(groupPub, true), msg));
+  function frostSign(id, share, groupPub, nonces, msg, list) {
+    const bfl = frostBindingFactors(groupPub, list, msg);
+    const bf = new Map(bfl).get(id);
+    const R = frostGroupCommitment(list, bfl);
+    const lam = frostLagrange(list.map(([i]) => i), id);
+    const c = frostChallenge(R, groupPub, msg);
+    const [hn, bn] = nonces;
+    return mod(hn + bn * bf + lam * share * c, N);
+  }
+  function frostAggregate(list, msg, groupPub, sigShares) {
+    const R = frostGroupCommitment(list, frostBindingFactors(groupPub, list, msg));
+    let z = 0n; for (const s of sigShares) z = mod(z + s, N);
+    return { R, z };
+  }
+  function frostVerify(msg, sig, groupPub) {
+    const c = frostChallenge(sig.R, groupPub, msg);
+    const lhs = ptMul(sig.z, G), rhs = ptAdd(sig.R, ptMul(c, groupPub));
+    return lhs.x === rhs.x && lhs.y === rhs.y;
+  }
+  const frostSerializeSig = (sig) => concatBytes(sec(sig.R, true), serScalar(sig.z));
+
   // hash of a message string, as the integer z that ECDSA signs
   const messageHash = (str) => bytesToBigInt(doubleSha256(utf8(str)));
 
@@ -868,6 +950,10 @@
     lnDerivePubkey, lnDerivePrivkey, lnDeriveRevocationPubkey, lnDeriveRevocationPrivkey,
     lnPerCommitmentSecret, lnFundingScript, lnFundingAddress, lnToLocalScript, lnScriptNum,
     lnPaymentHash, lnHtlcOfferedScript, lnHtlcReceivedScript, lnHtlcScript,
+    // frost (RFC 9591)
+    frostH1, frostH2, frostH3, frostKeygen, frostLagrange, frostNonceGenerate,
+    frostCommit, frostBindingFactors, frostGroupCommitment, frostSign, frostAggregate,
+    frostVerify, frostSerializeSig,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };

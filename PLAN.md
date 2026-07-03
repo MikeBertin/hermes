@@ -523,4 +523,23 @@ _Append a dated entry every session: what changed · what's next · new decision
   "Carol never reveals" timeout path showing every sender refunded. Landing now 14 cards
   ("Fourteen", two Layer-2 cards), README table + counts, og.png re-rendered (14 pills, 7+7).
   **194/194 pytest, 92/92 in-browser, console clean.** Remaining optional menu: FROST (threshold
-  Schnorr), polish (README GIF, sibling cross-links).
+  Schnorr), polish (README GIF). (Sibling cross-links dropped — unrelated projects.)
+- **2026-07-04** — **FROST DONE — a 15th demo card shipped** (enhancement #10, threshold Schnorr —
+  the t-of-n sequel to MuSig2's n-of-n). New `hermes/frost.py` implementing **RFC 9591**'s
+  `FROST(secp256k1, SHA-256)` ciphersuite exactly, incl. its `hash_to_field` / **expand_message_xmd**
+  (RFC 9380) hash construction from scratch: H1/H2/H3 (rho/chal/nonce scalars), H4/H5, trusted-dealer
+  Shamir keygen, Lagrange `derive_interpolating_value`, `nonce_generate`/`commit`, binding factors,
+  group commitment, challenge, `sign` (share), `aggregate`, `verify_share` (identifiable abort),
+  `verify`, 65-byte `serialize_signature`. **Validation:** the complete **RFC 9591 Appendix E.5**
+  vector (2-of-3, signers 1 & 3) reproduced byte-for-byte — keygen shares, nonces, commitments,
+  binding factors, sig shares, the aggregate signature, and verification — plus threshold semantics
+  (any 2-of-3 sign; Lagrange recombines the shares to the secret at f(0)) and a bad-share rejection.
+  (Variant choice, user: RFC 9591 for official-vector fidelity; its challenge hash isn't BIP-340, so
+  the sig is threshold Schnorr but not a Taproot spend — noted in the module + card.) JS mirror
+  (`frost*` in `btc.js`, incl. `expandMessageXmd`) + 7 `test.html` checks on the same E.5 vector.
+  **New `web/frost/` card** ("FROST Threshold", accent #c4b5fd icy-lavender, `--frost`/`.c15`): a
+  trusted-dealer 2-of-3 keygen, tick-any-two signing set (1 alone is blocked below threshold), the
+  two-round ceremony with each signer's λ shown, and an n-of-n (MuSig2) vs t-of-n (FROST) contrast.
+  Landing now 15 cards ("Fifteen"), README table + counts, og.png re-rendered (15 pills). **202/202
+  pytest, 99/99 in-browser, console clean.** Remaining optional menu: polish (README GIF), or deeper
+  Lightning (HTLC second-stage txs / PTLCs).
