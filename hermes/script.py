@@ -20,6 +20,10 @@ from .sha256 import sha256
 OP_0 = 0
 OP_1, OP_16 = 81, 96          # OP_1..OP_16 push the numbers 1..16
 OP_2, OP_3 = 82, 83           # named for convenience (multisig m/n)
+OP_IF = 99
+OP_NOTIF = 100
+OP_ELSE = 103
+OP_ENDIF = 104
 OP_DROP = 117
 OP_DUP = 118
 OP_EQUAL = 135
@@ -30,11 +34,13 @@ OP_HASH160 = 169
 OP_CHECKSIG = 172
 OP_CHECKMULTISIG = 174
 OP_CHECKLOCKTIMEVERIFY = 177
+OP_CHECKSEQUENCEVERIFY = 178
 
 OP_NAMES = {
-    0: "OP_0", 105: "OP_VERIFY", 117: "OP_DROP", 118: "OP_DUP", 135: "OP_EQUAL",
+    0: "OP_0", 99: "OP_IF", 100: "OP_NOTIF", 103: "OP_ELSE", 104: "OP_ENDIF",
+    105: "OP_VERIFY", 117: "OP_DROP", 118: "OP_DUP", 135: "OP_EQUAL",
     136: "OP_EQUALVERIFY", 168: "OP_SHA256", 169: "OP_HASH160", 172: "OP_CHECKSIG",
-    174: "OP_CHECKMULTISIG", 177: "OP_CHECKLOCKTIMEVERIFY",
+    174: "OP_CHECKMULTISIG", 177: "OP_CHECKLOCKTIMEVERIFY", 178: "OP_CHECKSEQUENCEVERIFY",
     **{80 + i: f"OP_{i}" for i in range(1, 17)},
 }
 
@@ -128,10 +134,17 @@ class ScriptError(Exception):
     pass
 
 
-def evaluate(script: Script, z: int = 0, locktime: int | None = None, trace: list | None = None):
+def evaluate(script: Script, z: int = 0, locktime: int | None = None,
+             sequence: int | None = None, trace: list | None = None):
     """Run a script on a fresh stack. Returns True if it ends truthy.
-    If ``trace`` is a list, each step's (label, stack-snapshot) is appended."""
+    If ``trace`` is a list, each step's (label, stack-snapshot) is appended.
+
+    ``locktime`` / ``sequence`` are the spending transaction's fields that the
+    absolute (CLTV) and relative (CSV) timelock opcodes check against."""
     stack: list[bytes] = []
+    # OP_IF/OP_NOTIF/OP_ELSE/OP_ENDIF nest a stack of "are we in a taken branch?"
+    # flags; opcodes in an untaken branch are parsed but not executed.
+    exec_stack: list[bool] = []
 
     def snap(label):
         if trace is not None:
@@ -139,6 +152,34 @@ def evaluate(script: Script, z: int = 0, locktime: int | None = None, trace: lis
 
     snap("(start)")
     for cmd in script.cmds:
+        executing = all(exec_stack)
+        # Branch bookkeeping runs even inside an untaken branch (to stay balanced).
+        if cmd in (OP_IF, OP_NOTIF):
+            cond = False
+            if executing:
+                if not stack:
+                    return False
+                cond = is_truthy(stack.pop())
+                if cmd == OP_NOTIF:
+                    cond = not cond
+            exec_stack.append(cond)
+            snap(cmd_label(cmd))
+            continue
+        elif cmd == OP_ELSE:
+            if not exec_stack:
+                return False
+            exec_stack[-1] = not exec_stack[-1]
+            snap(cmd_label(cmd))
+            continue
+        elif cmd == OP_ENDIF:
+            if not exec_stack:
+                return False
+            exec_stack.pop()
+            snap(cmd_label(cmd))
+            continue
+        elif not executing:
+            continue                              # skip opcodes in the dead branch
+
         if isinstance(cmd, (bytes, bytearray)):
             stack.append(bytes(cmd))
         elif cmd == OP_0:
@@ -196,10 +237,23 @@ def evaluate(script: Script, z: int = 0, locktime: int | None = None, trace: lis
             if locktime < required:
                 snap(cmd_label(cmd) + f"  ✗ (locktime {locktime} < {required})")
                 return False
+        elif cmd == OP_CHECKSEQUENCEVERIFY:
+            # Relative timelock (BIP-68/112): the input must be at least ``required``
+            # blocks newer than the output it spends. Like CLTV, it verifies and
+            # leaves the value on the stack. Simplified to the block-count form —
+            # we compare the low 16 bits and ignore the disable/type flag bits.
+            if sequence is None or not stack:
+                return False
+            required = decode_num(stack[-1])
+            if required < 0 or (sequence & 0xFFFF) < (required & 0xFFFF):
+                snap(cmd_label(cmd) + f"  ✗ (sequence {sequence} < {required})")
+                return False
         else:
             return False
         snap(cmd_label(cmd))
 
+    if exec_stack:
+        return False                              # an OP_IF with no matching OP_ENDIF
     return bool(stack) and is_truthy(stack[-1])
 
 

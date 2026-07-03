@@ -263,6 +263,50 @@ check("bip327 e2e: each partial sig verifies",
 check("bip327 e2e: ceremony sig verifies under the bc1p key",
   H.schnorrVerify(MC_AGGPK, MC_MSG, H.musigPartialSigAgg(MC_PSIGS, MC_SESSION)), true);
 
+// --- Lightning (BOLT-3 Appendix D + E official vectors) ---
+// Appendix D: per-commitment secret generation from a seed
+const LN_D = [
+  ["00".repeat(32), 281474976710655n, "02a40c85b6f28da08dfdbe0926c53fab2de6d28c10301f8f7c4073d5e42e3148"],
+  ["ff".repeat(32), 281474976710655n, "7cc854b54e3e0dcdb010d7a3fee464a9687be6e8db3be6854c475621e007a5dc"],
+  ["ff".repeat(32), 0xaaaaaaaaaaan, "56f4008fb007ca9acf0e15b054d5c9fd12ee06cea347914ddbaed70d1c13a528"],
+  ["ff".repeat(32), 0x555555555555n, "9015daaeb06dba4ccc05b91b2f73bd54405f2be9f217fbacd3c5ac2e62327d31"],
+  ["01".repeat(32), 1n, "915c75942a26bb3a433a8ce2cb0427c29ec6c1775cfc78328b57f6ba7bfeaa9c"],
+];
+LN_D.forEach(([seed, I, out], i) => check(`bolt3 per-commitment secret (gen ${i})`,
+  H.bytesToHex(H.lnPerCommitmentSecret(H.hexToBytes(seed), I)), out));
+// Appendix E: key derivation (base_secret == revocation_basepoint_secret here)
+const LN_BASE_SECRET = 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fn;
+const LN_PCS = 0x1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100n;
+const LN_BP = H.secDecode(H.hexToBytes("036d6caac248af96f6afa7f904f550253a0f3ef3f5aa2fe6838a95b216691468e2"));
+const LN_PP = H.secDecode(H.hexToBytes("025f7117a78150fe2ef97db7cfc83bd57b2e2c0d0dd25eaf467a4a1c2a45ce1486"));
+const lnPriv = (v) => H.bytesToHex(H.bigIntToBytes(v, 32));
+check("bolt3 base_point == base_secret·G",
+  H.bytesToHex(H.sec(H.pubFromSecret(LN_BASE_SECRET))),
+  "036d6caac248af96f6afa7f904f550253a0f3ef3f5aa2fe6838a95b216691468e2");
+check("bolt3 per_commitment_point",
+  H.bytesToHex(H.sec(H.pubFromSecret(LN_PCS))),
+  "025f7117a78150fe2ef97db7cfc83bd57b2e2c0d0dd25eaf467a4a1c2a45ce1486");
+check("bolt3 localpubkey", H.bytesToHex(H.sec(H.lnDerivePubkey(LN_BP, LN_PP))),
+  "0235f2dbfaa89b57ec7b055afe29849ef7ddfeb1cefdb9ebdc43f5494984db29e5");
+check("bolt3 localprivkey", lnPriv(H.lnDerivePrivkey(LN_BASE_SECRET, LN_PP)),
+  "cbced912d3b21bf196a766651e436aff192362621ce317704ea2f75d87e7be0f");
+check("bolt3 revocationpubkey", H.bytesToHex(H.sec(H.lnDeriveRevocationPubkey(LN_BP, LN_PP))),
+  "02916e326636d19c33f13e8c0c3a03dd157f332f3e99c317c141dd865eb01f8ff0");
+const LN_REVPRIV = H.lnDeriveRevocationPrivkey(LN_BASE_SECRET, LN_PCS);
+check("bolt3 revocationprivkey", lnPriv(LN_REVPRIV),
+  "d09ffff62ddb2297ab000cc85bcb4283fdeb6aa052affbc9dddcf33b61078110");
+check("bolt3 revocation priv·G == revocation pub",   // the blinded key correspondence
+  H.bytesToHex(H.sec(H.pubFromSecret(LN_REVPRIV))),
+  "02916e326636d19c33f13e8c0c3a03dd157f332f3e99c317c141dd865eb01f8ff0");
+// script builders: funding is a sorted 2-of-2; to_local is the IF/CSV/CHECKSIG form
+const LN_FUND = H.lnFundingScript(H.pubFromSecret(111n), H.pubFromSecret(222n));
+check("bolt3 funding is 2-of-2 (OP_2..OP_2 OP_CHECKMULTISIG)",
+  H.bytesToHex(LN_FUND.slice(0, 1)) + H.bytesToHex(LN_FUND.slice(-2)), "5252ae");
+const LN_TL = H.lnToLocalScript(H.sec(LN_BP), 144, H.sec(LN_PP));
+check("bolt3 to_local script (OP_IF … OP_CSV OP_DROP … OP_ENDIF OP_CHECKSIG)",
+  H.bytesToHex(LN_TL.slice(0, 1)) + H.bytesToHex(LN_TL.slice(-1)) +
+  (H.bytesToHex(LN_TL).includes("b275") ? "-csv" : ""), "63ac-csv");
+
 // --- Merkle root of a real block (block 100000, 4 txs) ---
 const B100K = [
   "8c14f0db3df150123e6f3dbbf30f8b955a8249b62ac1d1ff16284aefa3d06d87",

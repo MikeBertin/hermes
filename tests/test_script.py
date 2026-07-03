@@ -4,8 +4,9 @@ from hermes import PrivateKey, hash160, sha256, sign
 from hermes.ecdsa import ser_sig
 from hermes.script import (
     Script, evaluate, encode_num, decode_num,
-    OP_0, OP_2, OP_3, OP_DUP, OP_EQUAL, OP_EQUALVERIFY, OP_HASH160, OP_SHA256,
-    OP_CHECKSIG, OP_CHECKMULTISIG, OP_CHECKLOCKTIMEVERIFY,
+    OP_0, OP_1, OP_2, OP_3, OP_DUP, OP_EQUAL, OP_EQUALVERIFY, OP_HASH160, OP_SHA256,
+    OP_CHECKSIG, OP_CHECKMULTISIG, OP_CHECKLOCKTIMEVERIFY, OP_CHECKSEQUENCEVERIFY,
+    OP_IF, OP_NOTIF, OP_ELSE, OP_ENDIF, OP_DROP,
 )
 
 Z = int.from_bytes(sha256(b"a transaction to authorize"), "big")
@@ -63,3 +64,37 @@ def test_cltv():
     assert evaluate(lock, Z, locktime=800001) is True
     # too early -> invalid
     assert evaluate(lock, Z, locktime=799999) is False
+
+
+# --- relative time lock (CSV) ---------------------------------------------
+def test_csv():
+    delay = 144
+    lock = Script([encode_num(delay), OP_CHECKSEQUENCEVERIFY, OP_DROP, OP_1])
+    assert evaluate(lock, sequence=144) is True          # exactly matured
+    assert evaluate(lock, sequence=1000) is True         # well past
+    assert evaluate(lock, sequence=143) is False         # one block too soon
+    assert evaluate(lock, sequence=None) is False        # not a relative-locked input
+
+
+# --- conditional branches (OP_IF / OP_ELSE / OP_ENDIF) --------------------
+def test_if_else_branches():
+    # OP_IF <push A> OP_ELSE <push B> OP_ENDIF  — selector picks the branch
+    script = lambda sel: Script([sel, OP_IF, OP_1, OP_ELSE, OP_0, OP_ENDIF])
+    assert evaluate(script(OP_1)) is True                # truthy -> IF branch pushes 1
+    assert evaluate(script(OP_0)) is False               # falsy  -> ELSE branch pushes 0
+
+    # OP_NOTIF inverts the selector
+    n = Script([OP_0, OP_NOTIF, OP_1, OP_ELSE, OP_0, OP_ENDIF])
+    assert evaluate(n) is True
+
+    # the untaken branch is skipped, not executed (a bare OP_EQUALVERIFY there
+    # would fail with an empty stack if it ran)
+    guarded = Script([OP_1, OP_IF, OP_1, OP_ELSE, OP_EQUALVERIFY, OP_ENDIF])
+    assert evaluate(guarded) is True
+
+    # nested conditionals
+    nested = Script([OP_1, OP_IF, OP_1, OP_IF, OP_1, OP_ELSE, OP_0, OP_ENDIF, OP_ENDIF])
+    assert evaluate(nested) is True
+
+    # an OP_IF with no matching OP_ENDIF is invalid
+    assert evaluate(Script([OP_1, OP_IF, OP_1])) is False

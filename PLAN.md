@@ -483,3 +483,26 @@ _Append a dated entry every session: what changed · what's next · new decision
   README table + counts refreshed; og.png re-rendered (pills compacted to keep two rows).
   **176/176 pytest, 76/76 in-browser, console clean.** Remaining optional menu: Lightning/HTLC,
   FROST (threshold Schnorr), polish (README GIF, sibling cross-links).
+- **2026-07-03** — **Lightning DONE — a 13th demo card shipped** (enhancement #8, the first Layer-2
+  card). Scope (user-chosen): the **payment channel + revocation/penalty** mechanism with **real
+  BOLT-3 scripts**, no in-flight HTLCs (HTLC routing is the deliberately-unbuilt other half).
+  **Script-VM prerequisite:** added `OP_IF`/`OP_NOTIF`/`OP_ELSE`/`OP_ENDIF` (branch-exec stack) +
+  `OP_CHECKSEQUENCEVERIFY` to `hermes/script.py` `evaluate()` (new `sequence` param) *and* the inline
+  JS VM in `web/script/index.html` — which gained a 5th "Lightning to_local" preset (honest delayed
+  path valid; spend-before-delay rejected by CSV). New `hermes/lightning.py`: sorted 2-of-2
+  `funding_script`, BOLT-3 `derive_pubkey`/`derive_privkey`, the blinded `derive_revocation_pubkey`/
+  `derive_revocation_privkey` (assemblable only from BOTH secrets), `per_commitment_secret`
+  (Appendix D generate_from_seed), `to_local_script` (OP_IF rev / OP_ELSE CSV+DROP delayed), and
+  `commitment_tx`/`penalty_tx`/`sign_*` (BIP-143 P2WSH). **Validation:** byte-for-byte **BOLT-3
+  Appendix E** (key + revocation derivation) and **Appendix D** (secret generation) vectors, a full
+  lifecycle test (open→update→revoke→cheat→penalty sweep verified through our own Script VM's IF/CSV
+  branches), and CSV-immature / wrong-key negatives. JS mirror in `btc.js` (`ln*` family) + 14 new
+  `test.html` checks against the same Appendix D/E vectors. **New `web/lightning/` card**
+  ("Lightning Channels", accent #ffd400 electric-yellow, first `--lightning`/`.c13`): open a 2-of-2
+  channel, pay off-chain (each payment mints a commitment + reveals the revoked state's secret), a
+  revoked-state ledger with a "Bob broadcasts" penalty beat (Alice assembles the revocation key,
+  sweeps 100%, real penalty-tx signature verified), and a cooperative-close path. Landing now 13
+  cards ("Thirteen", Layer-2 tag); README table + counts; og.png re-rendered (pills compacted +
+  trimmed to keep two rows: 13 pills, "testnet tx"/"Taproot"). **188/188 pytest, 90/90 in-browser,
+  console clean.** Remaining optional menu: Lightning **HTLC routing** across hops (the sequel),
+  FROST (threshold Schnorr), polish (README GIF, sibling cross-links).

@@ -22,6 +22,7 @@
     --curve:#7cc4ff; --address:#ffc266; --sign:#ff6b6b; --mine:#ff9f43;
     --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
     --multisig:#ef88c8; --merkle:#4dc9e6; --taproot:#f7a14b; --musig:#a8d94b;
+    --lightning:#ffd400;
     --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
@@ -62,6 +63,7 @@
   .c1{--c:var(--curve)} .c2{--c:var(--address)} .c3{--c:var(--sign)} .c4{--c:var(--mine)}
   .c5{--c:var(--network)} .c6{--c:var(--testnet)} .c7{--c:var(--script)} .c8{--c:var(--wallet)}
   .c9{--c:var(--multisig)} .c10{--c:var(--merkle)} .c11{--c:var(--taproot)} .c12{--c:var(--musig)}
+  .c13{--c:var(--lightning)}
   a.card:hover{border-color:var(--c)} .card .tag,.card .open{color:var(--c)}
 
   footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);
@@ -78,7 +80,7 @@
     <p class="lede">
       Bitcoin, built from <b>nothing</b> — no crypto libraries, no magic. The
       <b>secp256k1</b> curve, the hashes, the signatures, the proof of work, the
-      network, all rebuilt by hand and turned into things you can <b>touch</b>. Twelve
+      network, all rebuilt by hand and turned into things you can <b>touch</b>. Thirteen
       interactive windows onto how a chain of numbers becomes money nobody can forge.
     </p>
   </header>
@@ -159,6 +161,12 @@
       <div class="num">12</div><div class="tag">BIP-327</div>
       <h2>MuSig2</h2>
       <p>Three cosigners, one key, one 64-byte signature. The two-round ceremony that makes a multisig vault invisible — and 4× cheaper.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+    <a class="card c13" href="lightning/">
+      <div class="num">13</div><div class="tag">BOLT-3 · Layer 2</div>
+      <h2>Lightning Channels</h2>
+      <p>Pay off-chain thousands of times, trustlessly. Publish a revoked state and the revocation key lets your counterparty take everything.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
   </div>

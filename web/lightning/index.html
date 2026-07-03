@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lightning — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Lightning Channels — Hermes">
+<meta property="og:description" content="Pay off-chain thousands of times, trustlessly — the revocation/penalty mechanism that makes a Lightning channel safe (BOLT-3), built from scratch.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#ffd400;--accent-ink:#1c1602}
+  .card2{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card2 + .card2{margin-top:14px}
+  .card2 h2{margin-top:0}
+  /* channel balance bar */
+  .chan{margin:12px 0 2px}
+  .chanends{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;margin-bottom:6px}
+  .chanends .aC{color:#7cc4ff}.chanends .bC{color:var(--accent)}
+  .chanends b{font-size:13px}
+  .chanbar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#23232f}
+  .chanbar i{display:block;height:100%;transition:width .35s}
+  .chanbar .a{background:#7cc4ff}.chanbar .b{background:var(--accent)}
+  .paybtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .statechip{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:10px}
+  .statechip b{color:var(--ink)}
+  /* revoked-state ledger */
+  .ledger{margin-top:6px}
+  .lrow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px;
+    padding:8px 0;border-bottom:1px solid var(--line)}
+  .lrow:last-child{border-bottom:none}
+  .lrow .ix{color:var(--muted);flex:none;width:52px}
+  .lrow .bal{flex:1;color:var(--ink)}
+  .lrow .bal .rich{color:var(--accent)}
+  .lrow button{padding:5px 9px;font-size:11px;flex:none}
+  .empty{color:var(--muted);font-size:11.5px;font-family:var(--mono);padding:8px 0}
+  .badge2{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;
+    padding:8px 12px;border-radius:8px;font-weight:600;margin-top:12px;line-height:1.4}
+  .badge2.ok{background:rgba(88,214,141,.14);color:var(--good)}
+  .badge2.no{background:rgba(255,107,107,.14);color:var(--bad)}
+  .badge2.warn{background:rgba(255,212,0,.14);color:var(--accent)}
+  .badge2.idle{background:#1c1c27;color:var(--muted)}
+  /* right-column script + key readouts */
+  .stg{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .stg + .stg{margin-top:10px}
+  .stg .lab2{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:5px}
+  .stg .num{font-family:var(--mono);font-size:11.5px;color:var(--ink);word-break:break-all}
+  .scriptbox{font-family:var(--mono);font-size:11.5px;line-height:1.85;word-break:break-all}
+  .scriptbox .op{color:var(--accent)}
+  .scriptbox .push{color:#8fb7e8}
+  .scriptbox .ifpath{color:var(--good)}
+  .scriptbox .elsepath{color:var(--muted)}
+  .keyline{font-family:var(--mono);font-size:11px;word-break:break-all;margin-top:8px}
+  .keyline .lab3{color:var(--muted)}
+  .keyline .v{color:var(--ink)}
+  .keyline .rev{color:var(--bad)}
+  .keyline .ok3{color:var(--good);font-weight:700}
+  .formula{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.85;margin:10px 0 0}
+  .formula b{color:var(--ink)}.formula .a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / Lightning</div>
+  <header class="hero">
+    <h1>Lightning — trustless payments off the chain</h1>
+    <p class="sub">
+      A channel lets two people pay each other thousands of times while the blockchain sees only
+      <b>two</b> transactions — one to <b>open</b> (a <span class="x" data-pop="funding">2-of-2
+      funding</span> output), one to <b>close</b>. In between, the balance is just a
+      <span class="x" data-pop="commitment">commitment transaction</span> each side holds but never
+      broadcasts. To pay, they sign a new one and throw the old away. But nothing physically stops a
+      cheater from broadcasting a stale, more-favourable state — so Lightning makes cheating
+      <b>self-destructive</b> with a <span class="x" data-pop="revocation">revocation key</span>.
+      Publish a revoked state and your counterparty takes <b>everything</b>.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="card2">
+        <h2>1 · Open the channel (on-chain)</h2>
+        <p class="hint" style="margin-top:0">Alice and Bob each put in 0.05 BTC to a single
+          <span class="mono">bc1q…</span> address that only their two keys together can spend — a
+          2-of-2 <span class="x" data-pop="p2wsh">P2WSH</span>. That funding transaction is the
+          <em>only</em> time the chain hears about them until they close.</p>
+        <div class="stg" style="margin-top:12px">
+          <div class="lab2">funding address &nbsp;— 2-of-2 (Alice + Bob) · 0.10 BTC</div>
+          <div class="num" id="fundaddr">–</div>
+        </div>
+      </div>
+
+      <div class="card2">
+        <h2>2 · Pay off-chain — instantly, for free</h2>
+        <div class="chan">
+          <div class="chanends">
+            <span class="aC">Alice <b id="aBal">0.050</b></span>
+            <span class="bC">Bob <b id="bBal">0.050</b></span>
+          </div>
+          <div class="chanbar"><i class="a" id="aFill" style="width:50%"></i><i class="b" id="bFill" style="width:50%"></i></div>
+        </div>
+        <div class="paybtns">
+          <button id="payAB">Alice pays Bob&nbsp; →</button>
+          <button id="payBA">←&nbsp; Bob pays Alice</button>
+        </div>
+        <div class="statechip">commitment state <b id="stateNo">#0</b> &nbsp;·&nbsp;
+          <b id="payCount">0</b> payments &nbsp;·&nbsp; on-chain transactions so far: <b>1</b></div>
+        <p class="hint">Each payment mints a fresh pair of commitment transactions and
+          <b>revokes</b> the previous state — Bob hands Alice (and Alice hands Bob) the
+          <span class="x" data-pop="secret">per-commitment secret</span> for the old state. That
+          reveal is what makes the old state <em>dangerous to publish</em>. No miner, no fee, no
+          waiting: just two signatures swapped over the wire.</p>
+      </div>
+
+      <div class="card2">
+        <h2>3 · Settle</h2>
+        <div class="row">
+          <button id="coop" class="primary">Cooperative close</button>
+          <button id="reset">Reset channel</button>
+        </div>
+        <div id="coopOut"></div>
+        <h3 style="font-size:12.5px;margin:16px 0 4px">…or someone tries to cheat</h3>
+        <p class="hint" style="margin-top:0">Bob can broadcast any <em>revoked</em> commitment he
+          kept. He only profits from one where he was richer than he is now
+          (<span style="color:var(--accent)">highlighted</span>) — but Alice can punish
+          <em>any</em> of them.</p>
+        <div class="ledger" id="ledger"></div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>This state's <span class="mono">to_local</span> — holds Bob's balance</h2>
+        <div class="scriptbox" id="scriptbox"></div>
+        <div class="keyline"><span class="lab3">revocationPubkey</span> &nbsp;=&nbsp;
+          Alice's basepoint ⊕ Bob's per-commit point<br><span class="rev" id="revpub">–</span></div>
+        <div class="keyline"><span class="lab3">delayedPubkey (Bob's, after 144 blocks)</span><br>
+          <span class="v" id="delpub">–</span></div>
+        <p class="hint">Two ways to spend Bob's money: the <span class="ifpath">IF</span> branch —
+          instant, for whoever holds the revocation key — or the <span class="elsepath">ELSE</span>
+          branch — Bob himself, but only after a <span class="x" data-pop="csv">to_self_delay</span>.
+          That delay is the window in which a cheat gets caught.</p>
+      </div>
+
+      <div class="panel" id="justicePanel">
+        <h2>The justice math</h2>
+        <div id="justice">
+          <p class="hint" style="margin-top:0">The revocation private key doesn't exist yet — it can
+            only be assembled from <b>both</b> Alice's revocation-basepoint secret <em>and</em> Bob's
+            per-commitment secret. Bob only reveals the latter when he <b>revokes</b> a state. Make a
+            payment, then broadcast an old state to watch the key snap together.</p>
+          <div class="formula">
+            revocationPriv = <span class="a">r</span>·H(R‖P) + <span class="a">p</span>·H(P‖R)<br>
+            <b>r</b> = Alice's secret &nbsp; <b>p</b> = Bob's revealed secret
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Revoking = revealing a secret</h3>
+        <p>"Deleting" an old state isn't enough — you can't prove a deletion. Instead each side hands
+          over the <span class="mono">per-commitment secret</span> for the state they're leaving.
+          Now the other party can <em>build the key</em> that punishes its reuse.</p></div>
+      <div class="ncard"><h3>Punishment, not detection</h3>
+        <p>A revoked broadcast doesn't just get flagged — the counterparty sweeps the cheater's whole
+          <span class="mono">to_local</span> output before the <span class="mono">to_self_delay</span>
+          elapses. Rational players never cheat, so the channel stays honest with zero on-chain
+          activity.</p></div>
+      <div class="ncard"><h3>Watchtowers</h3>
+        <p>The catch only works if someone is watching while you're offline. A
+          <span class="x" data-pop="watchtower">watchtower</span> holds your penalty transactions and
+          broadcasts them if it ever sees a revoked commitment hit the chain — no funds, no trust,
+          just vigilance for hire.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  funding: "<h4>2-of-2 funding</h4><p>Both parties pay into one output locked to <em>both</em> their keys (a 2-of-2 multisig, demo 9). Neither can move the money alone — every channel update is a jointly-signed spend of this one output.</p>",
+  commitment: "<h4>Commitment transaction</h4><p>A ready-to-broadcast spend of the funding output that pays each party its current balance. Both sides hold one (slightly different) copy. Broadcasting it 'closes' the channel unilaterally.</p>",
+  revocation: "<h4>The revocation key</h4><p>A blinded key mixing one secret from each party (BOLT-3). It can't be assembled until the owner of a state reveals their per-commitment secret — which is exactly the act of revoking that state. See it snap together in 'The justice math'.</p>",
+  secret: "<h4>Per-commitment secret</h4><p>Each commitment number has its own secret, generated from a seed by a bit-flip + SHA-256 cascade (BOLT-3 Appendix D). Handed out newest-first, so revealing one lets the receiver recompute every older one they've already been given — O(1) storage.</p>",
+  p2wsh: "<h4>P2WSH</h4><p>Pay-to-Witness-Script-Hash: the address commits to a script (here, the 2-of-2 multisig). The script itself is only revealed when spent. Demo 9 builds one by hand.</p>",
+  csv: "<h4>to_self_delay / OP_CHECKSEQUENCEVERIFY</h4><p>A <em>relative</em> timelock (BIP-68/112): the owner's own branch of to_local can't be spent until N blocks after the commitment confirms. That delay is the counterparty's window to punish a revoked broadcast.</p>",
+  watchtower: "<h4>Watchtowers</h4><p>A third party you hand encrypted penalty transactions to. If a revoked state ever appears on-chain while you're offline, the tower broadcasts the punishment for you. It never learns your balance and never holds your coins.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hex = (b) => H.bytesToHex(b);
+  const short = (b, n = 12) => { const h = hex(b); return h.slice(0, n) + "…" + h.slice(-8); };
+  const btc = (sat) => (sat / 1e8).toFixed(3);
+
+  const CAP = 10_000_000, STEP = 1_000_000, DELAY = 144;
+  const TOP = 281474976710655n;                    // BOLT-3 first per-commitment index
+
+  function mkParty(name) {
+    const p = { name };
+    p.funding = H.randScalar();     p.fundingPub = H.pubFromSecret(p.funding);
+    p.payment = H.randScalar();     p.paymentPub = H.pubFromSecret(p.payment);
+    p.delayedBase = H.randScalar(); p.delayedPt = H.pubFromSecret(p.delayedBase);
+    p.revBase = H.randScalar();     p.revPt = H.pubFromSecret(p.revBase);
+    const s = new Uint8Array(32); crypto.getRandomValues(s); p.seed = s;
+    return p;
+  }
+
+  let alice, bob, stateNum, aliceSat, bobSat, payments, revoked, closed;
+
+  // Bob's to_local commitment for a given state index (his balance sits here).
+  function bobCommit(i) {
+    const secret = H.lnPerCommitmentSecret(bob.seed, TOP - BigInt(i));
+    const ppc = H.pubFromSecret(H.bytesToBigInt(secret));
+    const revPub = H.lnDeriveRevocationPubkey(alice.revPt, ppc);   // Alice's basepoint + Bob's point
+    const delPub = H.lnDerivePubkey(bob.delayedPt, ppc);
+    const script = H.lnToLocalScript(H.sec(revPub), DELAY, H.sec(delPub));
+    return { secret, revPub, delPub, script };
+  }
+
+  function reset() {
+    alice = mkParty("Alice"); bob = mkParty("Bob");
+    stateNum = 0; aliceSat = bobSat = CAP / 2; payments = 0; revoked = []; closed = false;
+    $("fundaddr").textContent = H.lnFundingAddress(alice.fundingPub, bob.fundingPub, false);
+    $("coopOut").innerHTML = "";
+    clearJustice();
+    render();
+  }
+
+  function pay(fromAlice) {
+    if (closed) return;
+    const amt = STEP;
+    if (fromAlice && aliceSat < amt) return;
+    if (!fromAlice && bobSat < amt) return;
+    // record the CURRENT state as revoked: the paying/updating flow reveals Bob's secret for it
+    const c = bobCommit(stateNum);
+    revoked.push({ i: stateNum, aliceSat, bobSat, bobSecret: c.secret });
+    if (fromAlice) { aliceSat -= amt; bobSat += amt; } else { aliceSat += amt; bobSat -= amt; }
+    stateNum++; payments++;
+    clearJustice();
+    render();
+  }
+
+  // Bob broadcasts revoked entry `r` — Alice assembles the key and sweeps his to_local.
+  function punish(r) {
+    const c = bobCommit(r.i);
+    const revPriv = H.lnDeriveRevocationPrivkey(alice.revBase, H.bytesToBigInt(r.bobSecret));
+    const match = hex(H.sec(H.pubFromSecret(revPriv))) === hex(H.sec(c.revPub));
+
+    // build a real penalty tx sweeping Bob's to_local (value r.bobSat) to Alice, and sign it
+    const sweepSpk = H.concatBytes(Uint8Array.of(0x00, 0x14), H.hash160(H.sec(alice.paymentPub)));
+    const prevout = { txid: hex(H.sha256(H.utf8("commit#" + r.i))), index: 0, sequence: 0 };
+    const output = { amount: r.bobSat, scriptPubKey: sweepSpk };
+    const z = H.sigHashBip143(prevout, c.script, r.bobSat, output);
+    const sig = H.sign(revPriv, z);
+    const spendOk = match && H.verify(H.pubFromSecret(revPriv), z, sig);
+
+    $("justice").innerHTML = `
+      <div class="keyline"><span class="lab3">Bob revealed his secret p when he revoked state ${r.i}</span><br>
+        <span class="v">${short(r.bobSecret, 16)}</span></div>
+      <div class="keyline"><span class="lab3">Alice assembles revocationPriv = r·H(R‖P) + p·H(P‖R)</span><br>
+        <span class="rev">${short(H.bigIntToBytes(revPriv, 32), 16)}</span></div>
+      <div class="keyline">${match
+        ? '<span class="ok3">✓ its pubkey equals the revocationPubkey baked into to_local</span>'
+        : '<span class="rev">key mismatch</span>'}</div>
+      <div class="keyline"><span class="lab3">penalty tx — sweeps the IF branch, no delay, signature valid</span><br>
+        <span class="ok3">${spendOk ? "✓ verified" : "✗"}</span></div>
+      <div class="badge2 no" style="display:flex">⚡ Alice sweeps Bob's entire ${btc(r.bobSat)} BTC
+        &nbsp;·&nbsp; Bob is left with nothing</div>
+      <p class="hint">Bob thought he'd claw back ${btc(r.bobSat)} BTC (his balance back at state
+        ${r.i}). Instead the revealed secret handed Alice the key to his own output. This is why the
+        current balance is the <em>only</em> state anyone dares broadcast.</p>`;
+    render();
+  }
+
+  function coopClose() {
+    if (closed) return;
+    closed = true;
+    $("coopOut").innerHTML =
+      `<div class="badge2 ok" style="display:flex">✓ Cooperative close — one 2-of-2 transaction pays
+        Alice ${btc(aliceSat)} + Bob ${btc(bobSat)} BTC. No delay, no penalty, lowest fee.</div>`;
+    render();
+  }
+
+  function clearJustice() {
+    $("justice").innerHTML =
+      `<p class="hint" style="margin-top:0">The revocation private key doesn't exist yet — it can
+        only be assembled from <b>both</b> Alice's revocation-basepoint secret <em>and</em> Bob's
+        per-commitment secret. Bob only reveals the latter when he <b>revokes</b> a state. Make a
+        payment, then broadcast an old state to watch the key snap together.</p>
+      <div class="formula">
+        revocationPriv = <span class="a">r</span>·H(R‖P) + <span class="a">p</span>·H(P‖R)<br>
+        <b>r</b> = Alice's secret &nbsp; <b>p</b> = Bob's revealed secret</div>`;
+  }
+
+  function renderScript(script) {
+    // annotate the to_local witnessScript opcode by opcode
+    const OPS = {0x63:["OP_IF","op"],0x67:["OP_ELSE","op"],0x68:["OP_ENDIF","op"],
+      0x75:["OP_DROP","op"],0xb2:["OP_CHECKSEQUENCEVERIFY","op"],0xac:["OP_CHECKSIG","op"]};
+    const out = []; let i = 0;
+    while (i < script.length) {
+      const b = script[i];
+      if (OPS[b]) { out.push(`<span class="op">${OPS[b][0]}</span>`); i++; }
+      else if (b <= 75) {                            // a data push
+        const data = script.slice(i + 1, i + 1 + b);
+        let label = "&lt;data&gt;";
+        if (b === 33) label = "&lt;pubkey&gt;";
+        else if (b <= 4) {                           // a small script number (the delay)
+          let n = 0; for (let k = data.length - 1; k >= 0; k--) n = n * 256 + data[k];
+          label = `&lt;${n}&gt;`;
+        }
+        out.push(`<span class="push">${label}</span>`); i += 1 + b;
+      } else { out.push(`<span class="op">0x${b.toString(16)}</span>`); i++; }
+    }
+    return out.join(" ");
+  }
+
+  function render() {
+    $("aBal").textContent = btc(aliceSat);
+    $("bBal").textContent = btc(bobSat);
+    $("aFill").style.width = (aliceSat / CAP * 100) + "%";
+    $("bFill").style.width = (bobSat / CAP * 100) + "%";
+    $("stateNo").textContent = "#" + stateNum;
+    $("payCount").textContent = payments;
+    $("payAB").disabled = closed || aliceSat < STEP;
+    $("payBA").disabled = closed || bobSat < STEP;
+    $("coop").disabled = closed;
+
+    const c = bobCommit(stateNum);
+    $("scriptbox").innerHTML = renderScript(c.script);
+    $("revpub").textContent = short(H.sec(c.revPub), 16);
+    $("delpub").textContent = short(H.sec(c.delPub), 16);
+
+    // revoked-state ledger
+    if (!revoked.length) {
+      $("ledger").innerHTML = `<div class="empty">No revoked states yet — every payment adds one.</div>`;
+    } else {
+      $("ledger").innerHTML = revoked.map((r, j) => {
+        const rich = r.bobSat > bobSat;
+        return `<div class="lrow">
+          <span class="ix">state ${r.i}</span>
+          <span class="bal">Bob had <span class="${rich ? "rich" : ""}">${btc(r.bobSat)}</span>
+            &nbsp;·&nbsp; Alice ${btc(r.aliceSat)}</span>
+          <button data-j="${j}" ${closed ? "disabled" : ""}>Bob broadcasts</button></div>`;
+      }).join("");
+      $("ledger").querySelectorAll("button[data-j]").forEach((bn) =>
+        bn.addEventListener("click", () => punish(revoked[+bn.dataset.j])));
+    }
+  }
+
+  $("payAB").addEventListener("click", () => pay(true));
+  $("payBA").addEventListener("click", () => pay(false));
+  $("coop").addEventListener("click", coopClose);
+  $("reset").addEventListener("click", reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>

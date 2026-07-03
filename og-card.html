@@ -15,6 +15,7 @@
     --curve:#7cc4ff; --address:#ffc266; --sign:#ff6b6b; --mine:#ff9f43;
     --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
     --multisig:#ef88c8; --merkle:#4dc9e6; --taproot:#f7a14b; --musig:#a8d94b;
+    --lightning:#ffd400;
     --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -33,12 +34,12 @@
   }
   .lede{margin-top:30px;font-size:29px;line-height:1.45;color:#b6b6c4;max-width:900px}
   .lede b{color:var(--ink);font-weight:650}
-  .pills{position:absolute;left:80px;bottom:78px;display:flex;flex-wrap:wrap;gap:12px;max-width:1045px}
+  .pills{position:absolute;left:80px;bottom:78px;display:flex;flex-wrap:wrap;gap:10px;max-width:1055px}
   .pill{
-    display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
-    border-radius:999px;padding:10px 15px;font-family:var(--mono);font-size:16px;color:#d4d4de;
+    display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:9px 13px;font-family:var(--mono);font-size:14.5px;color:#d4d4de;
   }
-  .pill .dot{width:9px;height:9px;border-radius:50%}
+  .pill .dot{width:8px;height:8px;border-radius:50%}
   .code{
     position:absolute;right:70px;bottom:66px;text-align:right;font-family:var(--mono);
     font-size:17px;line-height:1.7;color:#2c2c3a;
@@ -48,7 +49,7 @@
 <body>
   <div class="badge">Hermes</div>
   <h1>Bitcoin from First Principles</h1>
-  <p class="lede">Keys, signatures &amp; proof of work — <b>built from nothing</b>. Twelve interactive
+  <p class="lede">Keys, signatures &amp; proof of work — <b>built from nothing</b>. Thirteen interactive
     demos, no crypto libraries.</p>
 
   <div class="pills">
@@ -58,12 +59,13 @@
     <span class="pill"><span class="dot" style="background:var(--mine)"></span>proof of work</span>
     <span class="pill"><span class="dot" style="background:var(--network)"></span>51% attack</span>
     <span class="pill"><span class="dot" style="background:var(--script)"></span>Script VM</span>
-    <span class="pill"><span class="dot" style="background:var(--testnet)"></span>real testnet tx</span>
+    <span class="pill"><span class="dot" style="background:var(--testnet)"></span>testnet tx</span>
     <span class="pill"><span class="dot" style="background:var(--wallet)"></span>HD wallet</span>
     <span class="pill"><span class="dot" style="background:var(--multisig)"></span>multisig</span>
     <span class="pill"><span class="dot" style="background:var(--merkle)"></span>Merkle / SPV</span>
-    <span class="pill"><span class="dot" style="background:var(--taproot)"></span>Taproot / Schnorr</span>
+    <span class="pill"><span class="dot" style="background:var(--taproot)"></span>Taproot</span>
     <span class="pill"><span class="dot" style="background:var(--musig)"></span>MuSig2</span>
+    <span class="pill"><span class="dot" style="background:var(--lightning)"></span>Lightning</span>
   </div>
 
   <div class="code">0488b21e · OP_CHECKSIG<br>y² = x³ + 7&nbsp;&nbsp;mod p<br>SHA-256 · RIPEMD-160 · Base58</div>

@@ -29,6 +29,7 @@ from .bip39 import (
 )
 from . import schnorr
 from .taproot import output_key, p2tr_address, tap_tweak, tweak_secret
+from . import lightning
 
 __all__ = [
     "FieldElement",
@@ -45,4 +46,5 @@ __all__ = [
     "merkle_root", "merkle_proof", "merkle_levels", "verify_merkle_proof", "root_from_txids",
     "HDKey", "entropy_to_mnemonic", "mnemonic_to_entropy", "mnemonic_to_seed", "is_valid",
     "schnorr", "tap_tweak", "output_key", "p2tr_address", "tweak_secret",
+    "lightning",
 ]

@@ -731,6 +731,81 @@
     return concatBytes(bigIntToBytes(R.x, 32), bigIntToBytes(s, 32));
   }
 
+  // --- Lightning payment channels (BOLT-3) -----------------------------------
+  // BOLT-3 hashes are over the 33-byte compressed SEC points.
+  const lnHashInt = (...parts) => bytesToBigInt(sha256(concatBytes(...parts)));
+  const cmpBytes = (a, b) => {                        // lexicographic byte compare
+    const n = Math.min(a.length, b.length);
+    for (let i = 0; i < n; i++) if (a[i] !== b[i]) return a[i] - b[i];
+    return a.length - b.length;
+  };
+
+  // per-commitment public key: basepoint + SHA256(ppc || basepoint)·G
+  function lnDerivePubkey(basepoint, perCommitmentPoint) {
+    const h = lnHashInt(sec(perCommitmentPoint), sec(basepoint));
+    return ptAdd(basepoint, ptMul(h, G));
+  }
+  function lnDerivePrivkey(basepointSecret, perCommitmentPoint) {
+    const h = lnHashInt(sec(perCommitmentPoint), sec(pubFromSecret(basepointSecret)));
+    return mod(basepointSecret + h, N);
+  }
+  // the blinded revocation key mixes one point from each party
+  function lnDeriveRevocationPubkey(revocationBasepoint, perCommitmentPoint) {
+    const h1 = lnHashInt(sec(revocationBasepoint), sec(perCommitmentPoint));
+    const h2 = lnHashInt(sec(perCommitmentPoint), sec(revocationBasepoint));
+    return ptAdd(ptMul(h1, revocationBasepoint), ptMul(h2, perCommitmentPoint));
+  }
+  // the matching private key — assemblable only once BOTH secrets are known
+  function lnDeriveRevocationPrivkey(revocationBasepointSecret, perCommitmentSecret) {
+    const revBase = pubFromSecret(revocationBasepointSecret);
+    const ppc = pubFromSecret(perCommitmentSecret);
+    const h1 = lnHashInt(sec(revBase), sec(ppc));
+    const h2 = lnHashInt(sec(ppc), sec(revBase));
+    return mod(revocationBasepointSecret * h1 + perCommitmentSecret * h2, N);
+  }
+  // BOLT-3 Appendix D generate_from_seed: bit-flip + SHA256 cascade
+  function lnPerCommitmentSecret(seed, index) {
+    let p = Uint8Array.from(seed);
+    const I = BigInt(index);
+    for (let b = 47; b >= 0; b--) {
+      if ((I >> BigInt(b)) & 1n) {
+        p = Uint8Array.from(p);
+        p[b >> 3] ^= 1 << (b & 7);                   // flip bit (b%8) of byte (b//8)
+        p = sha256(p);
+      }
+    }
+    return p;
+  }
+  // minimal script-number push (for to_self_delay)
+  function lnScriptNum(n) {
+    if (n === 0) return new Uint8Array();
+    const out = []; let a = Math.abs(n);
+    while (a) { out.push(a & 0xff); a = Math.floor(a / 256); }
+    if (out[out.length - 1] & 0x80) out.push(0);
+    return Uint8Array.from(out);
+  }
+  // the funding output: a 2-of-2 multisig with lexicographically sorted keys
+  function lnFundingScript(pubA, pubB) {
+    const sorted = [sec(pubA), sec(pubB)].sort(cmpBytes);
+    const parts = [Uint8Array.of(0x52)];             // OP_2
+    for (const p of sorted) parts.push(pushData(p));
+    parts.push(Uint8Array.of(0x52), Uint8Array.of(0xae)); // OP_2, OP_CHECKMULTISIG
+    return concatBytes(...parts);
+  }
+  const lnFundingAddress = (pubA, pubB, testnet = false) =>
+    p2wshAddress(lnFundingScript(pubA, pubB), testnet);
+  // the to_local witnessScript: OP_IF <rev> OP_ELSE <delay> OP_CSV OP_DROP <delayed> OP_ENDIF OP_CHECKSIG
+  function lnToLocalScript(revocationPubkey, toSelfDelay, localDelayedPubkey) {
+    const d = lnScriptNum(toSelfDelay);
+    return concatBytes(
+      Uint8Array.of(0x63),                           // OP_IF
+      pushData(revocationPubkey),
+      Uint8Array.of(0x67),                           // OP_ELSE
+      pushData(d), Uint8Array.of(0xb2, 0x75),        // OP_CHECKSEQUENCEVERIFY OP_DROP
+      pushData(localDelayedPubkey),
+      Uint8Array.of(0x68, 0xac));                    // OP_ENDIF OP_CHECKSIG
+  }
+
   // hash of a message string, as the integer z that ECDSA signs
   const messageHash = (str) => bytesToBigInt(doubleSha256(utf8(str)));
 
@@ -759,6 +834,9 @@
     musigApplyTweak, musigKeyAggCoeff, musigNonceGen, musigNonceGenInternal,
     musigNonceAgg, musigSessionValues, musigPartialSign, musigPartialSigVerify,
     musigPartialSigAgg,
+    // lightning (BOLT-3)
+    lnDerivePubkey, lnDerivePrivkey, lnDeriveRevocationPubkey, lnDeriveRevocationPrivkey,
+    lnPerCommitmentSecret, lnFundingScript, lnFundingAddress, lnToLocalScript, lnScriptNum,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };
