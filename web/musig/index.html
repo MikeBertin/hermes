@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MuSig2 — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="MuSig2 — Hermes">
+<meta property="og:description" content="n cosigners, ONE key, one 64-byte signature — the two-round ceremony behind invisible multisig (BIP-327).">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#a8d94b;--accent-ink:#141c02}
+  .card2{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card2 + .card2{margin-top:16px}
+  .card2 h2{margin-top:0}
+  .signerline{display:flex;align-items:flex-start;gap:10px;font-family:var(--mono);font-size:12px;
+    padding:9px 0;border-bottom:1px solid var(--line)}
+  .signerline:last-of-type{border-bottom:none}
+  .signerline .dot{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+    font-weight:700;background:#1c1c27;color:var(--accent);flex:none}
+  .signerline .body{min-width:0;flex:1}
+  .signerline .who{color:var(--ink)}
+  .signerline .pk{color:var(--muted);word-break:break-all;font-size:11px}
+  .signerline .r1,.signerline .r2{margin-top:4px;font-size:11px;word-break:break-all;display:none}
+  .signerline .r1 .lab3,.signerline .r2 .lab3{color:var(--muted)}
+  .signerline .r1 .v{color:#8fb7e8}
+  .signerline .r2 .v{color:var(--accent)}
+  .signerline .ok3{color:var(--good);font-weight:700}
+  .signerline .no3{color:var(--bad);font-weight:700}
+  .agg{background:#0e0e16;border:1px dashed var(--accent);border-radius:10px;padding:12px 14px;margin-top:12px}
+  .agg .lab2{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:5px}
+  .agg .num{font-family:var(--mono);font-size:12px;color:var(--accent);word-break:break-all}
+  .steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:4px 0 12px}
+  .steps button{padding:10px 8px}
+  .badge2{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:13px;
+    padding:7px 12px;border-radius:8px;font-weight:600;margin-top:12px}
+  .badge2.ok{background:rgba(88,214,141,.14);color:var(--good)}
+  .badge2.no{background:rgba(255,107,107,.14);color:var(--bad)}
+  .badge2.idle{background:#1c1c27;color:var(--muted)}
+  .stg{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .stg + .arrow-d + .stg{margin-top:0}
+  .stg .lab2{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:5px}
+  .stg .num{font-family:var(--mono);font-size:11.5px;color:var(--ink);word-break:break-all}
+  .stg.final{border-color:var(--accent)}
+  .stg.final .num{color:var(--accent);font-size:12.5px}
+  .arrow-d{color:var(--muted);text-align:center;font-size:15px;margin:2px 0;line-height:1.2;font-family:var(--mono);font-size:12px}
+  .finalsig{font-family:var(--mono);font-size:11.5px;word-break:break-all;margin-top:10px;display:none}
+  .finalsig .rx{color:#8fb7e8}
+  .finalsig .s{color:var(--accent)}
+  .weigh{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .weigh .side{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .weigh .side h4{margin:0 0 6px;font-size:11px;font-family:var(--mono);letter-spacing:1.2px;
+    text-transform:uppercase;color:var(--muted)}
+  .weigh .side.win{border-color:rgba(168,217,75,.45)}
+  .weigh .side.win h4{color:var(--accent)}
+  .weigh .big{font-family:var(--mono);font-size:22px;font-weight:700}
+  .weigh .side.win .big{color:var(--accent)}
+  .weigh .sub2{color:var(--muted);font-size:11px;margin-top:3px;line-height:1.45}
+  .bar{height:8px;border-radius:4px;background:#23232f;margin-top:8px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:4px}
+  .formula{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.9;margin:8px 0 0}
+  .formula b{color:var(--ink)}
+  .formula .a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / MuSig2</div>
+  <header class="hero">
+    <h1>MuSig2 — n signatures become one</h1>
+    <p class="sub">
+      Demo 11 showed Schnorr keys <b>add</b> — but naively summing keys is a trap: the last
+      cosigner to reveal theirs can craft a <span class="x" data-pop="rogue">rogue key</span> and own
+      the sum. <b>MuSig2</b> (<span class="x" data-pop="bip327">BIP-327</span>) fixes that with hashed
+      <span class="x" data-pop="keyagg">per-key coefficients</span>, then runs a
+      <b>two-round ceremony</b>: swap <span class="x" data-pop="noncepair">nonce pairs</span>, swap
+      partial signatures, add them up. The result is one ordinary 64-byte BIP-340 signature — an
+      n-of-n vault that looks, and costs, exactly like a lone signer.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="card2">
+        <h2>1 · The cosigners — and their ONE key</h2>
+        <div id="signers"></div>
+        <div class="agg">
+          <div class="lab2">KeyAgg &nbsp;Q = Σ a<sub>i</sub>·P<sub>i</sub> — one x-only key, <span id="nwho">three</span> owners</div>
+          <div class="num" id="aggkey">–</div>
+        </div>
+        <p class="hint" style="margin:10px 0 0">Each coefficient
+          <span class="mono">a<sub>i</sub> = H(L ‖ pk<sub>i</sub>)</span> hashes the <em>whole
+          ordered key list</em> <span class="mono">L</span> — so no cosigner can aim the sum at a key
+          they control. This aggregate becomes the internal key of a perfectly normal
+          <span class="mono">bc1p…</span> address (right).</p>
+      </div>
+
+      <div class="card2" style="border-color:rgba(168,217,75,.35)">
+        <h2>2 · The two-round ceremony</h2>
+        <label style="margin-top:0">Message to sign (a withdrawal, say)</label>
+        <input type="text" id="msg" value="Withdraw 0.5 BTC from the treasury" spellcheck="false">
+        <div class="steps" style="margin-top:12px">
+          <button id="st1" class="primary">Round 1 — swap nonces</button>
+          <button id="st2" disabled>Round 2 — partial sigs</button>
+          <button id="st3" disabled>Combine → one signature</button>
+        </div>
+        <div id="ceremony"></div>
+        <div class="formula" id="bline" style="display:none">
+          effective nonce &nbsp;<b>R = R₁ + <span class="a">b</span>·R₂</b> &nbsp;·&nbsp;
+          <span class="a">b</span> = H(aggnonce ‖ Q.x ‖ m) — fixed only after <em>every</em> nonce is on the table
+        </div>
+        <div class="finalsig" id="finalsig"></div>
+        <div id="mainBadge" class="badge2 idle">run round 1 to begin</div>
+        <div class="row" style="margin-top:12px">
+          <button id="corrupt" disabled>Corrupt Carol's share</button>
+          <button id="reset">New cosigners</button>
+        </div>
+        <p class="hint" style="margin:10px 0 0">Partial signatures are checked <em>individually</em>
+          before combining — a bad share is caught <b>and its author named</b>. Try the corrupt
+          button after round 2. And every nonce is single-use: signing zeroizes it, because reusing
+          one leaks the key (demo 3).</p>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>The vault's address</h2>
+        <div class="stg">
+          <div class="lab2">internal key &nbsp;= the aggregate Q.x</div>
+          <div class="num" id="tw-p">–</div>
+        </div>
+        <div class="arrow-d">↓ &nbsp;TapTweak (BIP-341, demo 11)</div>
+        <div class="stg final">
+          <div class="lab2">address</div>
+          <div class="num" id="tw-addr">–</div>
+        </div>
+        <p class="hint" style="margin-top:10px">Nothing marks this as multisig. Not the address, not
+          the spend: on-chain it is <b>indistinguishable</b> from demo 11's single-key payment.</p>
+      </div>
+
+      <div class="panel">
+        <h2>The receipt — vs demo 9's vault</h2>
+        <div class="weigh">
+          <div class="side">
+            <h4>2-of-3 P2WSH (demo 9)</h4>
+            <div class="big">253 B</div>
+            <div class="sub2">witness carries every signature + the whole script, for all to see</div>
+            <div class="bar"><i style="width:100%;background:#ef88c8"></i></div>
+          </div>
+          <div class="side win">
+            <h4>MuSig2 key path</h4>
+            <div class="big">64 B</div>
+            <div class="sub2">one signature. no script, no key list, no headcount</div>
+            <div class="bar"><i style="width:25%;background:var(--accent)"></i></div>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:10px">Cheaper <em>and</em> more private — the rare trade
+          that costs nothing. The catch: MuSig2 is <b>n-of-n</b> (everyone signs). Thresholds like
+          2-of-3 need script-path fallbacks or FROST.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Why two nonces each?</h2>
+        <p class="hint" style="margin-top:0">With a single nonce, an attacker who opens many signing
+          sessions in parallel can steer the combined challenge with a
+          <span class="x" data-pop="wagner">generalized birthday attack</span> and forge a
+          signature. The pair (R₁, R₂) + the binding hash <span class="mono">b</span> kill the
+          steering — that's the "2" in MuSig2, and why it still needs only two rounds.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>The signature is boring — that's the point</h3>
+        <p>The final <span class="mono">(R.x ‖ s)</span> passes the exact
+          <span class="mono">schnorrVerify</span> from demo 11. The verifier needs no idea MuSig
+          exists: aggregation happens entirely off-chain, among the signers.</p></div>
+      <div class="ncard"><h3>Accountable misbehaviour</h3>
+        <p>Every partial signature verifies on its own
+          (<span class="mono">s<sub>i</sub>·G == R<sub>i</sub> + e·a<sub>i</sub>·P<sub>i</sub></span>),
+          so a corrupt share is pinned on its author before combining. BIP-327's error model names
+          the culprit — coordinators must know who to kick.</p></div>
+      <div class="ncard"><h3>All or nothing</h3>
+        <p>Missing one partial signature, the sum is garbage: n-of-n means every key must sign.
+          That's perfect for a 2-of-2 (you + your hardware wallet) or an exchange's internal
+          sign-off — and it composes with Taproot script paths for recovery fallbacks.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  bip327: "<h4>BIP-327</h4><p>The MuSig2 standard (2023): key aggregation + a two-round signing ceremony producing an ordinary BIP-340 Schnorr signature. Used by Lightning channel closes and modern vault designs.</p>",
+  rogue: "<h4>The rogue-key attack</h4><p>If the joint key were just P₁+P₂, Mallory could wait to see Alice's key and publish P<sub>M</sub> = P<sub>evil</sub> − P₁. The 'joint' key would then equal P<sub>evil</sub> — which Mallory alone controls.</p>",
+  keyagg: "<h4>KeyAgg coefficients</h4><p>a<sub>i</sub> = tagged_hash(\"KeyAgg coefficient\", L ‖ pk<sub>i</sub>), where L commits to the entire key list. To aim the sum at a chosen key you'd have to invert SHA-256. (One optimization: the second distinct key gets a<sub>i</sub> = 1.)</p>",
+  noncepair: "<h4>Nonce pairs</h4><p>Round 1: each signer sends TWO nonce points (66 bytes). They only fuse into the session nonce R = R₁ + b·R₂ after everyone has committed — the hash b makes parallel-session forgery (Wagner's attack) impossible.</p>",
+  wagner: "<h4>Wagner's attack</h4><p>A generalized birthday algorithm: open enough parallel sessions and you can pick nonce shares whose challenges XOR to a target, forging a signature on a message nobody signed. Two nonces + the binding coefficient b close the door.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hex = (b) => H.bytesToHex(b);
+  const short = (b, n = 14) => { const h = hex(b); return h.slice(0, n) + "…" + h.slice(-10); };
+  const NAMES = ["Alice", "Bob", "Carol", "Dave", "Erin"];
+  const NSIGNERS = 3;
+
+  let signers = [];        // {name, d, pk, secnonce, pubnonce, psig, corrupted}
+  let aggpk, session = null, stage = 0;
+
+  function newCosigners() {
+    const secrets = Array.from({ length: NSIGNERS }, () => H.randScalar());
+    const pks = H.musigKeySort(secrets.map((d) => H.musigPlainPubkey(d)));
+    signers = pks.map((pk, i) => ({
+      name: NAMES[i],
+      pk,
+      d: secrets.find((d) => hex(H.musigPlainPubkey(d)) === hex(pk)),
+    }));
+    const internal = H.musigXonly(H.musigKeyAgg(pks));
+    aggpk = H.taprootOutputKey(internal);   // KeyAgg + TapTweak = the on-chain key
+    $("aggkey").textContent = hex(internal);
+    $("tw-p").textContent = hex(internal);
+    $("tw-addr").textContent = H.p2trAddress(internal, false);
+    stage = 0;
+    session = null;
+    render();
+  }
+
+  function tweaks() {
+    const internal = H.musigXonly(H.musigKeyAgg(signers.map((s) => s.pk)));
+    return [H.taggedHash("TapTweak", internal)];
+  }
+
+  function round1() {
+    const msg = H.utf8($("msg").value);
+    for (const s of signers) {
+      const n = H.musigNonceGen(s.d, s.pk, aggpk, msg);
+      s.secnonce = n.secnonce; s.pubnonce = n.pubnonce;
+      s.psig = null; s.corrupted = false;
+    }
+    session = {
+      aggnonce: H.musigNonceAgg(signers.map((s) => s.pubnonce)),
+      pubkeys: signers.map((s) => s.pk),
+      tweaks: tweaks(), isXonly: [true], msg,
+    };
+    stage = 1;
+    render();
+  }
+
+  function round2() {
+    for (const s of signers) s.psig = H.musigPartialSign(s.secnonce, s.d, session);
+    stage = 2;
+    render();
+  }
+
+  function corrupt() {
+    const carol = signers[2];
+    if (!carol.psig) return;
+    carol.psig = carol.psig.slice();
+    carol.psig[31] ^= 0x01;               // one flipped bit in her share
+    carol.corrupted = true;
+    if (stage === 3) stage = 2;           // must re-combine
+    render();
+  }
+
+  function combine() {
+    stage = 3;
+    render();
+  }
+
+  function psigOk(i) {
+    return H.musigPartialSigVerify(
+      signers[i].psig, signers.map((s) => s.pubnonce),
+      signers.map((s) => s.pk), session.tweaks, session.isXonly, session.msg, i);
+  }
+
+  function render() {
+    // cosigner list (card 1) + ceremony lines (card 2)
+    $("signers").innerHTML = signers.map((s, i) => `
+      <div class="signerline"><span class="dot">${s.name[0]}</span>
+        <div class="body"><span class="who">${s.name}</span> &nbsp;
+          <span class="pk">${short(s.pk, 18)}</span></div></div>`).join("");
+    $("ceremony").innerHTML = signers.map((s, i) => {
+      const ver = s.psig ? (psigOk(i)
+        ? '<span class="ok3">✓ share verifies</span>'
+        : '<span class="no3">✗ BAD SHARE — caught, and named</span>') : "";
+      return `
+      <div class="signerline"><span class="dot">${s.name[0]}</span>
+        <div class="body">
+          <span class="who">${s.name}</span>
+          <div class="r1" style="display:${stage >= 1 ? "block" : "none"}">
+            <span class="lab3">round 1 · pubnonce (R₁‖R₂)</span><br><span class="v">${s.pubnonce ? short(s.pubnonce, 26) : ""}</span></div>
+          <div class="r2" style="display:${stage >= 2 ? "block" : "none"}">
+            <span class="lab3">round 2 · partial sig s<sub>${i + 1}</sub></span><br>
+            <span class="v">${s.psig ? hex(s.psig) : ""}</span><br>${ver}</div>
+        </div></div>`;
+    }).join("");
+    $("bline").style.display = stage >= 1 ? "block" : "none";
+
+    // buttons
+    $("st1").disabled = false;
+    $("st2").disabled = stage !== 1;
+    $("st3").disabled = stage < 2;
+    $("corrupt").disabled = stage < 2 || signers[2].corrupted;
+    $("st1").className = stage === 0 ? "primary" : "";
+    $("st2").className = stage === 1 ? "primary" : "";
+    $("st3").className = stage === 2 ? "primary" : "";
+
+    // final signature + verdict
+    const badge = $("mainBadge"), fs = $("finalsig");
+    fs.style.display = "none";
+    if (stage === 0) {
+      badge.className = "badge2 idle";
+      badge.textContent = "run round 1 to begin";
+    } else if (stage === 1) {
+      badge.className = "badge2 idle";
+      badge.textContent = "nonces on the table — b is now fixed; run round 2";
+    } else if (stage === 2) {
+      badge.className = "badge2 idle";
+      badge.textContent = "shares ready — combine them";
+    } else {
+      const sig = H.musigPartialSigAgg(signers.map((s) => s.psig), session);
+      fs.style.display = "block";
+      fs.innerHTML = `s = s₁ + s₂ + s₃ (+ e·tweak) &nbsp;→&nbsp; 64 bytes:<br>` +
+        `<span class="rx">${hex(sig.slice(0, 32))}</span><span class="s">${hex(sig.slice(32))}</span>`;
+      const ok = H.schnorrVerify(aggpk, session.msg, sig);
+      badge.className = "badge2 " + (ok ? "ok" : "no");
+      badge.textContent = ok
+        ? "✓ plain BIP-340 signature — verifies under the vault's bc1p key"
+        : "✗ INVALID — Carol's bad share poisoned the sum (round 2 already named her)";
+    }
+  }
+
+  $("st1").addEventListener("click", round1);
+  $("st2").addEventListener("click", round2);
+  $("st3").addEventListener("click", combine);
+  $("corrupt").addEventListener("click", corrupt);
+  $("reset").addEventListener("click", newCosigners);
+  $("msg").addEventListener("input", () => { stage = 0; session = null;
+    for (const s of signers) { s.pubnonce = null; s.psig = null; } render(); });
+
+  newCosigners();
+})();
+</script>
+</body>
+</html>

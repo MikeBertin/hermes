@@ -7,10 +7,11 @@ A from-scratch Bitcoin implementation (in the spirit of Karpathy's *"A from-scra
 of Bitcoin in Python"*) turned into a suite of interactive browser visualisations. No crypto
 libraries: the secp256k1 curve, SHA-256, RIPEMD-160, SHA-512, Base58Check, ECDSA — all by hand.
 
-**▶ Live:** https://mikebertin.github.io/hermes/ — eleven self-contained demos, from the elliptic
+**▶ Live:** https://mikebertin.github.io/hermes/ — twelve self-contained demos, from the elliptic
 curve through to a **real transaction broadcast to the Bitcoin testnet**
 ([on-chain proof](https://blockstream.info/testnet/tx/f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08)),
-a 2-of-3 multisig vault, trustless Merkle inclusion proofs, and Taproot's Schnorr signatures.
+a 2-of-3 multisig vault, trustless Merkle inclusion proofs, Taproot's Schnorr signatures, and a
+MuSig2 signing ceremony.
 
 Companion to [Chiron](https://mikebertin.github.io/chiron/) (computational physics),
 [Empedocles](https://mikebertin.github.io/empedocles/) (evolutionary algorithms), and
@@ -21,7 +22,7 @@ Companion to [Chiron](https://mikebertin.github.io/chiron/) (computational physi
 Hermes was the Greek god of commerce *and* of boundaries, messages, and secrets — whence
 *hermetic*, "sealed". Money, cryptography, and signed messages are his exact portfolio.
 
-## The eleven demos
+## The twelve demos
 
 Each is a single self-contained `index.html` — no build step, no framework, no dependencies.
 
@@ -38,6 +39,7 @@ Each is a single self-contained `index.html` — no build step, no framework, no
 | 9 | **Multisig Vault** | Three keys, one `bc1q…` address, a 2-of-3 rule. A real P2WSH vault built by hand — choose who signs a withdrawal and watch the threshold decide. The shape of corporate Bitcoin custody. |
 | 10 | **Merkle Proofs** | A block fingerprints every transaction in one 32-byte root. Click a transaction to reveal its inclusion proof — the `log₂(n)` sibling hashes a light wallet (or a proof-of-reserves check) needs, no full block required. |
 | 11 | **Taproot & Schnorr** | Bitcoin's 2021 signature upgrade (BIP-340/341): x-only keys, `s = k + e·d` with no inverses, keys that **add** (two owners, one signature — the MuSig idea), and the TapTweak that turns a key into a `bc1p…` address. |
+| 12 | **MuSig2** | Three cosigners aggregate into ONE key (BIP-327), run the two-round nonce/partial-signature ceremony, and produce a single 64-byte BIP-340 signature — an n-of-n vault indistinguishable from, and 4× cheaper than, demo 9's on-chain multisig. |
 
 ## The Python core
 
@@ -47,7 +49,7 @@ source of truth the browser demos visualise, cross-checked against official prot
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install pytest
-.venv/bin/python -m pytest        # 124 tests — official BIP vectors + rejection paths, all green
+.venv/bin/python -m pytest        # 176 tests — official BIP vectors + rejection paths, all green
 ```
 
 The testnet CLI builds, signs and broadcasts a real (valueless) testnet transaction:

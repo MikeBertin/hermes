@@ -7,60 +7,40 @@
 ## TL;DR — the project is COMPLETE and SHIPPED
 
 All 8 stages done, plus a post-ship enhancement arc (RFC 6979 → SegWit → multisig → Merkle/SPV →
-Taproot/Schnorr) and a review-hardening pass (negative tests). A from-scratch Bitcoin implementation
-(no crypto libraries) + 11 interactive browser demos, culminating in a **real transaction broadcast
-to the Bitcoin testnet**, a 2-of-3 multisig vault, trustless Merkle inclusion proofs, and BIP-340
-Schnorr signatures with Taproot `bc1p…` addresses.
+Taproot/Schnorr → MuSig2) and a review-hardening pass (negative tests). A from-scratch Bitcoin
+implementation (no crypto libraries) + 12 interactive browser demos, culminating in a **real
+transaction broadcast to the Bitcoin testnet**, a 2-of-3 multisig vault, trustless Merkle inclusion
+proofs, BIP-340 Schnorr signatures with Taproot `bc1p…` addresses, and a full BIP-327 MuSig2
+signing ceremony.
 
 - **Live:** https://mikebertin.github.io/hermes/
 - **Repo:** https://github.com/MikeBertin/hermes (public)
 - **On-chain proof:** testnet txid `f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08`
-- **Tests:** `124/124` pytest green (official BIP vectors + rejection paths); JS cross-checked
-  against the same vectors in-browser (62/62).
+- **Tests:** `176/176` pytest green (official BIP vectors + rejection paths); JS cross-checked
+  against the same vectors in-browser (76/76).
 
-The 11 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
-Script VM · HD Wallet · Multisig Vault · Merkle Proofs · Taproot & Schnorr.
+The 12 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
+Script VM · HD Wallet · Multisig Vault · Merkle Proofs · Taproot & Schnorr · MuSig2.
 
 ---
 
-## ▶ NEXT SESSION: MuSig2 (the planned pick-up — optional, the project is done)
+## ▶ NEXT SESSION: nothing is owed — an options menu
 
-**MuSig2 key aggregation (BIP-327)** — the thing the Taproot card's "signatures add" demo teases.
-Aggregate n pubkeys into ONE key, run a two-round signing ceremony, and the result is a plain
-BIP-340 signature: an n-of-n vault that looks (and costs) exactly like single-sig on-chain. Builds
-directly on `hermes/schnorr.py` + `taproot.py`. Same discipline as always: Python first, anchored
-to official vectors, then JS mirror, then the card.
+The enhancement arc has a natural next rung if wanted; otherwise the project simply stands.
 
-**Authority:** the BIP ships a reference implementation and JSON vectors — fetch both, don't work
-from memory: `github.com/bitcoin/bips/tree/master/bip-0327` (`reference.py` + `vectors/*.json`:
-`key_agg_vectors.json`, `nonce_agg_vectors.json`, `sign_verify_vectors.json`, `tweak_vectors.json`).
+1. **Lightning/HTLC** — the biggest remaining story. Builds directly on the Script VM's hashlocks
+   + timelocks (demo 7) and the SegWit machinery: a payment channel (funding 2-of-2, commitment
+   txs, revocation), or just the HTLC script itself routed across two hops. Python first, then a
+   card. No official vector set — anchor to hand-built cases + a real mainnet HTLC if findable.
+2. **FROST** (threshold Schnorr, t-of-n) — the natural sequel to MuSig2's n-of-n; there's an IETF
+   draft (RFC 9591) with vectors, but it's ciphersuite-heavy — scope carefully.
+3. **Polish** — README screen-capture GIF; sibling cross-links in chiron/empedocles footers.
 
-**Phase A — KeyAgg.** New `hermes/musig.py`. Aggregate pubkeys → one x-only key.
-- Gotcha: BIP-327 inputs are **33-byte compressed ("plain") pubkeys, not x-only** — check against
-  the reference, this trips people up.
-- Shape: `L = tagged_hash("KeyAgg list", pk_1‖…‖pk_n)`; per-key coefficient
-  `a_i = tagged_hash("KeyAgg coefficient", L‖pk_i)` **except the second distinct key gets a_i = 1**
-  (an optimization in the spec); `Q = Σ a_i·P_i`. Anchor: `key_agg_vectors.json` (incl. its error
-  cases — fits our negative-test convention).
-
-**Phase B — the two-round signing ceremony.** Each signer makes TWO nonces (that's the "2" in
-MuSig2 — it kills the rogue-nonce/Wagner attack without extra rounds); nonces aggregate; a
-coefficient `b` (tagged hash of the session) combines them into one effective R; each signer emits
-a partial sig `s_i`; the sum is a standard 64-byte BIP-340 sig that `schnorr.verify` already
-accepts. Anchor: `sign_verify_vectors.json` + `nonce_agg_vectors.json` (the vectors supply fixed
-nonces, so everything is deterministic). **Scope control:** implement the n-of-n untweaked path +
-the Taproot tweak (`tweak_vectors.json`, ties into `taproot.tap_tweak`); SKIP adaptor signatures
-and deterministic-nonce signing — not needed for the story.
-
-**Phase C — the card.** Either upgrade the Taproot card's naive-sum demo into the real ceremony,
-or a 12th card (`web/musig/`, pick a fresh accent — unused: e.g. lime `#a8d94b` or coral).
-Suggested beats: n cosigners → KeyAgg → ONE `bc1p…` address (via `p2tr_address`); a round-1/round-2
-ceremony UI (nonces exchanged, partial sigs, combine); the payoff line "compare demo 9's 253-byte
-witness — this vault is 64 bytes and indistinguishable from a lone signer". If a 12th card lands:
-landing page (11→12, lede "Twelve", `.c12`), README table, **re-render og.png** (see Gotchas).
-
-Other menu options: **Lightning/HTLC** (builds on the Script VM's hashlocks + timelocks), or
-**polish** (README screen-capture GIF, sibling cross-links in chiron/empedocles footers).
+MuSig2 notes a future session might need: `hermes/musig.py` mirrors the BIP-327 reference API
+(names, error messages, blame semantics — `InvalidContributionError(signer, contrib)`), skipping
+only adaptor signatures + deterministic signing. Official vectors live as JSON in
+`tests/vectors/bip327/` (first suite to use file-based vectors; older suites inline them).
+The JS mirror is the `musig*` family in `btc.js`; the card is `web/musig/` (lime `#a8d94b`).
 
 ---
 
@@ -96,12 +76,14 @@ hermes/            from-scratch Python core (the source of truth)
   network          consensus + 51% simulators        bip32,bip39,english.txt  HD wallet
   schnorr          BIP-340 Schnorr (tagged hashes, x-only keys, sign/verify)
   taproot          BIP-341 key path (TapTweak, output key, bc1p… addresses)
+  musig            BIP-327 MuSig2 (KeyAgg, two-round ceremony, tweaks, partial-sig blame)
   cli              build/sign/broadcast a testnet tx
 tests/             official BIP / on-chain vectors + negative rejection-path tests
+  vectors/bip327/  the official BIP-327 JSON vectors, committed verbatim
 export.py          bakes web/network/data/*.json
 web/               self-contained static site (this is what Pages serves)
   shared/          btc.js (core), wallet.js (BIP-32/39), demo.css, demo.js, test.html (vector harness)
-  <demo>/index.html for each of the 11 demos; testnet/data/tx.json + network/data/*.json baked
+  <demo>/index.html for each of the 12 demos; testnet/data/tx.json + network/data/*.json baked
   og.png           1200x630 social card
 .github/workflows/pages.yml   deploys web/ to GitHub Pages on push to main
 ```
@@ -151,11 +133,13 @@ web/               self-contained static site (this is what Pages serves)
 5. ✅ **Review hardening + negative tests** (2026-07-02) — P2SH/bip39/multisig-verify fixes.
 6. ✅ **Taproot & Schnorr — 11th card** (2026-07-02) — full BIP-340 CSV, BIP-341 wallet vector,
    BIP-86 end-to-end (mnemonic → m/86'/0'/0'/0/0 → `bc1p…`).
+7. ✅ **MuSig2 — 12th card** (2026-07-03) — all six official BIP-327 vector files incl. every
+   error case; two-round ceremony card with an accountability ("corrupt a share") beat.
 
 ## Verify-it-still-works checklist
 
 ```bash
-.venv/bin/python -m pytest -q                                  # 124 passed
-# dev server up, then open web/shared/test.html → "all 62 vectors pass"
+.venv/bin/python -m pytest -q                                  # 176 passed
+# dev server up, then open web/shared/test.html → "all 76 vectors pass"
 # spot-check live: https://mikebertin.github.io/hermes/ and /testnet/ (real txid + explorer link)
 ```

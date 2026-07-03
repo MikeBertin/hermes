@@ -465,3 +465,21 @@ _Append a dated entry every session: what changed · what's next · new decision
   our BIP-39/32 stack at m/86'/0'/0'/0/0 → published internal/output keys and address), plus a
   tweaked-secret key-path-spend roundtrip. **124/124 pytest, 62/62 in-browser, console clean.**
   Remaining optional menu: MuSig2 aggregation, Lightning/HTLC.
+- **2026-07-03** — **MuSig2 DONE — a 12th demo card shipped** (enhancement #7, the payoff of the
+  Taproot card's "signatures add" tease). New `hermes/musig.py` (BIP-327 complete minus adaptor
+  sigs + deterministic signing, per scope): KeyAgg with rogue-key-killing coefficients (2nd-key=1
+  rule), plain/x-only tweaking with gacc/tacc accumulators, two-nonce generation (`nonce_gen` +
+  vector-testable `nonce_gen_internal`), nonce aggregation, `partial_sign` (secnonce zeroized in
+  place — reuse raises), `partial_sig_verify` (accountability: names the culprit via
+  `InvalidContributionError`), `partial_sig_agg` → a plain BIP-340 sig `schnorr.verify` accepts.
+  Official vectors committed verbatim in `tests/vectors/bip327/*.json` (a new convention — first
+  JSON-file vectors; earlier suites inline them) and driven by `tests/test_musig.py` (52 tests:
+  all six vector files incl. every error case with exact messages/blame, + e2e ceremonies — one
+  behind a real TapTweak whose aggregate == `taproot.output_key`). JS mirror in `btc.js`
+  (`musig*` functions) + 14 new harness checks in `test.html`. **New `web/musig/` card**
+  ("MuSig2", accent #a8d94b lime): 3 cosigners → KeyAgg → one `bc1p…` address, a staged
+  round-1/round-2/combine ceremony UI, a "corrupt Carol's share" accountability beat, and the
+  64 B vs 253 B receipt comparison vs demo 9. Landing page now 12 cards ("Twelve", `.c12`);
+  README table + counts refreshed; og.png re-rendered (pills compacted to keep two rows).
+  **176/176 pytest, 76/76 in-browser, console clean.** Remaining optional menu: Lightning/HTLC,
+  FROST (threshold Schnorr), polish (README GIF, sibling cross-links).

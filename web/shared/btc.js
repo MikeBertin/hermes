@@ -573,6 +573,164 @@
     return bytesEqual(h, root);
   }
 
+  // --- MuSig2 key aggregation (BIP-327) ---------------------------------------
+  // Schnorr's linearity, weaponized: n cosigners aggregate their pubkeys into
+  // ONE x-only key (each blinded by a coefficient so nobody can rogue-key the
+  // sum), swap nonce PAIRS (round 1), swap partial sigs (round 2) — and the sum
+  // is a plain 64-byte BIP-340 signature. Mirrors hermes/musig.py.
+  const musigCbytes = (pt) => sec(pt, true);
+  const musigCbytesExt = (pt) => (pt === null ? new Uint8Array(33) : sec(pt, true));
+  function musigCpoint(b) {
+    if (b.length !== 33 || (b[0] !== 2 && b[0] !== 3)) throw new Error("invalid compressed point");
+    const pt = liftX(bytesToBigInt(b.slice(1)));
+    if (!pt) throw new Error("invalid compressed point");
+    return b[0] === 2 ? pt : { x: pt.x, y: P - pt.y };
+  }
+  function musigCpointExt(b) {
+    if (b.every((v) => v === 0)) return null;
+    return musigCpoint(b);
+  }
+  const musigPlainPubkey = (secret) => sec(ptMul(secret, G), true);
+  const musigKeySort = (pubkeys) =>
+    pubkeys.slice().sort((a, b) => {
+      for (let i = 0; i < 33; i++) if (a[i] !== b[i]) return a[i] - b[i];
+      return 0;
+    });
+  // the first key that differs from keys[0] gets coefficient 1 (spec optimization)
+  function musigSecondKey(pubkeys) {
+    for (const pk of pubkeys.slice(1)) if (!bytesEqual(pk, pubkeys[0])) return pk;
+    return new Uint8Array(33);
+  }
+  function musigKeyAggCoeff(pubkeys, pk) {
+    if (bytesEqual(pk, musigSecondKey(pubkeys))) return 1n;
+    const L = taggedHash("KeyAgg list", concatBytes(...pubkeys));
+    return mod(bytesToBigInt(taggedHash("KeyAgg coefficient", concatBytes(L, pk))), N);
+  }
+  // Q = Σ a_i·P_i, plus the accumulators tweaking maintains (gacc: parity
+  // flips, tacc: summed tweaks) so signers can shift their shares to match
+  function musigKeyAgg(pubkeys) {
+    let Q = null;
+    for (const pk of pubkeys)
+      Q = ptAdd(Q, ptMul(musigKeyAggCoeff(pubkeys, pk), musigCpoint(pk)));
+    return { Q, gacc: 1n, tacc: 0n };
+  }
+  const musigXonly = (ctx) => bigIntToBytes(ctx.Q.x, 32);
+  // Q' = g·Q + t·G; an x-only tweak (Taproot's TapTweak) negates odd-Y Q first
+  function musigApplyTweak(ctx, tweak, isXonly) {
+    const g = isXonly && ctx.Q.y % 2n === 1n ? N - 1n : 1n;
+    const t = bytesToBigInt(tweak);
+    if (t >= N) throw new Error("tweak out of range");
+    const Q = ptAdd(ptMul(g, ctx.Q), ptMul(t, G));
+    if (!Q) throw new Error("tweaked key is infinity");
+    return { Q, gacc: mod(g * ctx.gacc, N), tacc: mod(t + g * ctx.tacc, N) };
+  }
+  function musigKeyAggAndTweak(pubkeys, tweaks = [], isXonly = []) {
+    let ctx = musigKeyAgg(pubkeys);
+    tweaks.forEach((tw, i) => { ctx = musigApplyTweak(ctx, tw, isXonly[i]); });
+    return ctx;
+  }
+  // round 1: each signer's nonce PAIR (two nonces kill the Wagner/rogue-nonce
+  // attack — the binding coefficient b isn't known until every nonce is fixed)
+  function musigNonceHash(rand, pk, aggpk, i, msgPrefixed, extraIn) {
+    const buf = concatBytes(
+      rand, Uint8Array.of(pk.length), pk, Uint8Array.of(aggpk.length), aggpk,
+      msgPrefixed, bigIntToBytes(BigInt(extraIn.length), 4), extraIn, Uint8Array.of(i));
+    return bytesToBigInt(taggedHash("MuSig/nonce", buf));
+  }
+  function musigNonceGenInternal(rand, skBytes, pk, aggpk, msg, extraIn) {
+    if (skBytes) {
+      const aux = taggedHash("MuSig/aux", rand);
+      rand = skBytes.map((b, i) => b ^ aux[i]);
+    }
+    if (!aggpk) aggpk = new Uint8Array(0);
+    if (!extraIn) extraIn = new Uint8Array(0);
+    const msgPrefixed = msg === null || msg === undefined
+      ? Uint8Array.of(0)
+      : concatBytes(Uint8Array.of(1), bigIntToBytes(BigInt(msg.length), 8), msg);
+    const k1 = mod(musigNonceHash(rand, pk, aggpk, 0, msgPrefixed, extraIn), N);
+    const k2 = mod(musigNonceHash(rand, pk, aggpk, 1, msgPrefixed, extraIn), N);
+    const pubnonce = concatBytes(musigCbytes(ptMul(k1, G)), musigCbytes(ptMul(k2, G)));
+    // secnonce records WHOSE nonce this is; partialSign refuses a mismatch
+    const secnonce = concatBytes(bigIntToBytes(k1, 32), bigIntToBytes(k2, 32), pk);
+    return { secnonce, pubnonce };
+  }
+  function musigNonceGen(secret, pk, aggpk = null, msg = null, extraIn = null) {
+    const rand = new Uint8Array(32);
+    crypto.getRandomValues(rand);
+    const skBytes = secret === null ? null : bigIntToBytes(secret, 32);
+    return musigNonceGenInternal(rand, skBytes, pk, aggpk, msg, extraIn);
+  }
+  // sum everyone's pubnonces slot-wise; a slot may cancel to infinity (zeros)
+  function musigNonceAgg(pubnonces) {
+    const parts = [];
+    for (const j of [0, 1]) {
+      let R = null;
+      for (const pn of pubnonces) R = ptAdd(R, musigCpoint(pn.slice(j * 33, (j + 1) * 33)));
+      parts.push(musigCbytesExt(R));
+    }
+    return concatBytes(...parts);
+  }
+  // session = {aggnonce, pubkeys, tweaks, isXonly, msg}; everything shared:
+  // the tweaked aggregate Q, binding coefficient b, effective nonce R, challenge e
+  function musigSessionValues(session) {
+    const { Q, gacc, tacc } = musigKeyAggAndTweak(session.pubkeys, session.tweaks, session.isXonly);
+    const b = mod(bytesToBigInt(taggedHash("MuSig/noncecoef",
+      concatBytes(session.aggnonce, bigIntToBytes(Q.x, 32), session.msg))), N);
+    const R_ = ptAdd(musigCpointExt(session.aggnonce.slice(0, 33)),
+      ptMul(b, musigCpointExt(session.aggnonce.slice(33, 66))));
+    const R = R_ === null ? G : R_;  // canceled nonces: substitute G
+    const e = mod(bytesToBigInt(taggedHash("BIP0340/challenge",
+      concatBytes(bigIntToBytes(R.x, 32), bigIntToBytes(Q.x, 32), session.msg))), N);
+    return { Q, gacc, tacc, b, R, e };
+  }
+  // round 2: this signer's share s_i = k1 + b·k2 + e·a_i·d_i. Zeroizes the
+  // secnonce first — reuse must be impossible, not just discouraged.
+  function musigPartialSign(secnonce, secret, session) {
+    const { Q, gacc, b, R, e } = musigSessionValues(session);
+    const k1_ = bytesToBigInt(secnonce.slice(0, 32));
+    const k2_ = bytesToBigInt(secnonce.slice(32, 64));
+    const myPk = secnonce.slice(64, 97);
+    secnonce.fill(0, 0, 64);                       // single-use, enforced
+    if (k1_ <= 0n || k1_ >= N || k2_ <= 0n || k2_ >= N)
+      throw new Error("secnonce out of range (already used?)");
+    const k1 = R.y % 2n === 0n ? k1_ : N - k1_;
+    const k2 = R.y % 2n === 0n ? k2_ : N - k2_;
+    if (!bytesEqual(musigPlainPubkey(secret), myPk))
+      throw new Error("secret does not match the secnonce's pubkey");
+    const a = musigKeyAggCoeff(session.pubkeys, myPk);
+    const g = Q.y % 2n === 0n ? 1n : N - 1n;
+    const d = mod(g * gacc * secret, N);
+    return bigIntToBytes(mod(k1 + b * k2 + e * a * d, N), 32);
+  }
+  // check signer i's share BEFORE aggregating — accountability
+  function musigPartialSigVerify(psig, pubnonces, pubkeys, tweaks, isXonly, msg, i) {
+    const session = { aggnonce: musigNonceAgg(pubnonces), pubkeys, tweaks, isXonly, msg };
+    const { Q, gacc, b, R, e } = musigSessionValues(session);
+    const s = bytesToBigInt(psig);
+    if (s >= N) return false;
+    let Rs = ptAdd(musigCpoint(pubnonces[i].slice(0, 33)),
+      ptMul(b, musigCpoint(pubnonces[i].slice(33, 66))));
+    if (R.y % 2n === 1n) Rs = Rs === null ? null : { x: Rs.x, y: P - Rs.y };
+    const a = musigKeyAggCoeff(pubkeys, pubkeys[i]);
+    const g = Q.y % 2n === 0n ? 1n : N - 1n;
+    const lhs = ptMul(s, G);
+    const rhs = ptAdd(Rs, ptMul(mod(e * a * mod(g * gacc, N), N), musigCpoint(pubkeys[i])));
+    return lhs !== null && rhs !== null && lhs.x === rhs.x && lhs.y === rhs.y;
+  }
+  // combine: s = Σ s_i + e·g·tacc → R.x ‖ s, a standard BIP-340 signature
+  function musigPartialSigAgg(psigs, session) {
+    const { Q, tacc, R, e } = musigSessionValues(session);
+    let s = 0n;
+    for (const psig of psigs) {
+      const si = bytesToBigInt(psig);
+      if (si >= N) throw new Error("partial signature out of range");
+      s = mod(s + si, N);
+    }
+    const g = Q.y % 2n === 0n ? 1n : N - 1n;
+    s = mod(s + e * g * tacc, N);
+    return concatBytes(bigIntToBytes(R.x, 32), bigIntToBytes(s, 32));
+  }
+
   // hash of a message string, as the integer z that ECDSA signs
   const messageHash = (str) => bytesToBigInt(doubleSha256(utf8(str)));
 
@@ -596,6 +754,11 @@
     tapTweak, taprootOutputKey, p2trAddress, taprootTweakSecret,
     // merkle / spv
     merkleRoot, merkleProof, merkleLevels, verifyMerkleProof,
+    // musig2 (BIP-327)
+    musigPlainPubkey, musigKeySort, musigKeyAgg, musigKeyAggAndTweak, musigXonly,
+    musigApplyTweak, musigKeyAggCoeff, musigNonceGen, musigNonceGenInternal,
+    musigNonceAgg, musigSessionValues, musigPartialSign, musigPartialSigVerify,
+    musigPartialSigAgg,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };
