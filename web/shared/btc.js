@@ -918,6 +918,46 @@
   }
   const frostSerializeSig = (sig) => concatBytes(sec(sig.R, true), serScalar(sig.z));
 
+  // --- Schnorr adaptor signatures (PTLCs) ------------------------------------
+  const adaptorXonly = (P) => bigIntToBytes(P.x, 32);
+  const adaptorEven = (P) => (P.y % 2n) === 0n;
+  const adaptorNeg = (P) => ptMul(N - 1n, P);
+  const adaptorChallenge = (R, P, msg) => mod(bytesToBigInt(
+    taggedHash("BIP0340/challenge", concatBytes(adaptorXonly(R), adaptorXonly(P), msg))), N);
+  const adaptorPoint = (t) => ptMul(t, G);
+  function adaptorNonce(d, px, msg, T) {
+    const k = mod(bytesToBigInt(taggedHash("HermesAdaptor/nonce",
+      concatBytes(bigIntToBytes(d, 32), px, msg, adaptorXonly(T)))), N);
+    return k === 0n ? 1n : k;
+  }
+  function adaptorPresign(secret, msg, T, k) {
+    const d = adaptorEven(ptMul(secret, G)) ? secret : N - secret;   // even-Y key
+    const P = ptMul(d, G), px = adaptorXonly(P);
+    if (k === undefined || k === null) k = adaptorNonce(d, px, msg, T);
+    const r0 = ptMul(k, G), eff = ptAdd(r0, T);
+    const e = adaptorChallenge(eff, P, msg);
+    const sPrime = mod((adaptorEven(eff) ? k : -k) + e * d, N);       // flip k if R odd
+    return { r0, sPrime };
+  }
+  function adaptorPresigVerify(pubkeyXonly, msg, T, presig) {
+    const P = liftX(bytesToBigInt(pubkeyXonly));
+    const eff = ptAdd(presig.r0, T);
+    const e = adaptorChallenge(eff, P, msg);
+    const expected = ptAdd(adaptorEven(eff) ? presig.r0 : adaptorNeg(presig.r0), ptMul(e, P));
+    const lhs = ptMul(presig.sPrime, G);
+    return lhs.x === expected.x && lhs.y === expected.y;
+  }
+  function adaptorAdapt(presig, t) {
+    const eff = ptAdd(presig.r0, ptMul(t, G));
+    const s = mod(presig.sPrime + (adaptorEven(eff) ? t : -t), N);
+    return concatBytes(adaptorXonly(eff), bigIntToBytes(s, 32));
+  }
+  function adaptorExtract(presig, sig, T) {
+    const s = bytesToBigInt(sig.slice(32, 64));
+    const eff = ptAdd(presig.r0, T);
+    return mod(adaptorEven(eff) ? (s - presig.sPrime) : (presig.sPrime - s), N);
+  }
+
   // hash of a message string, as the integer z that ECDSA signs
   const messageHash = (str) => bytesToBigInt(doubleSha256(utf8(str)));
 
@@ -954,6 +994,8 @@
     frostH1, frostH2, frostH3, frostKeygen, frostLagrange, frostNonceGenerate,
     frostCommit, frostBindingFactors, frostGroupCommitment, frostSign, frostAggregate,
     frostVerify, frostSerializeSig,
+    // adaptor signatures / PTLC
+    adaptorPoint, adaptorPresign, adaptorPresigVerify, adaptorAdapt, adaptorExtract, adaptorXonly,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };

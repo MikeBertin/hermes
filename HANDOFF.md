@@ -7,22 +7,23 @@
 ## TL;DR — the project is COMPLETE and SHIPPED
 
 All 8 stages done, plus a post-ship enhancement arc (RFC 6979 → SegWit → multisig → Merkle/SPV →
-Taproot/Schnorr → MuSig2 → Lightning → HTLC routing → FROST) and a review-hardening pass (negative
-tests). A from-scratch Bitcoin implementation (no crypto libraries) + 15 interactive browser demos,
-culminating in a **real transaction broadcast to the Bitcoin testnet**, a 2-of-3 multisig vault,
-trustless Merkle inclusion proofs, BIP-340 Schnorr signatures with Taproot `bc1p…` addresses, a full
-BIP-327 MuSig2 signing ceremony, a Lightning channel's BOLT-3 revocation/penalty mechanism, a
-multi-hop HTLC routed payment, and RFC 9591 FROST threshold (t-of-n) signatures.
+Taproot/Schnorr → MuSig2 → Lightning → HTLC routing → FROST → PTLCs) and a review-hardening pass
+(negative tests). A from-scratch Bitcoin implementation (no crypto libraries) + 16 interactive browser
+demos, culminating in a **real transaction broadcast to the Bitcoin testnet**, a 2-of-3 multisig
+vault, trustless Merkle inclusion proofs, BIP-340 Schnorr signatures with Taproot `bc1p…` addresses, a
+full BIP-327 MuSig2 signing ceremony, a Lightning channel's BOLT-3 revocation/penalty mechanism, a
+multi-hop HTLC routed payment, RFC 9591 FROST threshold (t-of-n) signatures, and PTLCs via Schnorr
+adaptor signatures.
 
 - **Live:** https://mikebertin.github.io/hermes/
 - **Repo:** https://github.com/MikeBertin/hermes (public)
 - **On-chain proof:** testnet txid `f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08`
-- **Tests:** `202/202` pytest green (official BIP / BOLT / RFC vectors + rejection paths); JS
-  cross-checked against the same vectors in-browser (99/99).
+- **Tests:** `208/208` pytest green (official BIP / BOLT / RFC vectors + rejection paths); JS
+  cross-checked against the same vectors in-browser (103/103).
 
-The 15 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
+The 16 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
 Script VM · HD Wallet · Multisig Vault · Merkle Proofs · Taproot & Schnorr · MuSig2 · Lightning ·
-HTLC Routing · FROST Threshold.
+HTLC Routing · FROST Threshold · PTLC Routing.
 
 ---
 
@@ -30,13 +31,13 @@ HTLC Routing · FROST Threshold.
 
 The enhancement arc has a natural next rung if wanted; otherwise the project simply stands.
 
-1. **Polish** — README screen-capture GIF of the demos.
-2. **Lightning, deeper** — the HTLC *second-stage* transactions (HTLC-success/HTLC-timeout, the
-   2-of-2 that forces `to_self_delay`), or PTLCs (Taproot-era point-time-locked contracts) as a
-   MuSig2/FROST tie-in. Optional; the routing story is complete without them.
-3. **BIP-340 FROST** — re-skin the FROST challenge to BIP-340 so the threshold signature becomes a
+1. **BIP-340 FROST** — re-skin the FROST challenge to BIP-340 so the threshold signature becomes a
    real Taproot spend (a t-of-n `bc1p…` vault). No official vectors (not yet a finalized BIP), so
-   it'd anchor to self-consistency + our own `schnorr.verify` rather than RFC 9591's E.5.
+   it'd anchor to self-consistency + our own `schnorr.verify` (same approach the PTLC card used).
+   *(User has asked for this next — 17th card.)*
+2. **Polish** — README screen-capture GIF of the demos.
+3. **Lightning, deeper** — the HTLC *second-stage* transactions (HTLC-success/HTLC-timeout, the
+   2-of-2 that forces `to_self_delay`). Optional; the routing/PTLC stories are complete without it.
 
 Lightning notes a future session might need: `hermes/lightning.py` builds real BOLT-3 scripts —
 `to_local_script`, the blinded revocation key (`derive_revocation_pubkey`/`_privkey`), and the HTLC
@@ -85,6 +86,7 @@ hermes/            from-scratch Python core (the source of truth)
   musig            BIP-327 MuSig2 (KeyAgg, two-round ceremony, tweaks, partial-sig blame)
   lightning        BOLT-3 channels (funding, revocation, to_local, penalty) + HTLC scripts (routing)
   frost            RFC 9591 threshold Schnorr (expand_message_xmd, Shamir keygen, Lagrange, sign/agg)
+  adaptor          BIP-340 Schnorr adaptor sigs / PTLCs (presign, adapt, extract — reuses schnorr)
   script           stack VM — OP_IF/NOTIF/ELSE/ENDIF + OP_CSV + OP_SWAP + OP_SIZE (evaluate: sequence arg)
   cli              build/sign/broadcast a testnet tx
 tests/             official BIP / on-chain vectors + negative rejection-path tests
@@ -92,7 +94,7 @@ tests/             official BIP / on-chain vectors + negative rejection-path tes
 export.py          bakes web/network/data/*.json
 web/               self-contained static site (this is what Pages serves)
   shared/          btc.js (core), wallet.js (BIP-32/39), demo.css, demo.js, test.html (vector harness)
-  <demo>/index.html for each of the 15 demos; testnet/data/tx.json + network/data/*.json baked
+  <demo>/index.html for each of the 16 demos; testnet/data/tx.json + network/data/*.json baked
   og.png           1200x630 social card
 .github/workflows/pages.yml   deploys web/ to GitHub Pages on push to main
 ```
@@ -158,11 +160,17 @@ web/               self-contained static site (this is what Pages serves)
     `expand_message_xmd` (RFC 9380); anchored byte-for-byte to Appendix E.5 (2-of-3). JS mirror
     `frost*` in `btc.js`; card `web/frost/` (icy-lavender `#c4b5fd`). NOTE: RFC 9591's challenge
     hash isn't BIP-340, so the 65-byte sig is threshold Schnorr but *not* a Taproot spend.
+11. ✅ **PTLCs / adaptor signatures — 16th card** (2026-07-04) — point-locked routing, the Taproot
+    replacement for HTLCs. `hermes/adaptor.py`: BIP-340 Schnorr adaptor sigs (`presign`/`presig_verify`/
+    `adapt`/`extract`) with even-Y parity handling; `adapt` yields a genuine 64-byte BIP-340 sig
+    `schnorr.verify` accepts, `extract` reveals the adaptor secret. No official vectors → pinned by
+    exhaustive self-consistency (64 random cases, both parities). JS mirror `adaptor*` in `btc.js`;
+    card `web/ptlc/` (pink `#f472b6`).
 
 ## Verify-it-still-works checklist
 
 ```bash
-.venv/bin/python -m pytest -q                                  # 202 passed
-# dev server up, then open web/shared/test.html → "all 99 vectors pass"
+.venv/bin/python -m pytest -q                                  # 208 passed
+# dev server up, then open web/shared/test.html → "all 103 vectors pass"
 # spot-check live: https://mikebertin.github.io/hermes/ and /testnet/ (real txid + explorer link)
 ```

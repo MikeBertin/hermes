@@ -357,6 +357,22 @@ check("frost aggregate signature (E.5)", H.bytesToHex(H.frostSerializeSig(F_SIG)
   "0205b6d04d3774c8929413e3c76024d54149c372d57aae62574ed74319b5ea14d0c65dde8492a7471437e6c2fe3da49b90d23f642b5c6dbe7e36089f096dd97324");
 check("frost signature verifies under the group key", H.frostVerify(F_MSG, F_SIG, F_GPK), true);
 
+// --- Schnorr adaptor signatures / PTLCs (self-consistency via schnorrVerify) ---
+const A_D = 0xB0BCAFEn, A_T = 0x5EC12E7n;      // signer secret, adaptor secret t
+const A_MSG = H.sha256(H.utf8("ptlc hop"));
+const A_PUB = H.schnorrPubkey(A_D);
+const A_TP = H.adaptorPoint(A_T);
+const A_PRESIG = H.adaptorPresign(A_D, A_MSG, A_TP);
+check("adaptor pre-signature verifies (completable under T)",
+  H.adaptorPresigVerify(A_PUB, A_MSG, A_TP, A_PRESIG), true);
+const A_SIG = H.adaptorAdapt(A_PRESIG, A_T);
+check("adapted signature is a valid BIP-340 signature",
+  H.schnorrVerify(A_PUB, A_MSG, A_SIG), true);
+check("extract recovers the adaptor secret t",
+  H.adaptorExtract(A_PRESIG, A_SIG, A_TP) === A_T, true);
+check("wrong secret cannot complete the pre-signature",
+  H.schnorrVerify(A_PUB, A_MSG, H.adaptorAdapt(A_PRESIG, A_T + 1n)), false);
+
 // --- Merkle root of a real block (block 100000, 4 txs) ---
 const B100K = [
   "8c14f0db3df150123e6f3dbbf30f8b955a8249b62ac1d1ff16284aefa3d06d87",

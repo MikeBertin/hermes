@@ -31,6 +31,7 @@ from . import schnorr
 from .taproot import output_key, p2tr_address, tap_tweak, tweak_secret
 from . import lightning
 from . import frost
+from . import adaptor
 
 __all__ = [
     "FieldElement",
@@ -47,5 +48,5 @@ __all__ = [
     "merkle_root", "merkle_proof", "merkle_levels", "verify_merkle_proof", "root_from_txids",
     "HDKey", "entropy_to_mnemonic", "mnemonic_to_entropy", "mnemonic_to_seed", "is_valid",
     "schnorr", "tap_tweak", "output_key", "p2tr_address", "tweak_secret",
-    "lightning", "frost",
+    "lightning", "frost", "adaptor",
 ]

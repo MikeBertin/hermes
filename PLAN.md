@@ -543,3 +543,19 @@ _Append a dated entry every session: what changed · what's next · new decision
   Landing now 15 cards ("Fifteen"), README table + counts, og.png re-rendered (15 pills). **202/202
   pytest, 99/99 in-browser, console clean.** Remaining optional menu: polish (README GIF), or deeper
   Lightning (HTLC second-stage txs / PTLCs).
+- **2026-07-04** — **PTLCs / adaptor signatures DONE — a 16th demo card shipped** (enhancement #11,
+  the "deeper Lightning" pick: point-locked routing, Taproot's replacement for HTLCs). New
+  `hermes/adaptor.py` — BIP-340 Schnorr adaptor signatures from scratch: `presign(d,msg,T)` (a
+  pre-signature under adaptor point T=t·G), `presig_verify`, `adapt(presig,t)` → a real 64-byte
+  BIP-340 sig, `extract(presig,sig,T)` → recovers t. Handles the even-Y bookkeeping BIP-340 demands
+  of the effective nonce R0+T (flip k / flip the t-addition per parity). **Validation:** no official
+  vector set, so pinned by *exhaustive self-consistency* — 64 random cases (both nonce parities) where
+  `adapt` → `schnorr.verify` accepts and `extract` recovers exactly t; plus presig-verify accept/
+  reject, wrong-secret can't complete, a 2-hop PTLC route (one secret settles both hops), and an
+  unlinkability tweak (T+y·G). JS mirror (`adaptor*` in `btc.js`) + 4 test.html checks (adapt verifies
+  via schnorrVerify, extract recovers t). **New `web/ptlc/` card** ("PTLC Routing", accent #f472b6
+  pink, `--ptlc`/`.c16`): A→B→C route with point-locks, invoice(T)→lock(pre-sigs)→settle (Carol
+  adapts revealing t, Bob extracts + adapts), and an HTLC(hash-lock) vs PTLC(point-lock) privacy
+  contrast. Landing now 16 cards ("Sixteen"), README + counts, og.png re-rendered (16 pills, compacted
+  to 8+8). **208/208 pytest, 103/103 in-browser, console clean.** Remaining optional menu: BIP-340
+  FROST (Taproot-spendable threshold), polish (README GIF), HTLC second-stage txs.
