@@ -576,3 +576,14 @@ _Append a dated entry every session: what changed · what's next · new decision
   on-chain) contrast. Landing now 17 cards ("Seventeen"), README + counts, og.png re-rendered (17
   pills). **213/213 pytest, 106/106 in-browser, console clean.** Remaining optional menu: polish
   (README GIF), HTLC second-stage txs / other Lightning depth.
+- **2026-07-04** — **README demo GIF shipped** (the "polish" menu item). A ~18.6s, 5.0 MB looping
+  montage across six beats — landing hero → **Curve** (sweep Point P, the chord-and-tangent
+  construction sweeps) → **Mine** (live nonce grinder) → **Network/51%** (Step-driven fill: the
+  main chain grows across the width with orphan forks + a reorg) → **Taproot** (Schnorr sign VALID,
+  then the "signatures add" beat) → **Lightning** (the off-chain balance bar slides to Bob). Captured
+  reproducibly with **`demo-capture.js`** (Playwright driving the system Chrome headless → one .webm)
+  + an ffmpeg palette pass → `web/demo.gif`; embedded at the top of README.md as a clickable hero
+  linking to the live site. Gotcha baked into `demo-capture.js`'s header: the Network canvas scales x
+  by the run's *final* height, so it only fills once Step reaches the end — hence the fast-forward
+  Step loop rather than a timed Play. Remaining optional menu: HTLC second-stage txs / other Lightning
+  depth, FROST DKG.

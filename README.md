@@ -7,6 +7,8 @@ A from-scratch Bitcoin implementation (in the spirit of Karpathy's *"A from-scra
 of Bitcoin in Python"*) turned into a suite of interactive browser visualisations. No crypto
 libraries: the secp256k1 curve, SHA-256, RIPEMD-160, SHA-512, Base58Check, ECDSA — all by hand.
 
+[![Seventeen interactive Bitcoin demos — the elliptic curve, mining, network consensus, Taproot and Lightning](web/demo.gif)](https://mikebertin.github.io/hermes/)
+
 **▶ Live:** https://mikebertin.github.io/hermes/ — seventeen self-contained demos, from the elliptic
 curve through to a **real transaction broadcast to the Bitcoin testnet**
 ([on-chain proof](https://blockstream.info/testnet/tx/f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08)),

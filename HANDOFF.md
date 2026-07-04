@@ -31,7 +31,8 @@ HTLC Routing · FROST Threshold · PTLC Routing · FROST Taproot Vault.
 
 The enhancement arc has a natural next rung if wanted; otherwise the project simply stands.
 
-1. **Polish** — README screen-capture GIF of the demos.
+1. ~~**Polish** — README screen-capture GIF of the demos.~~ ✅ Done 2026-07-04 (`web/demo.gif`,
+   embedded as the README hero; regenerate with `demo-capture.js` — see gotchas below).
 2. **Lightning, deeper** — the HTLC *second-stage* transactions (HTLC-success/HTLC-timeout, the
    2-of-2 that forces `to_self_delay`). Optional; the routing/PTLC stories are complete without it.
 3. **FROST DKG** — replace the trusted dealer with distributed key generation (each participant
@@ -133,6 +134,14 @@ web/               self-contained static site (this is what Pages serves)
     "file://$PWD/og-card.html"
   sips -z 630 1200 og-2x.png --out web/og.png
   ```
+- **`web/demo.gif` (README hero) is a scripted montage — regenerate, don't screen-record by hand.**
+  `demo-capture.js` (repo root) drives the dev server through six beats with Playwright + the system
+  Chrome (`npm i playwright` first; uses `channel:'chrome'`, no browser download) and records one
+  `.webm`; a two-pass ffmpeg palette step turns it into the GIF. Full commands are in the file's
+  header comment. Like `og.png`, it goes stale when a demo is added or a card's DOM/selectors change
+  (the beats key off `#px`, `#mineBtn`, `#stepBtn`, `#signBtn`/`#jointSign`, `#payAB`). Note: the
+  Network card's canvas scales x by the run's *final* height, so it only fills once Step reaches the
+  end — that's why the script fast-forwards with a `#stepBtn` loop instead of a timed Play.
 
 ## Completed enhancement arc (details in PLAN.md's Progress Log)
 
