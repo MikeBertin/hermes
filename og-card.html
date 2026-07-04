@@ -15,7 +15,7 @@
     --curve:#7cc4ff; --address:#ffc266; --sign:#ff6b6b; --mine:#ff9f43;
     --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
     --multisig:#ef88c8; --merkle:#4dc9e6; --taproot:#f7a14b; --musig:#a8d94b;
-    --lightning:#ffd400; --routing:#2dd4bf; --frost:#c4b5fd; --ptlc:#f472b6;
+    --lightning:#ffd400; --routing:#2dd4bf; --frost:#c4b5fd; --ptlc:#f472b6; --frosttap:#818cf8;
     --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -49,7 +49,7 @@
 <body>
   <div class="badge">Hermes</div>
   <h1>Bitcoin from First Principles</h1>
-  <p class="lede">Keys, signatures &amp; proof of work — <b>built from nothing</b>. Sixteen interactive
+  <p class="lede">Keys, signatures &amp; proof of work — <b>built from nothing</b>. Seventeen interactive
     demos, no crypto libraries.</p>
 
   <div class="pills">
@@ -69,6 +69,7 @@
     <span class="pill"><span class="dot" style="background:var(--routing)"></span>HTLC routing</span>
     <span class="pill"><span class="dot" style="background:var(--frost)"></span>FROST</span>
     <span class="pill"><span class="dot" style="background:var(--ptlc)"></span>PTLC</span>
+    <span class="pill"><span class="dot" style="background:var(--frosttap)"></span>Taproot vault</span>
   </div>
 
   <div class="code">0488b21e · OP_CHECKSIG<br>y² = x³ + 7&nbsp;&nbsp;mod p<br>SHA-256 · RIPEMD-160 · Base58</div>

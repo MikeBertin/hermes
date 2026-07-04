@@ -958,6 +958,47 @@
     return mod(adaptorEven(eff) ? (s - presig.sPrime) : (presig.sPrime - s), N);
   }
 
+  // --- BIP-340 / Taproot FROST (threshold sig that spends a bc1p vault) -------
+  const ftXonly = (P) => bigIntToBytes(P.x, 32);
+  const ftSign = (P) => (P.y % 2n === 0n ? 1n : -1n);          // even-y => +1
+  const ftChallenge = (R, pubkeyXonly, msg) => mod(bytesToBigInt(
+    taggedHash("BIP0340/challenge", concatBytes(ftXonly(R), pubkeyXonly, msg))), N);
+  function frostBip340Sign(id, share, groupPub, nonces, msg, list) {          // verifies under group key
+    const bfl = frostBindingFactors(groupPub, list, msg), bf = new Map(bfl).get(id);
+    const R = frostGroupCommitment(list, bfl);
+    const lam = frostLagrange(list.map(([i]) => i), id);
+    const c = ftChallenge(R, ftXonly(groupPub), msg);
+    const [hn, bn] = nonces;
+    return mod(ftSign(R) * (hn + bn * bf) + ftSign(groupPub) * lam * share * c, N);
+  }
+  function frostBip340Aggregate(list, msg, groupPub, sigShares) {
+    const R = frostGroupCommitment(list, frostBindingFactors(groupPub, list, msg));
+    let z = 0n; for (const s of sigShares) z = mod(z + s, N);
+    return concatBytes(ftXonly(R), bigIntToBytes(z, 32));
+  }
+  function ftTweak(groupPub) {                                 // TapTweak context
+    const internal = ftXonly(groupPub), t = tapTweak(internal);
+    return { t, Q: ptAdd(liftX(bytesToBigInt(internal)), ptMul(t, G)) };
+  }
+  function frostTaprootSign(id, share, groupPub, nonces, msg, list) {         // key-path spend of the vault
+    const { Q } = ftTweak(groupPub);
+    const bfl = frostBindingFactors(groupPub, list, msg), bf = new Map(bfl).get(id);
+    const R = frostGroupCommitment(list, bfl);
+    const lam = frostLagrange(list.map(([i]) => i), id);
+    const c = ftChallenge(R, ftXonly(Q), msg);
+    const [hn, bn] = nonces;
+    return mod(ftSign(R) * (hn + bn * bf) + c * ftSign(Q) * ftSign(groupPub) * lam * share, N);
+  }
+  function frostTaprootAggregate(list, msg, groupPub, sigShares) {
+    const { t, Q } = ftTweak(groupPub);
+    const R = frostGroupCommitment(list, frostBindingFactors(groupPub, list, msg));
+    const c = ftChallenge(R, ftXonly(Q), msg);
+    let z = 0n; for (const s of sigShares) z = mod(z + s, N);
+    return concatBytes(ftXonly(R), bigIntToBytes(mod(z + c * ftSign(Q) * t, N), 32));
+  }
+  const frostVaultAddress = (groupPub, testnet = false) => p2trAddress(ftXonly(groupPub), testnet);
+  const frostOutputXonly = (groupPub) => taprootOutputKey(ftXonly(groupPub));
+
   // hash of a message string, as the integer z that ECDSA signs
   const messageHash = (str) => bytesToBigInt(doubleSha256(utf8(str)));
 
@@ -996,6 +1037,9 @@
     frostVerify, frostSerializeSig,
     // adaptor signatures / PTLC
     adaptorPoint, adaptorPresign, adaptorPresigVerify, adaptorAdapt, adaptorExtract, adaptorXonly,
+    // BIP-340 / Taproot FROST
+    frostBip340Sign, frostBip340Aggregate, frostTaprootSign, frostTaprootAggregate,
+    frostVaultAddress, frostOutputXonly,
     // ecdsa
     sign, verify, recoverNonceReuse, randScalar, hmacSha256, rfc6979K, messageHash,
   };

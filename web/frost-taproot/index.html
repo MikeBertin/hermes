@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BIP-340 FROST — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="BIP-340 FROST — a Taproot t-of-n vault — Hermes">
+<meta property="og:description" content="Re-skin FROST to BIP-340 so any t of n officers can key-path spend a bc1p Taproot vault — one signature, indistinguishable from a single signer.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#818cf8;--accent-ink:#0b0f2e}
+  .card2{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card2 + .card2{margin-top:14px}
+  .card2 h2{margin-top:0}
+  .officer{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .officer:last-child{border-bottom:none}
+  .officer .box{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line);flex:none;
+    cursor:pointer;display:grid;place-items:center;font-size:12px;color:var(--accent-ink)}
+  .officer.on .box{background:var(--accent);border-color:var(--accent)}
+  .officer .who{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+  .officer.off .who{color:var(--muted)}
+  .officer .share{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto;word-break:break-all}
+  .vault{background:#0e0e16;border:1px dashed var(--accent);border-radius:10px;padding:12px 14px;margin-top:12px}
+  .vault .lab2{font-family:var(--mono);font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .vault .num{font-family:var(--mono);font-size:12.5px;color:var(--accent);word-break:break-all}
+  .thr{font-family:var(--mono);font-size:12px;color:var(--muted);margin:12px 0 2px}
+  .thr .bad{color:var(--bad)} .thr .ok{color:var(--good)}
+  .steps{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+  .steps button{padding:11px 8px}
+  .badge2{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:8px;font-weight:600;margin-top:12px;line-height:1.45}
+  .badge2.ok{background:rgba(129,140,248,.17);color:var(--accent)} .badge2.idle{background:#1c1c27;color:var(--muted)}
+  .stg{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .stg + .stg{margin-top:10px}
+  .stg .lab2{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .stg .num{font-family:var(--mono);font-size:11.5px;color:var(--ink);word-break:break-all}
+  .stg.final{border-color:var(--accent)} .stg.final .num{color:var(--accent)}
+  .weigh{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .weigh .side{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .weigh .side h4{margin:0 0 6px;font-size:11px;font-family:var(--mono);letter-spacing:1.1px;text-transform:uppercase;color:var(--muted)}
+  .weigh .side.win{border-color:rgba(129,140,248,.5)} .weigh .side.win h4{color:var(--accent)}
+  .weigh .big{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--ink)} .weigh .side.win .big{color:var(--accent)}
+  .weigh .sub2{color:var(--muted);font-size:11px;margin-top:4px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / BIP-340 FROST</div>
+  <header class="hero">
+    <h1>BIP-340 FROST — a Taproot <em>t</em>-of-<em>n</em> vault</h1>
+    <p class="sub">
+      Demo 15's FROST is faithful to <b>RFC 9591</b> — but that ciphersuite's challenge isn't
+      BIP-340's, so its signature can't spend a coin. Re-skin the <em>same</em> threshold protocol to
+      BIP-340's x-only, even-y <span class="x" data-pop="conv">conventions</span> and the aggregate
+      becomes a genuine 64-byte signature. Wrap the group key in a
+      <span class="x" data-pop="taptweak">TapTweak</span> and you get a <b>bc1p…</b> address that any
+      <b>2 of 3</b> officers can <b>key-path spend</b> — settled in one signature that looks exactly
+      like a lone wallet's. The threshold is real; on-chain, invisible.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="card2">
+        <h2>1 · The vault</h2>
+        <div id="officers"></div>
+        <div class="vault">
+          <div class="lab2">vault address &nbsp;— bc1p, from a 2-of-3 FROST group key + TapTweak</div>
+          <div class="num" id="addr">–</div>
+        </div>
+        <p class="hint" style="margin:10px 0 0">A trusted dealer Shamir-splits one group key across the
+          three officers (demo 15). Its x-only form is a Taproot internal key; tweaked, it's the
+          address above. <span class="mono">New vault</span> re-deals.</p>
+      </div>
+
+      <div class="card2">
+        <h2>2 · Spend it — any two officers</h2>
+        <label style="margin-top:0">Transaction to authorise</label>
+        <input type="text" id="msg" value="Send 2 BTC to bc1q… (board approval #42)" spellcheck="false">
+        <div class="thr" id="thr">tick any two officers</div>
+        <div class="steps">
+          <button id="run" class="primary">Sign the key-path spend</button>
+          <button id="reset">New vault</button>
+        </div>
+        <div id="mainBadge" class="badge2 idle">pick two officers to sign</div>
+        <p class="hint" style="margin:10px 0 0">Each present officer contributes a BIP-340 signature
+          share (with the even-y sign flips FROST-over-BIP-340 needs); the coordinator adds the tweak
+          and sums them. Out comes a single <span class="mono">(R.x ‖ z)</span> that
+          <span class="mono">schnorrVerify</span> accepts under the vault's output key.</p>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>The spending signature</h2>
+        <div class="stg final">
+          <div class="lab2">64-byte BIP-340 signature — the entire witness</div>
+          <div class="num" id="sig">sign to produce…</div>
+        </div>
+        <div class="stg" style="margin-top:10px">
+          <div class="lab2">tweaked output key — what the bc1p commits to</div>
+          <div class="num" id="outkey">–</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>vs demo 15 (RFC 9591)</h2>
+        <div class="weigh">
+          <div class="side"><h4>RFC 9591 FROST</h4>
+            <div class="big">65 B · off-chain</div>
+            <div class="sub2">faithful to the IETF spec, but its challenge isn't BIP-340 — it can't spend a Taproot coin.</div></div>
+          <div class="side win"><h4>BIP-340 FROST</h4>
+            <div class="big">64 B · on-chain</div>
+            <div class="sub2">a real key-path spend of a bc1p vault, verified by the same schnorrVerify as demo 11.</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Invisible on-chain</h2>
+        <p class="hint" style="margin-top:0">The witness is one 64-byte signature; the output is a plain
+          <span class="mono">bc1p</span> key. Nothing says "2-of-3", nothing says "FROST". A 3-of-5
+          board vault, a 2-of-3 exchange, and a single hardware wallet are byte-for-byte
+          indistinguishable — the privacy Taproot promised, extended to thresholds.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Same protocol, new challenge</h3>
+        <p>Keygen, nonces, binding factors and Lagrange interpolation are demo 15's, unchanged. Only
+          the challenge hash (now <span class="mono">BIP0340/challenge</span>) and the even-y sign
+          flips on R, the group key, and the tweaked output key differ — that's all it takes.</p></div>
+      <div class="ncard"><h3>The secret still never forms</h3>
+        <p>As in demo 15, no one ever holds the whole group key. The Lagrange-weighted shares combine
+          only inside the signature — now producing a spend of a real address.</p></div>
+      <div class="ncard"><h3>No official vectors — yet</h3>
+        <p>There's no finalised BIP for FROST, so this is validated by self-consistency: the aggregate
+          verifies under the vault's output key via the (BIP-340-vector-anchored)
+          <span class="mono">schnorrVerify</span>, across every signing pair and key parity.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  conv: "<h4>BIP-340 conventions</h4><p>Keys and nonces are x-only (32 bytes) with an implied even y-coordinate. Whenever the group key, the session nonce R, or the tweaked output key comes out odd, the signer flips a sign so the maths lands on the even-y point the verifier lifts.</p>",
+  taptweak: "<h4>TapTweak (BIP-341)</h4><p>Q = P + int(tagged_hash(\"TapTweak\", P))·G. The FROST group key P is used as a Taproot internal key; the tweaked Q is the x-only output key the bc1p address carries. Signing a key-path spend means signing for Q — the tweak is folded into the aggregate. Demo 11 built this tweak.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hex = (b) => H.bytesToHex(b);
+  const short = (b, n = 14) => { const h = hex(b); return h.slice(0, n) + "…" + h.slice(-10); };
+  const shortBig = (bi, n = 12) => short(H.bigIntToBytes(bi, 32), n);
+  const NAMES = ["Alice", "Bob", "Carol"];
+  const THRESHOLD = 2, TOTAL = 3;
+
+  let officers = [], groupPubkey = null;
+
+  function reset() {
+    const secret = H.randScalar(), coeffs = [H.randScalar()];   // degree 1 => 2-of-3
+    const { shares, groupPubkey: gpk } = H.frostKeygen(secret, coeffs, TOTAL);
+    groupPubkey = gpk;
+    officers = shares.map(([id, share], i) => ({ id, share, name: NAMES[i], present: i !== 1 }));
+    $("addr").textContent = H.frostVaultAddress(groupPubkey, false);
+    $("outkey").textContent = hex(H.frostOutputXonly(groupPubkey));
+    $("sig").textContent = "sign to produce…";
+    render();
+  }
+
+  function toggle(i) { officers[i].present = !officers[i].present; $("sig").textContent = "sign to produce…"; $("mainBadge").className = "badge2 idle"; render(); }
+  function present() { return officers.filter((o) => o.present); }
+
+  function run() {
+    const signers = present();
+    if (signers.length < THRESHOLD) return;
+    const msg = H.sha256(H.utf8($("msg").value));
+    const nonces = {}, commitments = signers.map((s) => {
+      const hr = new Uint8Array(32), br = new Uint8Array(32);
+      crypto.getRandomValues(hr); crypto.getRandomValues(br);
+      const c = H.frostCommit(s.share, hr, br);
+      nonces[s.id] = c.nonces;
+      return [BigInt(s.id), c.commits[0], c.commits[1]];
+    }).sort((a, b) => (a[0] < b[0] ? -1 : 1));
+
+    const shares = signers.map((s) => H.frostTaprootSign(BigInt(s.id), s.share, groupPubkey, nonces[s.id], msg, commitments));
+    const sig = H.frostTaprootAggregate(commitments, msg, groupPubkey, shares);
+    const ok = H.schnorrVerify(H.frostOutputXonly(groupPubkey), msg, sig);
+    $("sig").textContent = hex(sig.slice(0, 32)) + " " + hex(sig.slice(32));
+    render();
+    $("mainBadge").className = "badge2 " + (ok ? "ok" : "idle");
+    $("mainBadge").textContent = ok
+      ? `✓ valid key-path spend — ${signers.map((s) => s.name).join(" + ")} spent the vault with one signature`
+      : "✗ verification failed";
+  }
+
+  function render() {
+    $("officers").innerHTML = officers.map((o, i) => `
+      <div class="officer ${o.present ? "on" : "off"}">
+        <div class="box" data-i="${i}">${o.present ? "✓" : ""}</div>
+        <span class="who">${o.name} &nbsp;·&nbsp; share #${o.id}</span>
+        <span class="share">s${o.id} = ${shortBig(o.share)}</span></div>`).join("");
+    $("officers").querySelectorAll(".box").forEach((b) => b.addEventListener("click", () => toggle(+b.dataset.i)));
+
+    const n = present().length, el = $("thr");
+    if (n < THRESHOLD) { el.innerHTML = `<span class="bad">below threshold</span> — need any ${THRESHOLD} of ${TOTAL}`; $("run").disabled = true; }
+    else { el.innerHTML = `<span class="ok">threshold met</span> — ${n} of ${TOTAL} signing`; $("run").disabled = false; }
+    if ($("mainBadge").className.includes("idle")) $("mainBadge").textContent = n < THRESHOLD ? "below threshold — pick any two" : "ready — sign the spend";
+  }
+
+  $("run").addEventListener("click", run);
+  $("reset").addEventListener("click", reset);
+  $("msg").addEventListener("input", () => { $("sig").textContent = "sign to produce…"; $("mainBadge").className = "badge2 idle"; render(); });
+
+  reset();
+})();
+</script>
+</body>
+</html>

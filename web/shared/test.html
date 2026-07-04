@@ -373,6 +373,26 @@ check("extract recovers the adaptor secret t",
 check("wrong secret cannot complete the pre-signature",
   H.schnorrVerify(A_PUB, A_MSG, H.adaptorAdapt(A_PRESIG, A_T + 1n)), false);
 
+// --- BIP-340 / Taproot FROST (2-of-3, verified via schnorrVerify) ---
+const FT_MSG = H.sha256(H.utf8("frost taproot vault spend"));
+const { shares: FT_SHARES, groupPubkey: FT_GPK } = H.frostKeygen(0xF1057n, [0xC0FFEEn], 3);
+const FT_SHARE = new Map(FT_SHARES), FT_IDS = [1n, 3n], FT_NONCES = {}, FT_COMMITS = [];
+for (const i of FT_IDS) {
+  const hr = new Uint8Array(32).fill(Number(i) * 2), br = new Uint8Array(32).fill(Number(i) * 2 + 1);
+  const c = H.frostCommit(FT_SHARE.get(i), hr, br);
+  FT_NONCES[i] = c.nonces; FT_COMMITS.push([i, c.commits[0], c.commits[1]]);
+}
+FT_COMMITS.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+const FT_CORE = H.frostBip340Aggregate(FT_COMMITS, FT_MSG, FT_GPK,
+  FT_IDS.map((i) => H.frostBip340Sign(i, FT_SHARE.get(i), FT_GPK, FT_NONCES[i], FT_MSG, FT_COMMITS)));
+check("bip340 FROST aggregate is a valid BIP-340 sig under the group key",
+  H.schnorrVerify(H.adaptorXonly(FT_GPK), FT_MSG, FT_CORE), true);
+const FT_TR = H.frostTaprootAggregate(FT_COMMITS, FT_MSG, FT_GPK,
+  FT_IDS.map((i) => H.frostTaprootSign(i, FT_SHARE.get(i), FT_GPK, FT_NONCES[i], FT_MSG, FT_COMMITS)));
+check("taproot FROST key-path spend verifies under the bc1p output key",
+  H.schnorrVerify(H.frostOutputXonly(FT_GPK), FT_MSG, FT_TR), true);
+check("FROST vault address is a bc1p Taproot address", H.frostVaultAddress(FT_GPK).startsWith("bc1p"), true);
+
 // --- Merkle root of a real block (block 100000, 4 txs) ---
 const B100K = [
   "8c14f0db3df150123e6f3dbbf30f8b955a8249b62ac1d1ff16284aefa3d06d87",

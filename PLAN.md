@@ -559,3 +559,20 @@ _Append a dated entry every session: what changed · what's next · new decision
   contrast. Landing now 16 cards ("Sixteen"), README + counts, og.png re-rendered (16 pills, compacted
   to 8+8). **208/208 pytest, 103/103 in-browser, console clean.** Remaining optional menu: BIP-340
   FROST (Taproot-spendable threshold), polish (README GIF), HTLC second-stage txs.
+- **2026-07-04** — **BIP-340 FROST DONE — a 17th demo card shipped** (enhancement #12: a Taproot-
+  spendable threshold vault, the sequel to demo 15). New `hermes/frost_taproot.py` re-skins the RFC
+  9591 FROST protocol to BIP-340: `sign`/`aggregate` (verify under the x-only group key) and
+  `taproot_sign`/`taproot_aggregate` (BIP-341 TapTweak → a key-path spend), reusing demo 15's
+  binding factors/Lagrange + demo 11's `taproot` tweak. The subtlety is the even-y sign flips on the
+  effective nonce R, the group key P, and the tweaked output key Q (`z_i = g_R·(k_h+ρ_i·k_b) +
+  c·g_Q·g_P·λ_i·s_i`, tweak term `c·g_Q·t` added once). **Validation:** no finalised BIP / no
+  vectors, so pinned by self-consistency across random keys × every 2-of-3 subset (all R/P/Q
+  parities) — the aggregate verifies via the BIP-340-vector-anchored `schnorr.verify` under both the
+  group key and the tweaked output key; the vault address is a valid `bc1p` committing to that output
+  key; below-threshold / wrong-share cases reject. JS mirror (`frostBip340*`/`frostTaproot*` in
+  `btc.js`) + 3 test.html checks. **New `web/frost-taproot/` card** ("FROST Taproot Vault", accent
+  #818cf8 indigo, `--frosttap`/`.c17`): a 2-of-3 FROST group key → `bc1p` vault, tick any two → a
+  64-byte BIP-340 key-path spend, with a demo-15 (RFC 9591, 65 B, off-chain) vs this (BIP-340, 64 B,
+  on-chain) contrast. Landing now 17 cards ("Seventeen"), README + counts, og.png re-rendered (17
+  pills). **213/213 pytest, 106/106 in-browser, console clean.** Remaining optional menu: polish
+  (README GIF), HTLC second-stage txs / other Lightning depth.
