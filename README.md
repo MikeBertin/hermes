@@ -17,10 +17,6 @@ MuSig2 signing ceremony, a Lightning channel's revocation/penalty mechanism, a m
 routed payment, FROST threshold signatures, PTLCs via Schnorr adaptor signatures, and a BIP-340
 FROST Taproot vault.
 
-Companion to [Chiron](https://mikebertin.github.io/chiron/) (computational physics),
-[Empedocles](https://mikebertin.github.io/empedocles/) (evolutionary algorithms), and
-**Plutus** (quantitative finance).
-
 ## Why "Hermes"
 
 Hermes was the Greek god of commerce *and* of boundaries, messages, and secrets — whence
