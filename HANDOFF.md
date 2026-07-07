@@ -139,9 +139,12 @@ web/               self-contained static site (this is what Pages serves)
   Chrome (`npm i playwright` first; uses `channel:'chrome'`, no browser download) and records one
   `.webm`; a two-pass ffmpeg palette step turns it into the GIF. Full commands are in the file's
   header comment. Like `og.png`, it goes stale when a demo is added or a card's DOM/selectors change
-  (the beats key off `#px`, `#mineBtn`, `#stepBtn`, `#signBtn`/`#jointSign`, `#payAB`). Note: the
-  Network card's canvas scales x by the run's *final* height, so it only fills once Step reaches the
-  end — that's why the script fast-forwards with a `#stepBtn` loop instead of a timed Play.
+  (the beats key off `#px`, `#mineBtn`, `#stepBtn`, `#signBtn`/`#jointSign`, `#payAB`). Two Network-card
+  quirks the script works around: (1) its canvas scales x by the run's *final* height, so it only fills
+  once Step reaches the end — hence the fast-forward `#stepBtn` loop instead of a timed Play; and (2)
+  the canvas is a fixed `900×520` with the chain drawn at only 40% height, so at the capture viewport it
+  frames with a big empty void below — the script shrinks `#tree.height` to `300` (a compact 3:1 strip)
+  and `#resetC`s before building so the chain fills the frame with the legend/controls in view.
 
 ## Completed enhancement arc (details in PLAN.md's Progress Log)
 

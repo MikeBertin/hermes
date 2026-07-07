@@ -77,10 +77,17 @@ async function goto(page, path) {
   await page.click('#mineBtn');
   await sleep(3200);
 
-  // 3 — Network & 51%: fast-forward Step so the chain fills the width block-by-block
+  // 3 — Network & 51%: the canvas is a tall 900x520 with the chain at only 40% height,
+  // so it frames with a big empty void. Shrink it to a compact strip and reset (empty),
+  // linger on the intro, then fast-forward Step so the chain fills the width block-by-block.
   await goto(page, '/network/');
+  await page.evaluate(() => {
+    document.querySelector('#tree').height = 300;   // 520 -> compact 3:1 strip, no void
+    document.querySelector('#resetC').click();      // cStep=0, redraw empty at new height
+  });
+  await sleep(1800);                                 // let the "Network & the 51% Attack" intro read
   for (let i = 0; i < 42; i++) { await page.click('#stepBtn'); await sleep(85); }
-  await sleep(700);
+  await sleep(1200);
 
   // 4 — Taproot & Schnorr: sign (VALID), then scroll to the "signatures add" beat
   await goto(page, '/taproot/');
