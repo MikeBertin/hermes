@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTLC Second-Stage — Hermes</title>
+<meta property="og:type" content="website">
+<meta property="og:title" content="HTLC Second-Stage — Hermes">
+<meta property="og:description" content="Force-close a Lightning channel with a payment in flight: the HTLC-timeout / HTLC-success second-stage transactions (BOLT-3 Appendix C), reproduced byte-for-byte — and their output is itself delayed and revocable.">
+<meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<link rel="stylesheet" href="../shared/demo.css">
+<style>
+  :root{--accent:#fb923c;--accent-ink:#1e1206}
+  .card2{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card2 + .card2{margin-top:14px}
+  .card2 h2{margin-top:0}
+  .dirtabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:2px 0 14px}
+  .dirtabs button{padding:11px 8px;font-weight:600;line-height:1.3;font-size:12.5px}
+  .dirtabs button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .flow{display:flex;align-items:center;gap:8px;margin:12px 0;font-family:var(--mono);font-size:11.5px}
+  .flow .box{flex:1;background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:10px 11px;text-align:center}
+  .flow .box b{display:block;color:var(--ink);font-size:12px;margin-bottom:3px}
+  .flow .box span{color:var(--muted)}
+  .flow .arr{flex:none;color:var(--accent);font-weight:700}
+  .flow .box.stage{border-color:var(--accent);box-shadow:0 0 0 1px rgba(251,146,60,.25) inset}
+  .stg{background:#0e0e16;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .stg + .stg{margin-top:10px}
+  .stg .lab2{font-family:var(--mono);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .stg .num{font-family:var(--mono);font-size:11.5px;color:var(--ink);word-break:break-all}
+  .stg .num.accent{color:var(--accent)}
+  /* the witness stack */
+  .wit{list-style:none;padding:0;margin:6px 0 0}
+  .wit li{display:flex;gap:10px;align-items:baseline;font-family:var(--mono);font-size:11.5px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .wit li:last-child{border-bottom:none}
+  .wit .k{flex:none;width:132px;color:var(--accent)}
+  .wit .d{flex:1;color:var(--ink);word-break:break-all}
+  .wit .n{color:var(--muted)}
+  .scriptbox{font-family:var(--mono);font-size:11.5px;line-height:1.9;word-break:break-all}
+  .scriptbox .op{color:var(--accent)}
+  .scriptbox .push{color:#8fb7e8}
+  .badge2{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12.5px;padding:8px 12px;border-radius:8px;font-weight:600;margin-top:12px;line-height:1.4}
+  .badge2.ok{background:rgba(88,214,141,.14);color:var(--good)}
+  .badge2.no{background:rgba(255,107,107,.14);color:var(--bad)}
+  .badge2.warn{background:rgba(251,146,60,.16);color:var(--accent)}
+  .rawhex{font-family:var(--mono);font-size:10.5px;color:var(--muted);word-break:break-all;line-height:1.7;margin-top:10px;max-height:98px;overflow:auto;background:#0b0b12;border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .keyline{font-family:var(--mono);font-size:11px;word-break:break-all;margin-top:8px}
+  .keyline .lab3{color:var(--muted)}.keyline .v{color:var(--ink)}.keyline .ok3{color:var(--good);font-weight:700}.keyline .rev{color:var(--bad)}
+  .delay{margin-top:6px}
+  .delay input[type=range]{width:100%}
+  .delayhead{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-bottom:4px}
+  .delayhead b{color:var(--ink)}
+  .formula{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.85;margin:10px 0 0}
+  .formula b{color:var(--ink)}.formula .a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="crumb"><a href="../">Hermes</a> / HTLC Second-Stage</div>
+  <header class="hero">
+    <h1>HTLC Second-Stage — closing with a payment in flight</h1>
+    <p class="sub">
+      When a channel force-closes <b>unilaterally</b>, its balance outputs are easy — but an
+      <span class="x" data-pop="htlc">HTLC</span> that's still pending can't be swept with a bare
+      signature. It's spent by a pre-signed <b>second-stage</b> transaction: an
+      <b>HTLC-timeout</b> for an HTLC you <em>offered</em>, an <b>HTLC-success</b> for one you
+      <em>received</em>. Both are <span class="x" data-pop="twoof2">2-of-2</span>, and — the elegant
+      part — both pay into a <span class="mono">to_local</span> output, so demo 13's delay + revocation
+      penalty applies <b>one level down</b>. Built from scratch and checked byte-for-byte against
+      <span class="x" data-pop="appc">BOLT-3 Appendix C</span>.
+    </p>
+  </header>
+
+  <div class="cols">
+    <div class="col-left">
+      <div class="card2">
+        <h2>1 · Which HTLC got stuck?</h2>
+        <div class="dirtabs">
+          <button id="tabOff" aria-pressed="true">You <b>offered</b> it →<br>HTLC-timeout</button>
+          <button id="tabRec" aria-pressed="false">You <b>received</b> it →<br>HTLC-success</button>
+        </div>
+        <p class="hint" id="scenario" style="margin-top:0"></p>
+        <div class="flow">
+          <div class="box"><b>commitment tx</b><span id="fCommit">force-closed on-chain</span></div>
+          <div class="arr">→</div>
+          <div class="box stage"><b id="fStageName">HTLC-timeout</b><span id="fStage">2-of-2, timelocked</span></div>
+          <div class="arr">→</div>
+          <div class="box"><b>to_local</b><span>delayed + revocable</span></div>
+        </div>
+      </div>
+
+      <div class="card2">
+        <h2>2 · The second-stage transaction</h2>
+        <div class="stg">
+          <div class="lab2">type · nLockTime · input</div>
+          <div class="num"><span id="ssType">HTLC-timeout</span> &nbsp;·&nbsp; locktime
+            <span class="accent" id="ssLock">502</span> &nbsp;·&nbsp; spends HTLC output
+            <span id="ssIdx">#1</span> (<span id="ssAmt">2000</span> sat)</div>
+        </div>
+        <div class="stg">
+          <div class="lab2">witness stack &nbsp;— <span id="witWhy">the empty item fails OP_SIZE 32, so the offered script takes its 2-of-2 timeout branch</span></div>
+          <ul class="wit" id="witness"></ul>
+        </div>
+        <div class="stg">
+          <div class="lab2">output — a to_local P2WSH (this node's HTLC value, now delayed)</div>
+          <div class="num" id="ssAddr">–</div>
+        </div>
+        <div class="badge2 ok" id="vectorBadge">✓ reproduces BOLT-3 Appendix C byte-for-byte</div>
+        <div class="rawhex" id="rawhex">–</div>
+      </div>
+
+      <div class="card2">
+        <h2>3 · …and the output is itself a <span class="mono">to_local</span></h2>
+        <p class="hint" style="margin-top:0">The second stage doesn't hand the money over — it drops it
+          into the same delay/revocation script as the main balance. Drag the blocks elapsed since the
+          second-stage tx confirmed:</p>
+        <div class="delay">
+          <div class="delayhead"><span>blocks since confirmation: <b id="csvVal">0</b></span>
+            <span>to_self_delay = <b>144</b></span></div>
+          <input type="range" id="csv" min="0" max="216" value="0">
+        </div>
+        <div id="reclaim"></div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>The second-stage output's <span class="mono">to_local</span></h2>
+        <div class="scriptbox" id="scriptbox"></div>
+        <p class="hint">Identical to demo 13's balance output: the <span style="color:var(--good)">IF</span>
+          branch is the counterparty's instant justice with the revocation key; the
+          <span style="color:var(--muted)">ELSE</span> branch is this node's own funds, spendable only
+          after <span class="x" data-pop="csv">to_self_delay</span>. A pending payment doesn't escape
+          the penalty — it inherits it.</p>
+        <div class="keyline"><span class="lab3">revocationPubkey</span><br><span class="v" id="revpub">–</span></div>
+        <div class="keyline"><span class="lab3">local_delayedPubkey (this node, after 144 blocks)</span><br><span class="v" id="delpub">–</span></div>
+      </div>
+
+      <div class="panel">
+        <h2>Why a 2-of-2?</h2>
+        <p class="hint" style="margin-top:0">Every second-stage tx carries <b>&lt;remotehtlcsig&gt;</b> —
+          a signature the counterparty gave in advance for <em>this exact transaction</em>. That's what
+          binds the local node to the rules: it can't rewrite the HTLC-timeout to an earlier
+          <span class="mono">nLockTime</span> (the signature would break), and it can't skip the delayed
+          output. Cooperation up front, enforced on-chain later.</p>
+        <div class="formula">
+          HTLC-timeout: <b>nLockTime = cltv_expiry</b> &nbsp;→&nbsp; can't reclaim early<br>
+          HTLC-success: <b>nLockTime = 0</b> &nbsp;+&nbsp; <span class="a">preimage</span> in the witness
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <div class="notice-title">Things to notice</div>
+    <div class="notice-grid">
+      <div class="ncard"><h3>Two stages, one reason</h3>
+        <p>The HTLC has to stay claimable (by preimage) or refundable (by timeout) <em>even while</em>
+          the owner's funds are frozen for <span class="mono">to_self_delay</span>. Splitting it into a
+          second transaction is what lets both timelocks coexist.</p></div>
+      <div class="ncard"><h3>The penalty recurses</h3>
+        <p>Because the second-stage output is a <span class="mono">to_local</span>, a second-stage tx
+          from a <em>revoked</em> commitment is just as punishable: the counterparty's revocation key
+          sweeps it before the delay — demo 13's justice, one level deeper.</p></div>
+      <div class="ncard"><h3>Byte-for-byte real</h3>
+        <p>These aren't toy scripts. The transactions above match the official
+          <span class="mono">HTLC-timeout / HTLC-success</span> test vectors in BOLT-3 Appendix C
+          exactly — same keys, same RFC 6979 signatures, same bytes on the wire.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.POPS = {
+  htlc: "<h4>HTLC</h4><p>Hash-Time-Locked Contract: an in-flight Lightning payment, claimable with a preimage or refundable after a timeout (demo 14). On a force-close it becomes an output that needs a second-stage transaction to resolve.</p>",
+  twoof2: "<h4>2-of-2</h4><p>The HTLC-timeout and HTLC-success txs require signatures from <em>both</em> channel peers (the local and remote HTLC keys). The counterparty pre-signs, which is what forces the local node through the delay instead of grabbing funds instantly.</p>",
+  appc: "<h4>BOLT-3 Appendix C</h4><p>The Lightning spec's commitment/HTLC transaction test vectors. This card rebuilds the 'all five HTLCs untrimmed' scenario's second-stage transactions and matches their published hex to the byte.</p>",
+  csv: "<h4>to_self_delay / OP_CHECKSEQUENCEVERIFY</h4><p>A relative timelock (BIP-68/112): this node's own branch can't be spent until N blocks after the tx confirms — the window in which a revoked broadcast can be punished.</p>",
+};
+</script>
+<script src="../shared/demo.js"></script>
+<script src="../shared/btc.js"></script>
+<script>
+(() => {
+  const H = window.Hermes;
+  const $ = (id) => document.getElementById(id);
+  const hex = (b) => H.bytesToHex(b);
+  const short = (h, n = 20) => h.length > n + 10 ? h.slice(0, n) + "…" + h.slice(-8) : h;
+
+  // BOLT-3 Appendix C — "commitment tx with all five HTLCs untrimmed" (feerate 0)
+  const REVPUB  = H.hexToBytes("0212a140cd0c6539d07cd08dfe09984dec3251ea808b892efeac3ede9402bf2b19");
+  const REMOTE  = H.hexToBytes("0394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b");
+  const LOCAL   = H.hexToBytes("030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e7");
+  const DELAYED = H.hexToBytes("03fd5960528dc152014952efdb702a88f71e3c1653b2314431701ec77e57fde83c");
+  const DELAY = 144;
+  const LOCAL_HTLC_PRIV  = 0xbb13b121cdc357cd2e608b0aea294afca36e2b34cf958e2e6451a2f274694491n;
+  const REMOTE_HTLC_PRIV = 0x8deba327a7cc6d638ab0eb025770400a6184afcba6713c210d8d10e199ff2fdan;
+  const DELAYED_PRIV     = 0xadf3464ce9c2f230fd2582fda4c6965e4993ca5524e8c9580e3df0cf226981adn;
+  const COMMIT_TXID = "2b887d4c1c59cd605144a1e2f971d168437db453f841f2fefb2c164f28ff84ab";
+
+  const EXPECT_OFFERED = "02000000000101ab84ff284f162cfbfef241f853b47d4368d171f9e2a1445160cd591c4c7d882b01000000000000000001d0070000000000002200204adb4e2f00643db396dd120d4e7dc17625f5f2c11a40d857accc862d6b7dd80e05004730440220649fe8b20e67e46cbb0d09b4acea87dbec001b39b08dee7bdd0b1f03922a8640022037c462dff79df501cecfdb12ea7f4de91f99230bb544726f6e04527b1f89600401483045022100803159dee7935dba4a1d36a61055ce8fd62caa528573cc221ae288515405a252022029c59e7cffce374fe860100a4a63787e105c3cf5156d40b12dd53ff55ac8cf3f01008576a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b7c820120876475527c21030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e752ae67a914b43e1b38138a41b37f7cd9a1d274bc63e3a9b5d188ac6868f6010000";
+  const EXPECT_RECEIVED = "02000000000101ab84ff284f162cfbfef241f853b47d4368d171f9e2a1445160cd591c4c7d882b00000000000000000001e8030000000000002200204adb4e2f00643db396dd120d4e7dc17625f5f2c11a40d857accc862d6b7dd80e0500483045022100d9e29616b8f3959f1d3d7f7ce893ffedcdc407717d0de8e37d808c91d3a7c50d022078c3033f6d00095c8720a4bc943c1b45727818c082e4e3ddbc6d3116435b624b014730440220636de5682ef0c5b61f124ec74e8aa2461a69777521d6998295dcea36bc3338110220165285594b23c50b28b82df200234566628a27bcd17f7f14404bd865354eb3ce012000000000000000000000000000000000000000000000000000000000000000008a76a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b7c8201208763a914b8bcb07f6344b42ab04250c86a6e8b75d3fdbbc688527c21030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e752ae677502f401b175ac686800000000";
+
+  const OUT_SCRIPT = H.lnToLocalScript(REVPUB, DELAY, DELAYED);
+  let dir = "offered", csvBlocks = 0;
+
+  function fill(byte) { return new Uint8Array(32).fill(byte); }
+
+  function build() {
+    if (dir === "offered") {
+      const script = H.lnHtlcOfferedScript(REVPUB, REMOTE, LOCAL, H.lnPaymentHash(fill(2)));
+      const sst = H.lnHtlcTimeoutTx(COMMIT_TXID, 1, { htlcAmount: 2000, cltvExpiry: 502,
+        revocationPubkey: REVPUB, localDelayedPubkey: DELAYED, toSelfDelay: DELAY });
+      const signed = H.lnSignHtlcTimeout(sst, script, 2000, REMOTE_HTLC_PRIV, LOCAL_HTLC_PRIV);
+      return { sst, script, signed, type: "HTLC-timeout", locktime: 502, idx: 1, amount: 2000,
+               expect: EXPECT_OFFERED, preimage: null };
+    }
+    const script = H.lnHtlcReceivedScript(REVPUB, REMOTE, LOCAL, H.lnPaymentHash(fill(0)), 500);
+    const sst = H.lnHtlcSuccessTx(COMMIT_TXID, 0, { htlcAmount: 1000,
+      revocationPubkey: REVPUB, localDelayedPubkey: DELAYED, toSelfDelay: DELAY });
+    const signed = H.lnSignHtlcSuccess(sst, script, 1000, REMOTE_HTLC_PRIV, LOCAL_HTLC_PRIV, fill(0));
+    return { sst, script, signed, type: "HTLC-success", locktime: 0, idx: 0, amount: 1000,
+             expect: EXPECT_RECEIVED, preimage: fill(0) };
+  }
+
+  // the two DER signatures the witness carries, recomputed for display
+  function witnessSigs(b) {
+    const output = { amount: b.sst.outAmount, scriptPubKey:
+      H.concatBytes(Uint8Array.of(0x00, 0x20), H.sha256(b.sst.outScript)) };
+    const z = H.sigHashBip143({ txid: b.sst.txid, index: b.sst.index, sequence: 0 },
+                              b.script, b.amount, output, 2, b.sst.locktime);
+    const dsig = (p) => hex(H.derSig(H.sign(p, z))) + "01";
+    return { remote: dsig(REMOTE_HTLC_PRIV), local: dsig(LOCAL_HTLC_PRIV) };
+  }
+
+  const SCRIPT_OPS = { 0x63:"OP_IF",0x67:"OP_ELSE",0x68:"OP_ENDIF",0x75:"OP_DROP",
+    0xb2:"OP_CHECKSEQUENCEVERIFY",0xac:"OP_CHECKSIG" };
+  function renderScript(script) {
+    const out = []; let i = 0;
+    while (i < script.length) {
+      const b = script[i];
+      if (SCRIPT_OPS[b]) { out.push(`<span class="op">${SCRIPT_OPS[b]}</span>`); i++; }
+      else if (b <= 75) {
+        const data = script.slice(i + 1, i + 1 + b);
+        let label = "&lt;data&gt;";
+        if (b === 33) label = "&lt;pubkey&gt;";
+        else if (b <= 4) { let n = 0; for (let k = data.length - 1; k >= 0; k--) n = n * 256 + data[k]; label = `&lt;${n}&gt;`; }
+        out.push(`<span class="push">${label}</span>`); i += 1 + b;
+      } else { out.push(`<span class="op">0x${b.toString(16)}</span>`); i++; }
+    }
+    return out.join(" ");
+  }
+
+  function renderReclaim(b) {
+    // a real owner-delayed reclaim of the second-stage output; CSV must be satisfied too
+    const sweepSpk = H.concatBytes(Uint8Array.of(0x00, 0x14), H.hash160(DELAYED));
+    const prevout = { txid: hex(H.sha256(H.utf8("second-stage:" + dir))), index: 0, sequence: csvBlocks };
+    const output = { amount: b.sst.outAmount - 200, scriptPubKey: sweepSpk };
+    const z = H.sigHashBip143(prevout, OUT_SCRIPT, b.sst.outAmount, output, 2, 0);
+    const sig = H.sign(DELAYED_PRIV, z);
+    const sigOk = H.verify(H.pubFromSecret(DELAYED_PRIV), z, sig);
+    const matured = csvBlocks >= DELAY;
+    if (matured) {
+      $("reclaim").innerHTML =
+        `<div class="badge2 ok" style="display:block">✓ this node reclaims its ${(b.amount)} sat — CSV satisfied, delayed signature valid ${sigOk ? "" : "(!)"}</div>
+         <p class="hint">${csvBlocks} ≥ 144 blocks: the ELSE branch's OP_CHECKSEQUENCEVERIFY passes, and
+           the node signs with its local_delayed key. The pending HTLC finally settles.</p>`;
+    } else {
+      $("reclaim").innerHTML =
+        `<div class="badge2 warn" style="display:block">⏳ locked for ${DELAY - csvBlocks} more blocks — and a revoked-commitment counterparty could sweep it <em>now</em> with the revocation key</div>
+         <p class="hint">${csvBlocks} &lt; 144: OP_CHECKSEQUENCEVERIFY rejects the reclaim. This delay is
+           exactly the justice window from demo 13 — the second-stage output inherits it.</p>`;
+    }
+  }
+
+  function render() {
+    const b = build();
+    $("tabOff").setAttribute("aria-pressed", dir === "offered");
+    $("tabRec").setAttribute("aria-pressed", dir === "received");
+    $("scenario").innerHTML = dir === "offered"
+      ? "You <b>offered</b> this HTLC (you were paying through it). If it expires unclaimed you reclaim it — but only via the <b>HTLC-timeout</b> transaction, which is timelocked to the HTLC's <span class='mono'>cltv_expiry</span> so you can't jump the gun."
+      : "You <b>received</b> this HTLC (someone was paying you). You already have the <span class='mono'>preimage</span>, so you claim it with the <b>HTLC-success</b> transaction — no timeout needed, the secret rides in the witness.";
+    $("fStageName").textContent = b.type;
+    $("fStage").textContent = dir === "offered" ? "2-of-2, timelocked" : "2-of-2 + preimage";
+    $("ssType").textContent = b.type;
+    $("ssLock").textContent = b.locktime;
+    $("ssIdx").textContent = "#" + b.idx;
+    $("ssAmt").textContent = b.amount;
+    $("witWhy").textContent = dir === "offered"
+      ? "the empty item fails OP_SIZE 32, so the offered script takes its 2-of-2 timeout branch"
+      : "the 32-byte preimage passes OP_SIZE 32, so the received script takes its preimage + 2-of-2 branch";
+    $("ssAddr").textContent = H.p2wshAddress(b.sst.outScript, false);
+
+    const sigs = witnessSigs(b);
+    const last = dir === "offered"
+      ? `<li><span class="k">&lt;&gt;</span><span class="d n">empty — size 0 ≠ 32 → timeout branch</span></li>`
+      : `<li><span class="k">&lt;preimage&gt;</span><span class="d">${hex(b.preimage)}</span></li>`;
+    $("witness").innerHTML =
+      `<li><span class="k">0</span><span class="d n">OP_CHECKMULTISIG NULLDUMMY</span></li>
+       <li><span class="k">&lt;remotehtlcsig&gt;</span><span class="d">${short(sigs.remote, 24)}</span></li>
+       <li><span class="k">&lt;localhtlcsig&gt;</span><span class="d">${short(sigs.local, 24)}</span></li>
+       ${last}
+       <li><span class="k">&lt;witnessScript&gt;</span><span class="d n">${b.type === "HTLC-timeout" ? "offered" : "received"} HTLC script</span></li>`;
+
+    const ok = b.signed.hex === b.expect;
+    $("vectorBadge").className = "badge2 " + (ok ? "ok" : "no");
+    $("vectorBadge").textContent = ok
+      ? "✓ reproduces BOLT-3 Appendix C byte-for-byte"
+      : "✗ does not match the vector";
+    $("rawhex").textContent = b.signed.hex;
+
+    $("scriptbox").innerHTML = renderScript(OUT_SCRIPT);
+    $("revpub").textContent = hex(REVPUB);
+    $("delpub").textContent = hex(DELAYED);
+    renderReclaim(b);
+  }
+
+  $("tabOff").addEventListener("click", () => { dir = "offered"; render(); });
+  $("tabRec").addEventListener("click", () => { dir = "received"; render(); });
+  $("csv").addEventListener("input", (e) => { csvBlocks = +e.target.value; $("csvVal").textContent = csvBlocks; renderReclaim(build()); });
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -23,6 +23,7 @@
     --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
     --multisig:#ef88c8; --merkle:#4dc9e6; --taproot:#f7a14b; --musig:#a8d94b;
     --lightning:#ffd400; --routing:#2dd4bf; --frost:#c4b5fd; --ptlc:#f472b6; --frosttap:#818cf8;
+    --secondstage:#fb923c;
     --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
@@ -64,7 +65,7 @@
   .c5{--c:var(--network)} .c6{--c:var(--testnet)} .c7{--c:var(--script)} .c8{--c:var(--wallet)}
   .c9{--c:var(--multisig)} .c10{--c:var(--merkle)} .c11{--c:var(--taproot)} .c12{--c:var(--musig)}
   .c13{--c:var(--lightning)} .c14{--c:var(--routing)} .c15{--c:var(--frost)} .c16{--c:var(--ptlc)}
-  .c17{--c:var(--frosttap)}
+  .c17{--c:var(--frosttap)} .c18{--c:var(--secondstage)}
   a.card:hover{border-color:var(--c)} .card .tag,.card .open{color:var(--c)}
 
   footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);
@@ -81,7 +82,7 @@
     <p class="lede">
       Bitcoin, built from <b>nothing</b> — no crypto libraries, no magic. The
       <b>secp256k1</b> curve, the hashes, the signatures, the proof of work, the
-      network, all rebuilt by hand and turned into things you can <b>touch</b>. Seventeen
+      network, all rebuilt by hand and turned into things you can <b>touch</b>. Eighteen
       interactive windows onto how a chain of numbers becomes money nobody can forge.
     </p>
   </header>
@@ -192,6 +193,12 @@
       <div class="num">17</div><div class="tag">BIP-340 · Taproot</div>
       <h2>FROST Taproot Vault</h2>
       <p>Re-skin FROST to BIP-340: any 2 of 3 officers key-path spend a <span class="mono">bc1p</span> vault with one signature — indistinguishable on-chain from a lone wallet.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+    <a class="card c18" href="second-stage/">
+      <div class="num">18</div><div class="tag">BOLT-3 · Layer 2</div>
+      <h2>HTLC Second-Stage</h2>
+      <p>Force-close with a payment in flight: the HTLC-timeout / HTLC-success transactions (byte-for-byte BOLT-3), whose output is itself delayed and revocable — the penalty, one level down.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
   </div>

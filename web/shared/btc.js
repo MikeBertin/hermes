@@ -836,6 +836,62 @@
       pushData(senderPubkey), Uint8Array.of(0xac, 0x68));                                // <sender> OP_CHECKSIG OP_ENDIF
   }
 
+  // --- second-stage HTLC transactions (BOLT-3 HTLC-timeout / HTLC-success) ----
+  // ASN.1 DER-encode a signature {r,s} (the form a tx witness carries)
+  function derInt(x) {
+    let b = bigIntToBytes(x, 32); let i = 0;
+    while (i < b.length - 1 && b[i] === 0) i++;   // strip leading zero bytes
+    b = b.slice(i);
+    if (b[0] & 0x80) b = concatBytes(Uint8Array.of(0), b);   // pad if high bit set
+    return concatBytes(Uint8Array.of(0x02, b.length), b);
+  }
+  function derSig(sig) {
+    const body = concatBytes(derInt(sig.r), derInt(sig.s));
+    return concatBytes(Uint8Array.of(0x30, body.length), body);
+  }
+  const p2wshScriptPubkey = (witnessScript) => concatBytes(Uint8Array.of(0x00, 0x20), sha256(witnessScript));
+  // serialize a 1-in/1-out SegWit tx: version | 00 01 | vin | vout | witness | locktime
+  function serializeSegwitTx(input, output, witnessItems, locktime) {
+    const vin = concatBytes(Uint8Array.of(0x01), hexToBytes(input.txid).reverse(),
+      u32le(input.index), Uint8Array.of(0x00), u32le(input.sequence));
+    const vout = concatBytes(Uint8Array.of(0x01), u64le(output.amount),
+      encodeVarint(output.scriptPubKey.length), output.scriptPubKey);
+    const wit = concatBytes(encodeVarint(witnessItems.length),
+      ...witnessItems.map((it) => concatBytes(encodeVarint(it.length), it)));
+    return concatBytes(u32le(2), Uint8Array.of(0x00, 0x01), vin, vout, wit, u32le(locktime));
+  }
+  // HTLC-timeout: spends an OFFERED htlc output; nLockTime = cltv_expiry; delayed/revocable output
+  function lnHtlcTimeoutTx(commitmentTxid, htlcIndex, o) {
+    const out = lnToLocalScript(o.revocationPubkey, o.toSelfDelay, o.localDelayedPubkey);
+    return { txid: commitmentTxid, index: htlcIndex, sequence: 0, locktime: o.cltvExpiry,
+             outScript: out, outAmount: o.htlcAmount - (o.fee || 0) };
+  }
+  // HTLC-success: spends a RECEIVED htlc output; nLockTime = 0; delayed/revocable output
+  function lnHtlcSuccessTx(commitmentTxid, htlcIndex, o) {
+    const out = lnToLocalScript(o.revocationPubkey, o.toSelfDelay, o.localDelayedPubkey);
+    return { txid: commitmentTxid, index: htlcIndex, sequence: 0, locktime: 0,
+             outScript: out, outAmount: o.htlcAmount - (o.fee || 0) };
+  }
+  function lnSecondStageSigs(sst, htlcScript, htlcAmount, remotePriv, localPriv) {
+    const output = { amount: sst.outAmount, scriptPubKey: p2wshScriptPubkey(sst.outScript) };
+    const z = sigHashBip143({ txid: sst.txid, index: sst.index, sequence: sst.sequence },
+                            htlcScript, htlcAmount, output, 2, sst.locktime);
+    const dsig = (p) => concatBytes(derSig(sign(p, z)), Uint8Array.of(0x01));
+    return { z, output, remote: dsig(remotePriv), local: dsig(localPriv) };
+  }
+  // 2-of-2 sign a timeout; witness 0 <remotesig> <localsig> <> -> offered timeout branch
+  function lnSignHtlcTimeout(sst, offeredScript, htlcAmount, remotePriv, localPriv) {
+    const s = lnSecondStageSigs(sst, offeredScript, htlcAmount, remotePriv, localPriv);
+    const witness = [new Uint8Array(), s.remote, s.local, new Uint8Array(), offeredScript];
+    return { z: s.z, hex: bytesToHex(serializeSegwitTx(sst, s.output, witness, sst.locktime)) };
+  }
+  // 2-of-2 + preimage sign a success; witness 0 <remotesig> <localsig> <preimage> -> received preimage branch
+  function lnSignHtlcSuccess(sst, receivedScript, htlcAmount, remotePriv, localPriv, preimage) {
+    const s = lnSecondStageSigs(sst, receivedScript, htlcAmount, remotePriv, localPriv);
+    const witness = [new Uint8Array(), s.remote, s.local, preimage, receivedScript];
+    return { z: s.z, hex: bytesToHex(serializeSegwitTx(sst, s.output, witness, sst.locktime)) };
+  }
+
   // --- FROST threshold Schnorr (RFC 9591, secp256k1/SHA-256) -----------------
   const FROST_CTX = utf8("FROST-secp256k1-SHA256-v1");
   const serScalar = (s) => bigIntToBytes(mod(s, N), 32);
@@ -1031,6 +1087,7 @@
     lnDerivePubkey, lnDerivePrivkey, lnDeriveRevocationPubkey, lnDeriveRevocationPrivkey,
     lnPerCommitmentSecret, lnFundingScript, lnFundingAddress, lnToLocalScript, lnScriptNum,
     lnPaymentHash, lnHtlcOfferedScript, lnHtlcReceivedScript, lnHtlcScript,
+    lnHtlcTimeoutTx, lnHtlcSuccessTx, lnSignHtlcTimeout, lnSignHtlcSuccess, derSig,
     // frost (RFC 9591)
     frostH1, frostH2, frostH3, frostKeygen, frostLagrange, frostNonceGenerate,
     frostCommit, frostBindingFactors, frostGroupCommitment, frostSign, frostAggregate,

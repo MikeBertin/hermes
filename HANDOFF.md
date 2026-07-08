@@ -7,23 +7,24 @@
 ## TL;DR — the project is COMPLETE and SHIPPED
 
 All 8 stages done, plus a post-ship enhancement arc (RFC 6979 → SegWit → multisig → Merkle/SPV →
-Taproot/Schnorr → MuSig2 → Lightning → HTLC routing → FROST → PTLCs → BIP-340 FROST) and a
-review-hardening pass (negative tests). A from-scratch Bitcoin implementation (no crypto libraries) +
-17 interactive browser demos, culminating in a **real transaction broadcast to the Bitcoin testnet**,
-a 2-of-3 multisig vault, trustless Merkle inclusion proofs, BIP-340 Schnorr signatures with Taproot
-`bc1p…` addresses, a full BIP-327 MuSig2 signing ceremony, a Lightning channel's BOLT-3
-revocation/penalty mechanism, a multi-hop HTLC routed payment, RFC 9591 FROST threshold signatures,
-PTLCs via Schnorr adaptor signatures, and a BIP-340 FROST Taproot (t-of-n) vault.
+Taproot/Schnorr → MuSig2 → Lightning → HTLC routing → FROST → PTLCs → BIP-340 FROST → HTLC
+second-stage) and a review-hardening pass (negative tests). A from-scratch Bitcoin implementation (no
+crypto libraries) + 18 interactive browser demos, culminating in a **real transaction broadcast to the
+Bitcoin testnet**, a 2-of-3 multisig vault, trustless Merkle inclusion proofs, BIP-340 Schnorr
+signatures with Taproot `bc1p…` addresses, a full BIP-327 MuSig2 signing ceremony, a Lightning
+channel's BOLT-3 revocation/penalty mechanism, a multi-hop HTLC routed payment, RFC 9591 FROST
+threshold signatures, PTLCs via Schnorr adaptor signatures, a BIP-340 FROST Taproot (t-of-n) vault,
+and the HTLC-timeout/success second-stage transactions of a force-close.
 
 - **Live:** https://mikebertin.github.io/hermes/
 - **Repo:** https://github.com/MikeBertin/hermes (public)
 - **On-chain proof:** testnet txid `f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08`
-- **Tests:** `213/213` pytest green (official BIP / BOLT / RFC vectors + rejection paths); JS
-  cross-checked against the same vectors in-browser (106/106).
+- **Tests:** `217/217` pytest green (official BIP / BOLT / RFC vectors + rejection paths); JS
+  cross-checked against the same vectors in-browser (108/108).
 
-The 17 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
+The 18 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
 Script VM · HD Wallet · Multisig Vault · Merkle Proofs · Taproot & Schnorr · MuSig2 · Lightning ·
-HTLC Routing · FROST Threshold · PTLC Routing · FROST Taproot Vault.
+HTLC Routing · FROST Threshold · PTLC Routing · FROST Taproot Vault · HTLC Second-Stage.
 
 ---
 
@@ -33,10 +34,12 @@ The enhancement arc has a natural next rung if wanted; otherwise the project sim
 
 1. ~~**Polish** — README screen-capture GIF of the demos.~~ ✅ Done 2026-07-04 (`web/demo.gif`,
    embedded as the README hero; regenerate with `demo-capture.js` — see gotchas below).
-2. **Lightning, deeper** — the HTLC *second-stage* transactions (HTLC-success/HTLC-timeout, the
-   2-of-2 that forces `to_self_delay`). Optional; the routing/PTLC stories are complete without it.
+2. ~~**Lightning, deeper** — the HTLC *second-stage* transactions.~~ ✅ Done 2026-07-08 (18th card
+   `web/second-stage/`; `htlc_timeout_tx`/`htlc_success_tx` + signers in `hermes/lightning.py`,
+   reproduced byte-for-byte against BOLT-3 Appendix C). See the Progress Log for details.
 3. **FROST DKG** — replace the trusted dealer with distributed key generation (each participant
    contributes; no single party ever holds the group secret). A natural depth-add to demos 15/17.
+4. **Demo GIF, deeper** — add a 6th beat (the new second-stage card) to `web/demo.gif`.
 
 Lightning notes a future session might need: `hermes/lightning.py` builds real BOLT-3 scripts —
 `to_local_script`, the blinded revocation key (`derive_revocation_pubkey`/`_privkey`), and the HTLC
@@ -84,6 +87,7 @@ hermes/            from-scratch Python core (the source of truth)
   taproot          BIP-341 key path (TapTweak, output key, bc1p… addresses)
   musig            BIP-327 MuSig2 (KeyAgg, two-round ceremony, tweaks, partial-sig blame)
   lightning        BOLT-3 channels (funding, revocation, to_local, penalty) + HTLC scripts (routing)
+                   + second-stage HTLC-timeout/success txs (htlc_timeout_tx/htlc_success_tx + signers)
   frost            RFC 9591 threshold Schnorr (expand_message_xmd, Shamir keygen, Lagrange, sign/agg)
   frost_taproot    BIP-340 FROST — Taproot-spendable threshold (reuses frost + taproot; even-y flips)
   adaptor          BIP-340 Schnorr adaptor sigs / PTLCs (presign, adapt, extract — reuses schnorr)
@@ -94,7 +98,7 @@ tests/             official BIP / on-chain vectors + negative rejection-path tes
 export.py          bakes web/network/data/*.json
 web/               self-contained static site (this is what Pages serves)
   shared/          btc.js (core), wallet.js (BIP-32/39), demo.css, demo.js, test.html (vector harness)
-  <demo>/index.html for each of the 17 demos; testnet/data/tx.json + network/data/*.json baked
+  <demo>/index.html for each of the 18 demos; testnet/data/tx.json + network/data/*.json baked
   og.png           1200x630 social card
 .github/workflows/pages.yml   deploys web/ to GitHub Pages on push to main
 ```
@@ -183,11 +187,21 @@ web/               self-contained static site (this is what Pages serves)
     key-path spend), with even-y sign flips on R/P/Q. No vectors → self-consistency via
     `schnorr.verify` across random keys × subsets. JS mirror `frostBip340*`/`frostTaproot*`; card
     `web/frost-taproot/` (indigo `#818cf8`).
+13. ✅ **HTLC second-stage — 18th card** (2026-07-08) — "Lightning, deeper": the on-chain resolution
+    of a force-close with a pending HTLC. `hermes/lightning.py` gains `htlc_timeout_tx`/`htlc_success_tx`
+    (they return a `Commitment`, so `penalty_tx`/`sign_to_local_delayed` sweep the second-stage
+    `to_local` output unchanged — the penalty recurses) + `sign_htlc_timeout`/`sign_htlc_success`.
+    **Anchored byte-for-byte** to BOLT-3 Appendix C: the "all five HTLCs untrimmed" (feerate 0) scenario
+    is reproduced from the private keys, all five HTLC-timeout/success txs matching the published hex.
+    JS: added a DER encoder + SegWit serializer + `lnHtlcTimeoutTx/SuccessTx` + `lnSignHtlcTimeout/Success`
+    to `btc.js` (two byte-for-byte test.html checks). Card `web/second-stage/` (orange `#fb923c`, `.c18`):
+    offered↔received toggle, real tx matching the vector, witness stack, a delay slider on the output.
+    The raw BOLT-3 spec used for the vectors is `lightning/bolts` `03-transactions.md` Appendix C.
 
 ## Verify-it-still-works checklist
 
 ```bash
-.venv/bin/python -m pytest -q                                  # 213 passed
-# dev server up, then open web/shared/test.html → "all 106 vectors pass"
+.venv/bin/python -m pytest -q                                  # 217 passed
+# dev server up, then open web/shared/test.html → "all 108 vectors pass"
 # spot-check live: https://mikebertin.github.io/hermes/ and /testnet/ (real txid + explorer link)
 ```

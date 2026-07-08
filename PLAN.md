@@ -587,3 +587,25 @@ _Append a dated entry every session: what changed · what's next · new decision
   by the run's *final* height, so it only fills once Step reaches the end — hence the fast-forward
   Step loop rather than a timed Play. Remaining optional menu: HTLC second-stage txs / other Lightning
   depth, FROST DKG.
+- **2026-07-08** — **HTLC second-stage DONE — an 18th demo card shipped** ("Lightning, deeper" from
+  the enhancement menu). The missing on-chain half of demos 13/14: when a channel force-closes with a
+  pending HTLC, the HTLC output is spent by a pre-signed **second-stage** transaction — HTLC-timeout
+  (offered) or HTLC-success (received) — whose output is itself a `to_local` (delay + revocation), so
+  demo 13's penalty recurses one level down. New in `hermes/lightning.py`: `htlc_timeout_tx` /
+  `htlc_success_tx` (return a `Commitment`, so `penalty_tx`/`sign_to_local_delayed` sweep the
+  second-stage output unchanged) + `sign_htlc_timeout` / `sign_htlc_success` building the BOLT-3
+  witness stacks (`0 <remotesig> <localsig> <>` for timeout via the offered script's OP_SIZE≠32 NOTIF
+  branch; `0 <remotesig> <localsig> <preimage>` for success via the received script's preimage branch).
+  **Validation — byte-for-byte (gold standard):** BOLT-3 Appendix C's "commitment tx with all five
+  HTLCs untrimmed" (feerate 0, RFC6979 sigs) is reproduced *from the private keys* for all five HTLCs
+  — every HTLC-timeout (#2,#3) and HTLC-success (#0,#1,#4) transaction matches the published hex
+  exactly. Plus: the signatures bind nLockTime (rewriting an HTLC-timeout to an earlier locktime
+  invalidates `<remotehtlcsig>`), and the second-stage `to_local` output is swept by the revocation key
+  or reclaimed after `to_self_delay` through our own VM. **217/217 pytest** (was 213). JS mirror: added
+  a DER encoder + SegWit serializer + `lnHtlcTimeoutTx/SuccessTx` + `lnSignHtlcTimeout/Success` to
+  `btc.js`, with two byte-for-byte test.html checks → **108/108 in-browser**. **New `web/second-stage/`
+  card** ("HTLC Second-Stage", accent `#fb923c` orange, `.c18`): a direction toggle (offered→timeout /
+  received→success) building a *real* second-stage tx that matches Appendix C byte-for-byte, the witness
+  stack broken out, and a block-height slider showing the recursive delay on its `to_local` output.
+  Landing now 18 cards ("Eighteen"), README + counts, og.png re-rendered (18 pills). Remaining optional
+  menu: FROST DKG, or the demo GIF could add a 6th beat.

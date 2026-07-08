@@ -7,22 +7,22 @@ A from-scratch Bitcoin implementation (in the spirit of Karpathy's *"A from-scra
 of Bitcoin in Python"*) turned into a suite of interactive browser visualisations. No crypto
 libraries: the secp256k1 curve, SHA-256, RIPEMD-160, SHA-512, Base58Check, ECDSA — all by hand.
 
-[![Seventeen interactive Bitcoin demos — the elliptic curve, mining, network consensus, Taproot and Lightning](web/demo.gif)](https://mikebertin.github.io/hermes/)
+[![Eighteen interactive Bitcoin demos — the elliptic curve, mining, network consensus, Taproot and Lightning](web/demo.gif)](https://mikebertin.github.io/hermes/)
 
-**▶ Live:** https://mikebertin.github.io/hermes/ — seventeen self-contained demos, from the elliptic
+**▶ Live:** https://mikebertin.github.io/hermes/ — eighteen self-contained demos, from the elliptic
 curve through to a **real transaction broadcast to the Bitcoin testnet**
 ([on-chain proof](https://blockstream.info/testnet/tx/f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08)),
 a 2-of-3 multisig vault, trustless Merkle inclusion proofs, Taproot's Schnorr signatures, a
 MuSig2 signing ceremony, a Lightning channel's revocation/penalty mechanism, a multi-hop HTLC
-routed payment, FROST threshold signatures, PTLCs via Schnorr adaptor signatures, and a BIP-340
-FROST Taproot vault.
+routed payment, FROST threshold signatures, PTLCs via Schnorr adaptor signatures, a BIP-340
+FROST Taproot vault, and the HTLC-timeout/success second-stage transactions of a force-close.
 
 ## Why "Hermes"
 
 Hermes was the Greek god of commerce *and* of boundaries, messages, and secrets — whence
 *hermetic*, "sealed". Money, cryptography, and signed messages are his exact portfolio.
 
-## The seventeen demos
+## The eighteen demos
 
 Each is a single self-contained `index.html` — no build step, no framework, no dependencies.
 
@@ -45,6 +45,7 @@ Each is a single self-contained `index.html` — no build step, no framework, no
 | 15 | **FROST Threshold** | Threshold Schnorr (**RFC 9591**): any *t* of *n* key-holders — say **2 of 3** — produce one signature, and any *t-1* cannot. The group secret is Shamir-shared and *never reassembled*; signing folds the shares in via Lagrange interpolation. The `t-of-n` counterpart to MuSig2's `n-of-n`, with the from-scratch `expand_message_xmd` hashing reproducing the RFC's official test vector byte-for-byte. |
 | 16 | **PTLC Routing** | The Taproot-era replacement for HTLCs: lock each hop to a **point** `T = t·G` instead of a hash, using a **Schnorr adaptor signature**. Completing the signature reveals the secret `t` — settling the path and unlocking the hop behind it — but it rides inside an ordinary signature, so hops are unlinkable and script-less. The completed signature is a genuine 64-byte BIP-340 signature `schnorr.verify` accepts. |
 | 17 | **FROST Taproot Vault** | Re-skin FROST (demo 15) to the **BIP-340** challenge and its even-y conventions, so the threshold signature becomes a genuine 64-byte one — then wrap the group key in a BIP-341 **TapTweak** to get a `bc1p…` vault any **2 of 3** officers can **key-path spend**. On-chain it's one signature, byte-for-byte indistinguishable from a single wallet. The `t-of-n` Taproot vault. |
+| 18 | **HTLC Second-Stage** | What actually hits the chain when a channel force-closes with a payment still in flight. An offered HTLC is reclaimed by an **HTLC-timeout** transaction (2-of-2, `nLockTime = cltv_expiry`); a received one is claimed by an **HTLC-success** (2-of-2 + preimage). Both pay into a `to_local` output, so demo 13's delay + revocation penalty applies **one level down**. Reproduced **byte-for-byte** against BOLT-3 Appendix C's HTLC-timeout/success test vectors. |
 
 ## The Python core
 
@@ -54,7 +55,7 @@ source of truth the browser demos visualise, cross-checked against official prot
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install pytest
-.venv/bin/python -m pytest        # 213 tests — official BIP / BOLT / RFC vectors + rejection paths, all green
+.venv/bin/python -m pytest        # 217 tests — official BIP / BOLT / RFC vectors + rejection paths, all green
 ```
 
 The testnet CLI builds, signs and broadcasts a real (valueless) testnet transaction:

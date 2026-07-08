@@ -302,6 +302,93 @@ def htlc_received_script(revocation_pubkey: bytes, remote_htlcpubkey: bytes,
     ])
 
 
+# --- second-stage HTLC transactions (BOLT-3 "HTLC-Timeout and HTLC-Success") --
+# When a channel force-closes on-chain with an HTLC still in flight, the HTLC
+# output on the commitment tx cannot be swept with a bare signature. It is spent
+# by a pre-signed **second-stage** transaction — HTLC-timeout for an *offered*
+# HTLC, HTLC-success for a *received* one — and, crucially, that transaction pays
+# into a ``to_local`` output (:func:`to_local_script`). So the same delay +
+# revocation penalty as the main balance applies *recursively*: the owner waits
+# ``to_self_delay``, and a revoked commitment lets the counterparty sweep even the
+# second-stage output. Both are 2-of-2s (they carry ``<remotehtlcsig>``), which is
+# what forces the local node through the delay rather than taking funds instantly.
+
+def htlc_timeout_tx(commitment_txid: bytes, htlc_index: int, *,
+                    htlc_amount: int, cltv_expiry: int,
+                    revocation_pubkey: bytes, local_delayed_pubkey: bytes,
+                    to_self_delay: int, fee: int = 0,
+                    testnet: bool = False) -> Commitment:
+    """Build the HTLC-timeout transaction spending an *offered* HTLC output.
+
+    It is timelocked: ``nLockTime = cltv_expiry`` means the local node cannot
+    reclaim the offered HTLC before it expires (and ``<remotehtlcsig>`` stops it
+    reclaiming early by any other route). Its single output is a
+    :func:`to_local_script`, returned wrapped in a :class:`Commitment` so the very
+    same :func:`penalty_tx` / :func:`sign_to_local_delayed` machinery sweeps it."""
+    out = to_local_script(revocation_pubkey, to_self_delay, local_delayed_pubkey)
+    amount = htlc_amount - fee
+    tx = Tx(2, [TxInput(commitment_txid, htlc_index, sequence=0)],
+            [TxOutput(amount, p2wsh_script(sha256(out.raw_serialize())))],
+            locktime=cltv_expiry, testnet=testnet)
+    return Commitment(tx, out, 0, amount)
+
+
+def htlc_success_tx(commitment_txid: bytes, htlc_index: int, *,
+                    htlc_amount: int, revocation_pubkey: bytes,
+                    local_delayed_pubkey: bytes, to_self_delay: int,
+                    fee: int = 0, testnet: bool = False) -> Commitment:
+    """Build the HTLC-success transaction spending a *received* HTLC output.
+
+    Identical to :func:`htlc_timeout_tx` but ``nLockTime = 0`` (redeeming with the
+    preimage needs no timeout) — the preimage rides in the witness instead. Its
+    output is likewise a delayed/revocable :func:`to_local_script`."""
+    out = to_local_script(revocation_pubkey, to_self_delay, local_delayed_pubkey)
+    amount = htlc_amount - fee
+    tx = Tx(2, [TxInput(commitment_txid, htlc_index, sequence=0)],
+            [TxOutput(amount, p2wsh_script(sha256(out.raw_serialize())))],
+            locktime=0, testnet=testnet)
+    return Commitment(tx, out, 0, amount)
+
+
+def _htlc_2of2_sigs(tx: Tx, htlc_script: Script, htlc_amount: int,
+                    remote_htlc_privkey: int, local_htlc_privkey: int) -> tuple[bytes, bytes]:
+    """The two DER signatures a second-stage 2-of-2 needs, over the BIP-143 sighash
+    (scriptCode = the offered/received HTLC witnessScript, value = the HTLC amount).
+    Ordered remote-then-local to match BOLT-3's witness stack."""
+    z = tx.sig_hash_bip143(0, htlc_script, htlc_amount)
+    remote = der(sign(remote_htlc_privkey, z, low_s=True)) + SIGHASH_ALL.to_bytes(1, "big")
+    local = der(sign(local_htlc_privkey, z, low_s=True)) + SIGHASH_ALL.to_bytes(1, "big")
+    return remote, local
+
+
+def sign_htlc_timeout(second_stage: Commitment, offered_script: Script,
+                      htlc_amount: int, remote_htlc_privkey: int,
+                      local_htlc_privkey: int) -> None:
+    """2-of-2 sign an HTLC-timeout, taking the offered script's timeout branch.
+
+    The witness is ``0 <remotehtlcsig> <localhtlcsig> <>`` (BOLT-3): the leading
+    ``0`` is OP_CHECKMULTISIG's NULLDUMMY, and the trailing empty item is *not*
+    32 bytes, so ``OP_SIZE 32 OP_EQUAL`` is false and the script falls into the
+    OP_NOTIF 2-of-2 (timeout) branch rather than the preimage branch."""
+    remote, local = _htlc_2of2_sigs(second_stage.tx, offered_script, htlc_amount,
+                                    remote_htlc_privkey, local_htlc_privkey)
+    second_stage.tx.inputs[0].witness = [b"", remote, local, b"", offered_script.raw_serialize()]
+
+
+def sign_htlc_success(second_stage: Commitment, received_script: Script,
+                      htlc_amount: int, remote_htlc_privkey: int,
+                      local_htlc_privkey: int, preimage: bytes) -> None:
+    """2-of-2 sign an HTLC-success, taking the received script's preimage branch.
+
+    The witness is ``0 <remotehtlcsig> <localhtlcsig> <payment_preimage>``: the
+    32-byte preimage makes ``OP_SIZE 32 OP_EQUAL`` true, so the script takes the
+    OP_IF branch — checking ``HASH160(preimage) == payment_hash`` and then the
+    2-of-2 — instead of the counterparty's CLTV refund path."""
+    remote, local = _htlc_2of2_sigs(second_stage.tx, received_script, htlc_amount,
+                                    remote_htlc_privkey, local_htlc_privkey)
+    second_stage.tx.inputs[0].witness = [b"", remote, local, preimage, received_script.raw_serialize()]
+
+
 def htlc_script(payment_hash: bytes, receiver_pubkey: bytes,
                 sender_pubkey: bytes, cltv_expiry: int) -> Script:
     """A *canonical* HTLC — the logical contract a hop enforces, stripped of the

@@ -18,6 +18,7 @@ from hermes.lightning import (
     per_commitment_secret, funding_script, funding_address, to_local_script,
     commitment_tx, sign_funding, penalty_tx, sign_penalty, sign_to_local_delayed,
     htlc_offered_script, htlc_received_script, htlc_script, payment_hash,
+    htlc_timeout_tx, htlc_success_tx, sign_htlc_timeout, sign_htlc_success,
 )
 from hermes import PrivateKey, hash160, sha256, ripemd160
 
@@ -302,3 +303,96 @@ def test_htlc_timeout_refund_respects_cltv():
     assert _refund(hop, alice.secret, locktime=800_099) is False   # one block too early
     # and the receiver can't take the refund branch (it checks the sender's key)
     assert _refund(hop, bob.secret, locktime=800_100) is False
+
+
+# --- BOLT-3 Appendix C: second-stage HTLC transactions, byte-for-byte ---------
+# The "commitment tx with all five HTLCs untrimmed (minimum feerate)" vector has
+# local_feerate_per_kw = 0, so each second-stage output pays the full HTLC amount.
+# Its signatures are deterministic (RFC6979), so we reproduce every HTLC-timeout /
+# HTLC-success transaction *from the private keys* and match the published hex.
+C_LOCAL_DELAYED = bytes.fromhex("03fd5960528dc152014952efdb702a88f71e3c1653b2314431701ec77e57fde83c")
+C_TO_SELF_DELAY = 144
+C_LOCAL_HTLC_PRIV = 0xbb13b121cdc357cd2e608b0aea294afca36e2b34cf958e2e6451a2f274694491
+C_REMOTE_HTLC_PRIV = 0x8deba327a7cc6d638ab0eb025770400a6184afcba6713c210d8d10e199ff2fda
+# the commitment tx these all spend (its txid, natural byte order)
+C_COMMIT_TXID = bytes.fromhex("ab84ff284f162cfbfef241f853b47d4368d171f9e2a1445160cd591c4c7d882b")[::-1]
+
+# (htlc_output_index, amount_sat, cltv, preimage_hex, expected_tx_hex)
+_OFFERED = [  # local->remote: HTLC-timeout  (htlc #2 -> output 1, htlc #3 -> output 3)
+    (1, 2000, 502, "02" * 32, "02000000000101ab84ff284f162cfbfef241f853b47d4368d171f9e2a1445160cd591c4c7d882b01000000000000000001d0070000000000002200204adb4e2f00643db396dd120d4e7dc17625f5f2c11a40d857accc862d6b7dd80e05004730440220649fe8b20e67e46cbb0d09b4acea87dbec001b39b08dee7bdd0b1f03922a8640022037c462dff79df501cecfdb12ea7f4de91f99230bb544726f6e04527b1f89600401483045022100803159dee7935dba4a1d36a61055ce8fd62caa528573cc221ae288515405a252022029c59e7cffce374fe860100a4a63787e105c3cf5156d40b12dd53ff55ac8cf3f01008576a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b7c820120876475527c21030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e752ae67a914b43e1b38138a41b37f7cd9a1d274bc63e3a9b5d188ac6868f6010000"),
+    (3, 3000, 503, "03" * 32, "02000000000101ab84ff284f162cfbfef241f853b47d4368d171f9e2a1445160cd591c4c7d882b03000000000000000001b80b0000000000002200204adb4e2f00643db396dd120d4e7dc17625f5f2c11a40d857accc862d6b7dd80e050047304402207bcbf4f60a9829b05d2dbab84ed593e0291836be715dc7db6b72a64caf646af802201e489a5a84f7c5cc130398b841d138d031a5137ac8f4c49c770a4959dc3c13630147304402203121d9b9c055f354304b016a36662ee99e1110d9501cb271b087ddb6f382c2c80220549882f3f3b78d9c492de47543cb9a697cecc493174726146536c5954dac748701008576a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b7c820120876475527c21030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e752ae67a9148a486ff2e31d6158bf39e2608864d63fefd09d5b88ac6868f7010000"),
+]
+_RECEIVED = [  # remote->local: HTLC-success
+    (0, 1000, 500, "00" * 32, "02000000000101ab84ff284f162cfbfef241f853b47d4368d171f9e2a1445160cd591c4c7d882b00000000000000000001e8030000000000002200204adb4e2f00643db396dd120d4e7dc17625f5f2c11a40d857accc862d6b7dd80e0500483045022100d9e29616b8f3959f1d3d7f7ce893ffedcdc407717d0de8e37d808c91d3a7c50d022078c3033f6d00095c8720a4bc943c1b45727818c082e4e3ddbc6d3116435b624b014730440220636de5682ef0c5b61f124ec74e8aa2461a69777521d6998295dcea36bc3338110220165285594b23c50b28b82df200234566628a27bcd17f7f14404bd865354eb3ce012000000000000000000000000000000000000000000000000000000000000000008a76a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b7c8201208763a914b8bcb07f6344b42ab04250c86a6e8b75d3fdbbc688527c21030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e752ae677502f401b175ac686800000000"),
+    (2, 2000, 501, "01" * 32, "02000000000101ab84ff284f162cfbfef241f853b47d4368d171f9e2a1445160cd591c4c7d882b02000000000000000001d0070000000000002200204adb4e2f00643db396dd120d4e7dc17625f5f2c11a40d857accc862d6b7dd80e05004730440220770fc321e97a19f38985f2e7732dd9fe08d16a2efa4bcbc0429400a447faf49102204d40b417f3113e1b0944ae0986f517564ab4acd3d190503faf97a6e420d4335201483045022100a437cc2ce77400ecde441b3398fea3c3ad8bdad8132be818227fe3c5b8345989022069d45e7fa0ae551ec37240845e2c561ceb2567eacf3076a6a43a502d05865faa012001010101010101010101010101010101010101010101010101010101010101018a76a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b7c8201208763a9144b6b2e5444c2639cc0fb7bcea5afba3f3cdce23988527c21030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e752ae677502f501b175ac686800000000"),
+    (4, 4000, 504, "04" * 32, "02000000000101ab84ff284f162cfbfef241f853b47d4368d171f9e2a1445160cd591c4c7d882b04000000000000000001a00f0000000000002200204adb4e2f00643db396dd120d4e7dc17625f5f2c11a40d857accc862d6b7dd80e0500473044022076dca5cb81ba7e466e349b7128cdba216d4d01659e29b96025b9524aaf0d1899022060de85697b88b21c749702b7d2cfa7dfeaa1f472c8f1d7d9c23f2bf968464b8701483045022100d9080f103cc92bac15ec42464a95f070c7fb6925014e673ee2ea1374d36a7f7502200c65294d22eb20d48564954d5afe04a385551919d8b2ddb4ae2459daaeee1d95012004040404040404040404040404040404040404040404040404040404040404048a76a91414011f7254d96b819c76986c277d115efce6f7b58763ac67210394854aa6eab5b2a8122cc726e9dded053a2184d88256816826d6231c068d4a5b7c8201208763a91418bc1a114ccf9c052d3d23e28d3b0a9d1227434288527c21030d417a46946384f88d5f3337267c5e579765875dc4daca813e21734b140639e752ae677502f801b175ac686800000000"),
+]
+
+
+def test_bolt3_appendix_c_htlc_timeout_txs():
+    for htlc_index, amount, cltv, preimage_hex, expected in _OFFERED:
+        # the payment_hash is baked into the script (though unused on the timeout branch)
+        offered = htlc_offered_script(C_REVPUB, C_REMOTE_HTLC, C_LOCAL_HTLC,
+                                      payment_hash(bytes.fromhex(preimage_hex)))
+        sst = htlc_timeout_tx(C_COMMIT_TXID, htlc_index, htlc_amount=amount, cltv_expiry=cltv,
+                              revocation_pubkey=C_REVPUB, local_delayed_pubkey=C_LOCAL_DELAYED,
+                              to_self_delay=C_TO_SELF_DELAY)
+        sign_htlc_timeout(sst, offered, amount, C_REMOTE_HTLC_PRIV, C_LOCAL_HTLC_PRIV)
+        assert sst.tx.serialize().hex() == expected
+
+
+def test_bolt3_appendix_c_htlc_success_txs():
+    for htlc_index, amount, cltv, preimage_hex, expected in _RECEIVED:
+        preimage = bytes.fromhex(preimage_hex)
+        received = htlc_received_script(C_REVPUB, C_REMOTE_HTLC, C_LOCAL_HTLC,
+                                        payment_hash(preimage), cltv)
+        sst = htlc_success_tx(C_COMMIT_TXID, htlc_index, htlc_amount=amount,
+                              revocation_pubkey=C_REVPUB, local_delayed_pubkey=C_LOCAL_DELAYED,
+                              to_self_delay=C_TO_SELF_DELAY)
+        sign_htlc_success(sst, received, amount, C_REMOTE_HTLC_PRIV, C_LOCAL_HTLC_PRIV, preimage)
+        assert sst.tx.serialize().hex() == expected
+
+
+def test_htlc_timeout_locktime_is_bound_by_the_signatures():
+    # The offered-HTLC timeout branch has no CLTV in the *script*; the timelock is
+    # enforced because <remotehtlcsig> commits (via BIP-143) to nLockTime=cltv_expiry.
+    # Rewriting the tx to an earlier locktime invalidates the signature.
+    htlc_index, amount, cltv, preimage_hex, expected = _OFFERED[0]
+    offered = htlc_offered_script(C_REVPUB, C_REMOTE_HTLC, C_LOCAL_HTLC, payment_hash(bytes.fromhex(preimage_hex)))
+    sst = htlc_timeout_tx(C_COMMIT_TXID, htlc_index, htlc_amount=amount, cltv_expiry=cltv,
+                          revocation_pubkey=C_REVPUB, local_delayed_pubkey=C_LOCAL_DELAYED,
+                          to_self_delay=C_TO_SELF_DELAY)
+    sign_htlc_timeout(sst, offered, amount, C_REMOTE_HTLC_PRIV, C_LOCAL_HTLC_PRIV)
+    remote_sig = sst.tx.inputs[0].witness[1]
+    z_matured = sst.tx.sig_hash_bip143(0, offered, amount)
+    assert verify(C_REMOTE_HTLC_PRIV * G, z_matured, parse_der(remote_sig[:-1])) is True
+    sst.tx.locktime = cltv - 1                     # try to time out one block early
+    z_early = sst.tx.sig_hash_bip143(0, offered, amount)
+    assert verify(C_REMOTE_HTLC_PRIV * G, z_early, parse_der(remote_sig[:-1])) is False
+
+
+def test_second_stage_output_is_a_revocable_to_local():
+    # The payoff: a second-stage HTLC tx pays into a to_local output, so demo 13's
+    # penalty machinery applies *recursively*. Built with keys we control so we can
+    # exercise both spend paths through our Script VM.
+    alice, bob = ChannelParty(1000), ChannelParty(2000)
+    ppc = int.from_bytes(per_commitment_secret(alice.seed, 1), "big") * G
+    revocation_pub = PublicKey(derive_revocation_pubkey(bob.revocation_basepoint, ppc)).sec()
+    delayed_pub = PublicKey(derive_pubkey(alice.delayed_basepoint, ppc)).sec()
+
+    sst = htlc_timeout_tx(bytes.fromhex("22" * 32), 0, htlc_amount=100_000, cltv_expiry=700_000,
+                          revocation_pubkey=revocation_pub, local_delayed_pubkey=delayed_pub,
+                          to_self_delay=TO_SELF_DELAY)
+    sweep = Script([0x00, PublicKey(bob.payment * G).hash160()])
+
+    # (a) if the commitment was revoked, the counterparty sweeps it instantly
+    rev_priv = derive_revocation_privkey(bob.revocation_basepoint_secret,
+                                         int.from_bytes(per_commitment_secret(alice.seed, 1), "big"))
+    assert _vm_spend_to_local(penalty_tx(sst, sweep), sst, rev_priv, revocation=True, sequence=0) is True
+
+    # (b) the owner reclaims via the delayed branch — but only after to_self_delay
+    alice_delayed_priv = derive_privkey(alice.delayed_basepoint_secret, ppc)
+    assert _vm_spend_to_local(penalty_tx(sst, sweep), sst, alice_delayed_priv,
+                              revocation=False, sequence=TO_SELF_DELAY - 1) is False
+    assert _vm_spend_to_local(penalty_tx(sst, sweep), sst, alice_delayed_priv,
+                              revocation=False, sequence=TO_SELF_DELAY) is True
