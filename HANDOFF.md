@@ -39,7 +39,8 @@ The enhancement arc has a natural next rung if wanted; otherwise the project sim
    reproduced byte-for-byte against BOLT-3 Appendix C). See the Progress Log for details.
 3. **FROST DKG** — replace the trusted dealer with distributed key generation (each participant
    contributes; no single party ever holds the group secret). A natural depth-add to demos 15/17.
-4. **Demo GIF, deeper** — add a 6th beat (the new second-stage card) to `web/demo.gif`.
+4. ~~**Demo GIF, deeper** — add a 6th beat (the new second-stage card).~~ ✅ Done 2026-07-08
+   (`demo-capture.js` beat 6 toggles offered↔received; `web/demo.gif` re-recorded, ~5.3 MB / 23s).
 
 Lightning notes a future session might need: `hermes/lightning.py` builds real BOLT-3 scripts —
 `to_local_script`, the blinded revocation key (`derive_revocation_pubkey`/`_privkey`), and the HTLC

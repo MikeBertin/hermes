@@ -1,7 +1,7 @@
-// demo-capture.js — records web/demo.gif, the README montage of five demos.
+// demo-capture.js — records web/demo.gif, the README montage of six demos.
 //
-// Drives the local dev server through six beats (landing → Curve → Mine →
-// Network → Taproot → Lightning) with Playwright + the system Chrome, records
+// Drives the local dev server through seven beats (landing → Curve → Mine →
+// Network → Taproot → Lightning → HTLC Second-Stage) with Playwright + the system Chrome, records
 // one continuous .webm, and prints its filename. A second ffmpeg pass turns the
 // .webm into an optimised, palette-based GIF (see the bottom of this file / HANDOFF.md).
 //
@@ -102,6 +102,13 @@ async function goto(page, path) {
   await goto(page, '/lightning/');
   for (let i = 0; i < 5; i++) { await page.click('#payAB'); await sleep(420); }
   await sleep(900);
+
+  // 6 — HTLC Second-Stage: the offered->received toggle flips the flow diagram's
+  // middle box from HTLC-timeout (2-of-2, timelocked) to HTLC-success (2-of-2 + preimage).
+  await goto(page, '/second-stage/');
+  await sleep(1800);                                 // offered / HTLC-timeout, let the intro read
+  await page.click('#tabRec');                       // -> received / HTLC-success
+  await sleep(1800);
 
   await context.close(); // finalizes the video
   await browser.close();
