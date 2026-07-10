@@ -240,6 +240,8 @@ window.POPS = {
   function toggle(i) {
     parties[i].present = !parties[i].present;
     $("signBadge").className = "badge2 idle";
+    $("signBadge").textContent = present().length < THRESHOLD
+      ? "below threshold — tick two participants" : "tick two participants, then sign";
     render();
   }
 
@@ -247,7 +249,11 @@ window.POPS = {
 
   function sign() {
     const signers = present();
-    if (signers.length < THRESHOLD) return;
+    if (signers.length < THRESHOLD) {
+      $("signBadge").className = "badge2 no";
+      $("signBadge").textContent = `✗ below threshold — ${signers.length} of ${THRESHOLD} needed; tick another participant`;
+      return;
+    }
     if (corrupt) {                                          // a corrupted setup must not be used
       $("signBadge").className = "badge2 no";
       $("signBadge").textContent = "✗ setup is corrupted — abort and restart the ceremony without Alice's bad share";
