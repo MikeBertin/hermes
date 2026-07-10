@@ -974,6 +974,42 @@
   }
   const frostSerializeSig = (sig) => concatBytes(sec(sig.R, true), serScalar(sig.z));
 
+  // --- FROST DKG (PedPoP): distributed key generation, no trusted dealer ------
+  const frostDkgPopChallenge = (id, commit0, R) =>
+    frostScalarHash(concatBytes(serScalar(id), sec(commit0, true), sec(R, true)), "dkg");
+  // round 1: commit to the coefficients + prove knowledge of the constant term a0
+  function frostDkgRound1(id, coefficients, popRandomness) {
+    const commitment = coefficients.map((c) => ptMul(c, G));
+    const k = frostScalarHash(concatBytes(popRandomness, serScalar(coefficients[0])), "dkg-nonce");
+    const R = ptMul(k, G);
+    const c = frostDkgPopChallenge(id, commitment[0], R);
+    const mu = mod(k + coefficients[0] * c, N);
+    return { commitment, proof: { R, mu } };
+  }
+  function frostDkgVerifyPop(id, commitment, proof) {
+    const c = frostDkgPopChallenge(id, commitment[0], proof.R);
+    const lhs = ptMul(proof.mu, G), rhs = ptAdd(proof.R, ptMul(c, commitment[0]));
+    return lhs.x === rhs.x && lhs.y === rhs.y;
+  }
+  // round 2: the private sub-share f_i(recipient), and its Feldman verification
+  const frostDkgShareFor = (coefficients, recipient) => frostPolyEval(recipient, coefficients);
+  function frostDkgVerifyShare(recipient, senderCommitment, shareValue) {
+    let expected = null;
+    senderCommitment.forEach((phi, k) => {
+      const term = ptMul(modPow(recipient, BigInt(k), N), phi);
+      expected = expected === null ? term : ptAdd(expected, term);
+    });
+    const lhs = ptMul(shareValue, G);
+    return expected !== null && lhs.x === expected.x && lhs.y === expected.y;
+  }
+  function frostDkgFinalize(receivedShares, allCommitments) {
+    const secretShare = receivedShares.reduce((a, s) => mod(a + s, N), 0n);
+    let groupPubkey = null;
+    for (const commitment of allCommitments)
+      groupPubkey = groupPubkey === null ? commitment[0] : ptAdd(groupPubkey, commitment[0]);
+    return { secretShare, groupPubkey, verificationShare: ptMul(secretShare, G) };
+  }
+
   // --- Schnorr adaptor signatures (PTLCs) ------------------------------------
   const adaptorXonly = (P) => bigIntToBytes(P.x, 32);
   const adaptorEven = (P) => (P.y % 2n) === 0n;
@@ -1092,6 +1128,8 @@
     frostH1, frostH2, frostH3, frostKeygen, frostLagrange, frostNonceGenerate,
     frostCommit, frostBindingFactors, frostGroupCommitment, frostSign, frostAggregate,
     frostVerify, frostSerializeSig,
+    // frost DKG (PedPoP)
+    frostDkgRound1, frostDkgVerifyPop, frostDkgShareFor, frostDkgVerifyShare, frostDkgFinalize,
     // adaptor signatures / PTLC
     adaptorPoint, adaptorPresign, adaptorPresigVerify, adaptorAdapt, adaptorExtract, adaptorXonly,
     // BIP-340 / Taproot FROST

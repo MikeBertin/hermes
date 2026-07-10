@@ -8,37 +8,40 @@
 
 All 8 stages done, plus a post-ship enhancement arc (RFC 6979 → SegWit → multisig → Merkle/SPV →
 Taproot/Schnorr → MuSig2 → Lightning → HTLC routing → FROST → PTLCs → BIP-340 FROST → HTLC
-second-stage) and a review-hardening pass (negative tests). A from-scratch Bitcoin implementation (no
-crypto libraries) + 18 interactive browser demos, culminating in a **real transaction broadcast to the
-Bitcoin testnet**, a 2-of-3 multisig vault, trustless Merkle inclusion proofs, BIP-340 Schnorr
-signatures with Taproot `bc1p…` addresses, a full BIP-327 MuSig2 signing ceremony, a Lightning
-channel's BOLT-3 revocation/penalty mechanism, a multi-hop HTLC routed payment, RFC 9591 FROST
-threshold signatures, PTLCs via Schnorr adaptor signatures, a BIP-340 FROST Taproot (t-of-n) vault,
-and the HTLC-timeout/success second-stage transactions of a force-close.
+second-stage → FROST DKG) and a review-hardening pass (negative tests). A from-scratch Bitcoin
+implementation (no crypto libraries) + 19 interactive browser demos, culminating in a **real
+transaction broadcast to the Bitcoin testnet**, a 2-of-3 multisig vault, trustless Merkle inclusion
+proofs, BIP-340 Schnorr signatures with Taproot `bc1p…` addresses, a full BIP-327 MuSig2 signing
+ceremony, a Lightning channel's BOLT-3 revocation/penalty mechanism, a multi-hop HTLC routed payment,
+RFC 9591 FROST threshold signatures, PTLCs via Schnorr adaptor signatures, a BIP-340 FROST Taproot
+(t-of-n) vault, the HTLC-timeout/success second-stage transactions of a force-close, and dealer-free
+distributed key generation (PedPoP).
 
 - **Live:** https://mikebertin.github.io/hermes/
 - **Repo:** https://github.com/MikeBertin/hermes (public)
 - **On-chain proof:** testnet txid `f3771bf9d0d33ab8849ad54fae75b83f876cd39cd6af1d23ec9555cd86c46e08`
-- **Tests:** `217/217` pytest green (official BIP / BOLT / RFC vectors + rejection paths); JS
-  cross-checked against the same vectors in-browser (108/108).
+- **Tests:** `223/223` pytest green (official BIP / BOLT / RFC vectors + rejection paths); JS
+  cross-checked against the same vectors in-browser (113/113).
 
-The 18 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
+The 19 demos: Curve · Key→Address · Sign & Forge · Mine & Chain · Network/51% · Real Testnet ·
 Script VM · HD Wallet · Multisig Vault · Merkle Proofs · Taproot & Schnorr · MuSig2 · Lightning ·
-HTLC Routing · FROST Threshold · PTLC Routing · FROST Taproot Vault · HTLC Second-Stage.
+HTLC Routing · FROST Threshold · PTLC Routing · FROST Taproot Vault · HTLC Second-Stage · FROST DKG.
 
 ---
 
 ## ▶ NEXT SESSION: nothing is owed — an options menu
 
-The enhancement arc has a natural next rung if wanted; otherwise the project simply stands.
+The enhancement menu is now **empty** — every rung has shipped. The project simply stands at 19 demos.
+Any further work would be net-new (e.g. a demo-GIF 7th beat for the DKG card, or a wholly new topic).
 
 1. ~~**Polish** — README screen-capture GIF of the demos.~~ ✅ Done 2026-07-04 (`web/demo.gif`,
    embedded as the README hero; regenerate with `demo-capture.js` — see gotchas below).
 2. ~~**Lightning, deeper** — the HTLC *second-stage* transactions.~~ ✅ Done 2026-07-08 (18th card
    `web/second-stage/`; `htlc_timeout_tx`/`htlc_success_tx` + signers in `hermes/lightning.py`,
    reproduced byte-for-byte against BOLT-3 Appendix C). See the Progress Log for details.
-3. **FROST DKG** — replace the trusted dealer with distributed key generation (each participant
-   contributes; no single party ever holds the group secret). A natural depth-add to demos 15/17.
+3. ~~**FROST DKG** — replace the trusted dealer with distributed key generation.~~ ✅ Done 2026-07-10
+   (19th card `web/frost-dkg/`; `hermes/frost_dkg.py` PedPoP; the DKG shares sign a real signature
+   `frost.verify` accepts). See the Progress Log for details.
 4. ~~**Demo GIF, deeper** — add a 6th beat (the new second-stage card).~~ ✅ Done 2026-07-08
    (`demo-capture.js` beat 6 toggles offered↔received; `web/demo.gif` re-recorded, ~5.3 MB / 23s).
 
@@ -90,6 +93,7 @@ hermes/            from-scratch Python core (the source of truth)
   lightning        BOLT-3 channels (funding, revocation, to_local, penalty) + HTLC scripts (routing)
                    + second-stage HTLC-timeout/success txs (htlc_timeout_tx/htlc_success_tx + signers)
   frost            RFC 9591 threshold Schnorr (expand_message_xmd, Shamir keygen, Lagrange, sign/agg)
+  frost_dkg        PedPoP distributed keygen (round1_commit/verify_pop/verify_share/finalize; no dealer)
   frost_taproot    BIP-340 FROST — Taproot-spendable threshold (reuses frost + taproot; even-y flips)
   adaptor          BIP-340 Schnorr adaptor sigs / PTLCs (presign, adapt, extract — reuses schnorr)
   script           stack VM — OP_IF/NOTIF/ELSE/ENDIF + OP_CSV + OP_SWAP + OP_SIZE (evaluate: sequence arg)
@@ -99,7 +103,7 @@ tests/             official BIP / on-chain vectors + negative rejection-path tes
 export.py          bakes web/network/data/*.json
 web/               self-contained static site (this is what Pages serves)
   shared/          btc.js (core), wallet.js (BIP-32/39), demo.css, demo.js, test.html (vector harness)
-  <demo>/index.html for each of the 18 demos; testnet/data/tx.json + network/data/*.json baked
+  <demo>/index.html for each of the 19 demos; testnet/data/tx.json + network/data/*.json baked
   og.png           1200x630 social card
 .github/workflows/pages.yml   deploys web/ to GitHub Pages on push to main
 ```
@@ -198,11 +202,19 @@ web/               self-contained static site (this is what Pages serves)
     to `btc.js` (two byte-for-byte test.html checks). Card `web/second-stage/` (orange `#fb923c`, `.c18`):
     offered↔received toggle, real tx matching the vector, witness stack, a delay slider on the output.
     The raw BOLT-3 spec used for the vectors is `lightning/bolts` `03-transactions.md` Appendix C.
+14. ✅ **FROST DKG — 19th card** (2026-07-10) — the dealer-free setup for demos 15/17. New
+    `hermes/frost_dkg.py` implements PedPoP (Pedersen DKG + proofs of possession): `round1_commit`,
+    `verify_pop`, `secret_share_for`, `verify_share` (Feldman), `finalize`. No RFC vectors → pinned by
+    self-consistency, the clincher being that the DKG shares feed straight into `frost.sign`/`aggregate`
+    and produce a signature `frost.verify` (RFC 9591 vector-anchored) accepts. JS mirror `frostDkg*` in
+    `btc.js` (5 test.html checks). Card `web/frost-dkg/` (emerald `#34d399`, `.c19`): contributions +
+    PoP, an all-to-all Feldman verify matrix with a "corrupt a share" beat, the emergent group key, and
+    a real 2-of-3 signature.
 
 ## Verify-it-still-works checklist
 
 ```bash
-.venv/bin/python -m pytest -q                                  # 217 passed
-# dev server up, then open web/shared/test.html → "all 108 vectors pass"
+.venv/bin/python -m pytest -q                                  # 223 passed
+# dev server up, then open web/shared/test.html → "all 113 vectors pass"
 # spot-check live: https://mikebertin.github.io/hermes/ and /testnet/ (real txid + explorer link)
 ```

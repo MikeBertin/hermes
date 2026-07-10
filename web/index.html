@@ -23,7 +23,7 @@
     --network:#b58cff; --testnet:#58d68d; --script:#5fd0c5; --wallet:#ffd56b;
     --multisig:#ef88c8; --merkle:#4dc9e6; --taproot:#f7a14b; --musig:#a8d94b;
     --lightning:#ffd400; --routing:#2dd4bf; --frost:#c4b5fd; --ptlc:#f472b6; --frosttap:#818cf8;
-    --secondstage:#fb923c;
+    --secondstage:#fb923c; --frostdkg:#34d399;
     --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
@@ -65,7 +65,7 @@
   .c5{--c:var(--network)} .c6{--c:var(--testnet)} .c7{--c:var(--script)} .c8{--c:var(--wallet)}
   .c9{--c:var(--multisig)} .c10{--c:var(--merkle)} .c11{--c:var(--taproot)} .c12{--c:var(--musig)}
   .c13{--c:var(--lightning)} .c14{--c:var(--routing)} .c15{--c:var(--frost)} .c16{--c:var(--ptlc)}
-  .c17{--c:var(--frosttap)} .c18{--c:var(--secondstage)}
+  .c17{--c:var(--frosttap)} .c18{--c:var(--secondstage)} .c19{--c:var(--frostdkg)}
   a.card:hover{border-color:var(--c)} .card .tag,.card .open{color:var(--c)}
 
   footer{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);
@@ -82,7 +82,7 @@
     <p class="lede">
       Bitcoin, built from <b>nothing</b> — no crypto libraries, no magic. The
       <b>secp256k1</b> curve, the hashes, the signatures, the proof of work, the
-      network, all rebuilt by hand and turned into things you can <b>touch</b>. Eighteen
+      network, all rebuilt by hand and turned into things you can <b>touch</b>. Nineteen
       interactive windows onto how a chain of numbers becomes money nobody can forge.
     </p>
   </header>
@@ -199,6 +199,12 @@
       <div class="num">18</div><div class="tag">BOLT-3 · Layer 2</div>
       <h2>HTLC Second-Stage</h2>
       <p>Force-close with a payment in flight: the HTLC-timeout / HTLC-success transactions (byte-for-byte BOLT-3), whose output is itself delayed and revocable — the penalty, one level down.</p>
+      <span class="open">Open <span class="arrow">→</span></span>
+    </a>
+    <a class="card c19" href="frost-dkg/">
+      <div class="num">19</div><div class="tag">PedPoP · DKG</div>
+      <h2>FROST DKG</h2>
+      <p>Delete the trusted dealer. Each participant contributes a secret only they know; the group key is the sum, never assembled — yet any 2 of 3 still sign. Distributed key generation, from scratch.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
   </div>

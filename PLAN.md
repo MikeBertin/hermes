@@ -609,3 +609,20 @@ _Append a dated entry every session: what changed · what's next · new decision
   stack broken out, and a block-height slider showing the recursive delay on its `to_local` output.
   Landing now 18 cards ("Eighteen"), README + counts, og.png re-rendered (18 pills). Remaining optional
   menu: FROST DKG, or the demo GIF could add a 6th beat.
+- **2026-07-10** — **FROST DKG DONE — a 19th demo card shipped** (the last enhancement-menu item).
+  Replaces demo 15's trusted dealer with distributed key generation (PedPoP — Pedersen DKG + proofs
+  of possession, from the FROST paper). New `hermes/frost_dkg.py`: `round1_commit` (coefficient
+  commitments φ + a Schnorr proof of possession of a₀), `verify_pop`, `secret_share_for` (fᵢ(j)),
+  `verify_share` (Feldman: fⱼ(i)·G == Σ iᵏ·φₖ), and `finalize` (sum received sub-shares → long-term
+  share sᵢ; sum φⱼ₀ → group key Y). The group secret Σaⱼ₀ is never assembled. **Validation** — RFC 9591
+  standardises only signing, so no DKG vectors; pinned by self-consistency: every PoP + Feldman share
+  verifies, the shares Shamir-reconstruct to Y, and — the real proof — the DKG shares feed straight
+  into demo 15's `frost.sign`/`aggregate` and produce a signature the RFC-9591-vector-anchored
+  `frost.verify` accepts (for every 2-of-3 subset). Negatives: tampered sub-share + forged PoP + rogue
+  a₀ all rejected. **223/223 pytest** (was 217). JS mirror `frostDkg*` in `btc.js` (reusing
+  `frostScalarHash`/`frostPolyEval`/`frostLagrange`) with 5 test.html checks incl. the sign-a-real-sig
+  proof → **113/113 in-browser**. **New `web/frost-dkg/` card** ("FROST DKG", accent `#34d399` emerald,
+  `.c19`): participants' contributions + PoP, an all-to-all Feldman verify matrix with a "corrupt a
+  share" beat (the bad share is pinned on its author), the emergent group key, and a real signature
+  from any two. Landing now 19 cards ("Nineteen"), README + counts, og.png re-rendered (19 pills).
+  **The enhancement menu is now empty — the project stands at 19 demos.**

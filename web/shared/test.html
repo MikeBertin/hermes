@@ -389,6 +389,45 @@ check("frost aggregate signature (E.5)", H.bytesToHex(H.frostSerializeSig(F_SIG)
   "0205b6d04d3774c8929413e3c76024d54149c372d57aae62574ed74319b5ea14d0c65dde8492a7471437e6c2fe3da49b90d23f642b5c6dbe7e36089f096dd97324");
 check("frost signature verifies under the group key", H.frostVerify(F_MSG, F_SIG, F_GPK), true);
 
+// --- FROST DKG (PedPoP) — no trusted dealer; self-consistency via a real signature ---
+const DKG_POLYS = {
+  1: [0x1111111111111111111111111111111111111111111111111111111111111111n, 0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0an],
+  2: [0x2222222222222222222222222222222222222222222222222222222222222222n, 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0bn],
+  3: [0x3333333333333333333333333333333333333333333333333333333333333333n, 0x0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0cn],
+};
+const DKG_IDS = [1n, 2n, 3n];
+const DKG_R1 = {}, DKG_POP_OK = [], DKG_SHARE_OK = [];
+for (const i of DKG_IDS) DKG_R1[i] = H.frostDkgRound1(i, DKG_POLYS[i], H.utf8("pop-" + i));
+for (const i of DKG_IDS) DKG_POP_OK.push(H.frostDkgVerifyPop(i, DKG_R1[i].commitment, DKG_R1[i].proof));
+const DKG_FINAL = {};
+for (const j of DKG_IDS) {
+  const received = [];
+  for (const i of DKG_IDS) {
+    const s = H.frostDkgShareFor(DKG_POLYS[i], j);
+    DKG_SHARE_OK.push(H.frostDkgVerifyShare(j, DKG_R1[i].commitment, s));
+    received.push(s);
+  }
+  DKG_FINAL[j] = H.frostDkgFinalize(received, DKG_IDS.map((i) => DKG_R1[i].commitment));
+}
+check("frost DKG: all proofs of possession verify", DKG_POP_OK.every(Boolean), true);
+check("frost DKG: all Feldman sub-shares verify", DKG_SHARE_OK.every(Boolean), true);
+const DKG_GPK = DKG_FINAL[1n].groupPubkey;
+check("frost DKG: group key = Σ contributions", H.bytesToHex(H.sec(DKG_GPK, true)),
+  H.bytesToHex(H.sec(H.pubFromSecret((DKG_POLYS[1][0] + DKG_POLYS[2][0] + DKG_POLYS[3][0]) % H.N), true)));
+// THE proof: DKG shares (signers 1 & 2) produce a signature frostVerify accepts
+const DKG_MSG = H.utf8("pay the vault");
+const DKG_SIGNERS = [1n, 2n], DKG_NONCES = {}, DKG_LIST = [];
+for (const i of DKG_SIGNERS) {
+  const c = H.frostCommit(DKG_FINAL[i].secretShare, H.utf8("h" + i), H.utf8("b" + i));
+  DKG_NONCES[i] = c.nonces; DKG_LIST.push([i, c.commits[0], c.commits[1]]);
+}
+const DKG_SHARES2 = DKG_SIGNERS.map((i) =>
+  H.frostSign(i, DKG_FINAL[i].secretShare, DKG_GPK, DKG_NONCES[i], DKG_MSG, DKG_LIST));
+check("frost DKG output signs a valid FROST signature",
+  H.frostVerify(DKG_MSG, H.frostAggregate(DKG_LIST, DKG_MSG, DKG_GPK, DKG_SHARES2), DKG_GPK), true);
+check("frost DKG: a tampered sub-share is rejected",
+  H.frostDkgVerifyShare(2n, DKG_R1[1n].commitment, H.frostDkgShareFor(DKG_POLYS[1], 2n) + 1n), false);
+
 // --- Schnorr adaptor signatures / PTLCs (self-consistency via schnorrVerify) ---
 const A_D = 0xB0BCAFEn, A_T = 0x5EC12E7n;      // signer secret, adaptor secret t
 const A_MSG = H.sha256(H.utf8("ptlc hop"));
