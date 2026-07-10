@@ -42,8 +42,11 @@ Any further work would be net-new (e.g. a demo-GIF 7th beat for the DKG card, or
 3. ~~**FROST DKG** — replace the trusted dealer with distributed key generation.~~ ✅ Done 2026-07-10
    (19th card `web/frost-dkg/`; `hermes/frost_dkg.py` PedPoP; the DKG shares sign a real signature
    `frost.verify` accepts). See the Progress Log for details.
-4. ~~**Demo GIF, deeper** — add a 6th beat (the new second-stage card).~~ ✅ Done 2026-07-08
-   (`demo-capture.js` beat 6 toggles offered↔received; `web/demo.gif` re-recorded, ~5.3 MB / 23s).
+4. ~~**Demo GIF, deeper** — add beats for the new cards.~~ ✅ Done 2026-07-08/10 (`demo-capture.js` now
+   has 8 beats through FROST DKG — beat 7 corrupts a sub-share so the Feldman matrix pins the fault;
+   `web/demo.gif` re-recorded, ~5.6 MB / 25s at 700px/13fps). NOTE: the preview_screenshot tool
+   mis-renders scrolled state (shows a black void) but Playwright records the real viewport fine —
+   verify scroll-based beats from extracted GIF frames, not preview screenshots.
 
 Lightning notes a future session might need: `hermes/lightning.py` builds real BOLT-3 scripts —
 `to_local_script`, the blinded revocation key (`derive_revocation_pubkey`/`_privkey`), and the HTLC
