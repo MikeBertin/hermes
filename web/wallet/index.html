@@ -72,7 +72,7 @@
         <h2>Under the hood</h2>
         <div class="seedline">seed (512-bit): <b id="seedHex">–</b></div>
         <div class="seedline" style="margin-top:8px">master fingerprint: <b id="fp">–</b></div>
-        <div class="seedline" style="margin-top:8px">account xpub: <b id="xpub">–</b></div>
+        <div class="seedline" style="margin-top:8px">account <span id="xpubLabel">xpub</span>: <b id="xpub">–</b></div>
       </div>
     </div>
   </div>
@@ -87,8 +87,9 @@
         <p>Add a passphrase and you get a completely different tree from the same words — a
           plausible-deniability vault. Forget it and that money is gone forever.</p></div>
       <div class="ncard"><h3>Hardened keeps branches private</h3>
-        <p>Hardened steps stop someone who holds one account's public key from deriving its
-          siblings. That's why account-level paths use the apostrophe.</p></div>
+        <p>A parent xpub can normally derive every child public key — and worse, that xpub plus one
+          leaked child <em>private</em> key exposes the parent and all siblings. Hardened steps cut
+          both links. That's why account-level paths use the apostrophe.</p></div>
     </div>
   </div>
 </div>
@@ -141,7 +142,9 @@ window.POPS = {
 
     $("seedHex").textContent = H.bytesToHex(seed).slice(0, 32) + "…" + H.bytesToHex(seed).slice(-8);
     $("fp").textContent = H.bytesToHex(WL.fingerprint(master));
-    const xp = WL.xpub(account); $("xpub").textContent = xp.slice(0, 20) + "…" + xp.slice(-8);
+    const xp = WL.xpub(account, testnet);
+    $("xpubLabel").textContent = testnet ? "tpub" : "xpub";
+    $("xpub").textContent = xp.slice(0, 20) + "…" + xp.slice(-8);
 
     const rows = [
       `<div class="node"><span class="path">m</span><span class="desc">master key</span></div>`,

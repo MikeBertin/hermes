@@ -196,6 +196,7 @@ window.POPS = {
     $("tpoint").textContent = "–";
     $("tsecret").textContent = "•••••••• hidden ••••••••"; $("tsecret").className = "num hid";
     ["f1","f2","f3"].forEach((id) => $(id).classList.remove("done"));
+    $("log").innerHTML = '<span class="l">Carol picks a secret scalar t and publishes only the point T = t·G.</span>';
     render();
   }
 
@@ -242,7 +243,7 @@ window.POPS = {
 
   function render() {
     ["nA","nB","nC"].forEach((id) => $(id).classList.toggle("lit", stage >= 2));
-    const cls = (base) => "hop" + (stage >= 2 ? " locked" : "") + (stage === 3 ? " settled" : "");
+    const cls = () => "hop" + (stage >= 2 ? " locked" : "") + (stage === 3 ? " settled" : "");
     $("hopAB").className = cls(); $("hopBC").className = cls();
     const stTxt = stage === 3 ? "settled" : stage >= 2 ? "pre-signed" : "";
     $("stAB").textContent = stTxt; $("stBC").textContent = stTxt;

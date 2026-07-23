@@ -84,8 +84,10 @@
         <h2>1 · Each participant brings a secret</h2>
         <div id="parties"></div>
         <p class="hint" style="margin:10px 0 0">Everyone samples their own random polynomial and
-          publishes <span class="mono">φ<sub>i0</sub> = a<sub>i0</sub>·G</span> — a commitment to their
-          contribution — plus a <span class="x" data-pop="pop">proof of possession</span> that they
+          publishes commitments to <em>every</em> coefficient, <span class="mono">φ<sub>i0</sub> = a<sub>i0</sub>·G,
+          φ<sub>i1</sub> = a<sub>i1</sub>·G, …</span> — the first being their contribution to the group
+          key, the full vector what Feldman checks against — plus a
+          <span class="x" data-pop="pop">proof of possession</span> that they
           actually know <span class="mono">a<sub>i0</sub></span>. <span class="mono">New ceremony</span>
           redraws every secret.</p>
       </div>

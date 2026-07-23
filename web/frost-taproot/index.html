@@ -172,6 +172,7 @@ window.POPS = {
     $("addr").textContent = H.frostVaultAddress(groupPubkey, false);
     $("outkey").textContent = hex(H.frostOutputXonly(groupPubkey));
     $("sig").textContent = "sign to produce…";
+    $("mainBadge").className = "badge2 idle";
     render();
   }
 

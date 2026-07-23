@@ -146,7 +146,7 @@
         <div class="weigh">
           <div class="side">
             <h4>2-of-3 P2WSH (demo 9)</h4>
-            <div class="big">253 B</div>
+            <div class="big">~253 B</div>
             <div class="sub2">witness carries every signature + the whole script, for all to see</div>
             <div class="bar"><i style="width:100%;background:#ef88c8"></i></div>
           </div>
@@ -195,11 +195,11 @@
 
 <script>
 window.POPS = {
-  bip327: "<h4>BIP-327</h4><p>The MuSig2 standard (2023): key aggregation + a two-round signing ceremony producing an ordinary BIP-340 Schnorr signature. Used by Lightning channel closes and modern vault designs.</p>",
+  bip327: "<h4>BIP-327</h4><p>The MuSig2 standard (2023): key aggregation + a two-round signing ceremony producing an ordinary BIP-340 Schnorr signature. Coming to Lightning's taproot channels, and already used in modern vault designs.</p>",
   rogue: "<h4>The rogue-key attack</h4><p>If the joint key were just P₁+P₂, Mallory could wait to see Alice's key and publish P<sub>M</sub> = P<sub>evil</sub> − P₁. The 'joint' key would then equal P<sub>evil</sub> — which Mallory alone controls.</p>",
   keyagg: "<h4>KeyAgg coefficients</h4><p>a<sub>i</sub> = tagged_hash(\"KeyAgg coefficient\", L ‖ pk<sub>i</sub>), where L commits to the entire key list. To aim the sum at a chosen key you'd have to invert SHA-256. (One optimization: the second distinct key gets a<sub>i</sub> = 1.)</p>",
   noncepair: "<h4>Nonce pairs</h4><p>Round 1: each signer sends TWO nonce points (66 bytes). They only fuse into the session nonce R = R₁ + b·R₂ after everyone has committed — the hash b makes parallel-session forgery (Wagner's attack) impossible.</p>",
-  wagner: "<h4>Wagner's attack</h4><p>A generalized birthday algorithm: open enough parallel sessions and you can pick nonce shares whose challenges XOR to a target, forging a signature on a message nobody signed. Two nonces + the binding coefficient b close the door.</p>",
+  wagner: "<h4>Wagner's attack</h4><p>A generalized birthday algorithm: open enough parallel sessions and you can pick nonce shares whose challenges sum to a chosen target, forging a signature on a message nobody signed. Two nonces + the binding coefficient b close the door.</p>",
 };
 </script>
 <script src="../shared/demo.js"></script>

@@ -115,8 +115,10 @@
         <p>Even just under half the hashpower gives a real chance of a double-spend; just over half
           makes it a near-certainty given patience. Security degrades smoothly, then collapses.</p></div>
       <div class="ncard"><h3>Honesty is the default win</h3>
-        <p>Mining honestly on the longest chain is the most profitable strategy for anyone without a
-          majority — which is exactly why the network stays converged.</p></div>
+        <p>For a small miner, honest mining on the longest chain is the profitable strategy — which
+          is why the network stays converged. (Above roughly a third of the hashpower, cleverer
+          withholding strategies — "selfish mining" — can beat it; another reason concentration
+          is the thing to watch.)</p></div>
     </div>
   </div>
 </div>
@@ -205,7 +207,6 @@ window.POPS = {
 
   function showProb() {
     if (!probs) return;
-    const q = (+$("q").value/100).toFixed(2).replace(/0$/,"").replace(/\.$/,".0");
     const qKey = String(+(+$("q").value/100).toFixed(2));
     const n = $("n").value;
     const p = probs.grid[qKey] ? probs.grid[qKey][n] : null;

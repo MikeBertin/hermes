@@ -271,7 +271,7 @@ window.POPS = {
       const isOp = c.op !== undefined;
       const done = i < step ? "done" : "";
       const isCur = i === step - 1 ? "cur" : "";
-      const failrow = (cur.failedAt === step && i === step-1 && !cur.valid) ? "failrow" : "";
+      const failrow = (i === cur.failedAt && step > cur.failedAt && !cur.valid) ? "failrow" : "";
       rows.push(`<div class="op ${done} ${isCur} ${failrow}">
         <span class="pc">${i}</span>
         <span class="name ${isOp?"opc":""}">${isOp ? c.label : "⟨"+c.label+"⟩"}</span>

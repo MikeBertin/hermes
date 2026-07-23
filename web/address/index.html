@@ -177,6 +177,7 @@ window.POPS = {
   $("rand").addEventListener("click", () => { prevAddr = ""; prevH160 = ""; prevSegwit = ""; $("priv").value = randHex(); compute(); });
   $("flip").addEventListener("click", () => {
     const hex = $("priv").value.trim().replace(/^0x/, "").padStart(64, "0");
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) { compute(); return; } // same guard as compute(): ignore garbage input
     let secret = BigInt("0x" + hex);
     const bit = BigInt(Math.floor(Math.random() * 256));
     secret ^= (1n << bit);

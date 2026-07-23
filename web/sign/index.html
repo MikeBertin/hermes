@@ -153,7 +153,7 @@ window.POPS = {
   function doSign() {
     const msg = $("msg").value;
     const z = H.messageHash(msg);
-    const sig = H.sign(secret, z); // random nonce, low-s
+    const sig = H.sign(secret, z); // deterministic RFC 6979 nonce, low-s
     signed = { sig, msg };
     $("z").textContent = hexBig(z);
     $("r").textContent = hexBig(sig.r);
@@ -180,6 +180,12 @@ window.POPS = {
   function signTwo() {
     const z1 = H.messageHash($("mA").value);
     const z2 = H.messageHash($("mB").value);
+    if (z1 === z2) {
+      forge = null; $("recover").disabled = true; $("recBox").style.display = "none";
+      $("fr").textContent = "the two messages must differ — identical messages give identical signatures, and the algebra needs s₁ ≠ s₂";
+      $("fs1").textContent = "–"; $("fs2").textContent = "–";
+      return;
+    }
     // the fatal mistake: the same k for both. low-s off so the algebra is clean.
     const k = H.randScalar();
     const s1 = H.sign(secret, z1, k, false);
@@ -214,10 +220,17 @@ window.POPS = {
     if (/^[0-9a-fA-F]{1,64}$/.test(hex)) {
       const v = BigInt("0x" + hex);
       if (v >= 1n && v < H.N) { secret = v; $("pubx").textContent = short(H.pubFromSecret(secret).x);
-        signed = null; forge = null; $("recover").disabled = true; }
+        clearSigned(); }
     }
   });
-  $("rand").addEventListener("click", () => { secret = H.randScalar(); refreshKey(); signed = null; forge = null; $("recover").disabled = true; });
+  function clearSigned() {
+    signed = null; forge = null; $("recover").disabled = true;
+    const b = $("verBadge");
+    b.className = "badge2 no"; b.textContent = "not signed yet";
+    $("verNote").textContent = "";
+    $("z").textContent = $("r").textContent = $("s").textContent = "–";
+  }
+  $("rand").addEventListener("click", () => { secret = H.randScalar(); refreshKey(); clearSigned(); });
 
   refreshKey();
   doSign();

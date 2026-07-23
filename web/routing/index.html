@@ -240,7 +240,7 @@ window.POPS = {
     $("verify").innerHTML =
       `<div><span class="lab3">SHA256(preimage) == H</span> &nbsp;<span class="ok3">${bcOk ? "✓" : "✗"}</span> — the hashlock opens</div>
        <div style="margin-top:4px"><span class="lab3">receiver signature valid</span> &nbsp;<span class="ok3">${abOk && bcOk ? "✓" : "✗"}</span></div>`;
-    log(`<span class="l win">◀ Carol reveals R to claim <b>0.0100</b> from Bob. Bob now knows R and claims <b>0.0101</b> from Alice. One secret, both hops — the payment reached Carol and Bob earned his fee. ${bcOk && abOk ? "" : ""}</span>`);
+    log(`<span class="l win">◀ Carol reveals R to claim <b>0.0100</b> from Bob. Bob now knows R and claims <b>0.0101</b> from Alice. One secret, both hops — the payment reached Carol and Bob earned his fee.</span>`);
     $("mainBadge").className = "badge2 ok";
     $("mainBadge").textContent = "✓ settled — the same preimage unlocked every hop, backward";
   }

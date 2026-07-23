@@ -106,7 +106,7 @@
           <button id="payBA">←&nbsp; Bob pays Alice</button>
         </div>
         <div class="statechip">commitment state <b id="stateNo">#0</b> &nbsp;·&nbsp;
-          <b id="payCount">0</b> payments &nbsp;·&nbsp; on-chain transactions so far: <b>1</b></div>
+          <b id="payCount">0</b> payments &nbsp;·&nbsp; on-chain transactions to open: <b>1</b></div>
         <p class="hint">Each payment mints a fresh pair of commitment transactions and
           <b>revokes</b> the previous state — Bob hands Alice (and Alice hands Bob) the
           <span class="x" data-pop="secret">per-commitment secret</span> for the old state. That
@@ -135,7 +135,7 @@
         <h2>This state's <span class="mono">to_local</span> — holds Bob's balance</h2>
         <div class="scriptbox" id="scriptbox"></div>
         <div class="keyline"><span class="lab3">revocationPubkey</span> &nbsp;=&nbsp;
-          Alice's basepoint ⊕ Bob's per-commit point<br><span class="rev" id="revpub">–</span></div>
+          hash-weighted sum of Alice's basepoint + Bob's per-commit point<br><span class="rev" id="revpub">–</span></div>
         <div class="keyline"><span class="lab3">delayedPubkey (Bob's, after 144 blocks)</span><br>
           <span class="v" id="delpub">–</span></div>
         <p class="hint">Two ways to spend Bob's money: the <span class="ifpath">IF</span> branch —
@@ -186,7 +186,7 @@ window.POPS = {
   funding: "<h4>2-of-2 funding</h4><p>Both parties pay into one output locked to <em>both</em> their keys (a 2-of-2 multisig, demo 9). Neither can move the money alone — every channel update is a jointly-signed spend of this one output.</p>",
   commitment: "<h4>Commitment transaction</h4><p>A ready-to-broadcast spend of the funding output that pays each party its current balance. Both sides hold one (slightly different) copy. Broadcasting it 'closes' the channel unilaterally.</p>",
   revocation: "<h4>The revocation key</h4><p>A blinded key mixing one secret from each party (BOLT-3). It can't be assembled until the owner of a state reveals their per-commitment secret — which is exactly the act of revoking that state. See it snap together in 'The justice math'.</p>",
-  secret: "<h4>Per-commitment secret</h4><p>Each commitment number has its own secret, generated from a seed by a bit-flip + SHA-256 cascade (BOLT-3 Appendix D). Handed out newest-first, so revealing one lets the receiver recompute every older one they've already been given — O(1) storage.</p>",
+  secret: "<h4>Per-commitment secret</h4><p>Each commitment number has its own secret, generated from a seed by a bit-flip + SHA-256 cascade (BOLT-3 Appendix D). The secrets are revealed one per state update, and their tree structure lets a receiver derive whole subtrees from single nodes — so it only ever stores O(log n) of them (up to 49, per BOLT-3) instead of millions.</p>",
   p2wsh: "<h4>P2WSH</h4><p>Pay-to-Witness-Script-Hash: the address commits to a script (here, the 2-of-2 multisig). The script itself is only revealed when spent. Demo 9 builds one by hand.</p>",
   csv: "<h4>to_self_delay / OP_CHECKSEQUENCEVERIFY</h4><p>A <em>relative</em> timelock (BIP-68/112): the owner's own branch of to_local can't be spent until N blocks after the commitment confirms. That delay is the counterparty's window to punish a revoked broadcast.</p>",
   watchtower: "<h4>Watchtowers</h4><p>A third party you hand encrypted penalty transactions to. If a revoked state ever appears on-chain while you're offline, the tower broadcasts the punishment for you. It never learns your balance and never holds your coins.</p>",

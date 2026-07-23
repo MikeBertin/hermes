@@ -174,7 +174,6 @@ window.POPS = {
   const H = window.Hermes;
   const $ = (id) => document.getElementById(id);
   const hex = (b) => H.bytesToHex(b);
-  const short = (b, n = 14) => { const h = hex(b); return h.slice(0, n) + "…" + h.slice(-10); };
   const shortHexN = (bi, n = 12) => { const h = H.bytesToHex(H.bigIntToBytes(bi, 32)); return h.slice(0, n) + "…" + h.slice(-8); };
   const NAMES = ["Alice", "Bob", "Carol"];
   const THRESHOLD = 2, TOTAL = 3;
@@ -191,10 +190,11 @@ window.POPS = {
     $("gpk").textContent = hex(H.sec(groupPubkey, true));
     $("sig").textContent = "run the ceremony…";
     $("formula").style.display = "none";
+    $("mainBadge").className = "badge2 idle";
     render();
   }
 
-  function toggle(i) { officers[i].present = !officers[i].present; lambdas = {}; $("sig").textContent = "run the ceremony…"; $("formula").style.display = "none"; render(); }
+  function toggle(i) { officers[i].present = !officers[i].present; lambdas = {}; $("sig").textContent = "run the ceremony…"; $("formula").style.display = "none"; $("mainBadge").className = "badge2 idle"; render(); }
 
   function present() { return officers.filter((o) => o.present); }
 

@@ -62,6 +62,8 @@ def sign(secret: int, z: int, k: int | None = None, low_s: bool = True) -> Signa
     canonicalization (real Bitcoin requires it) — turn it off for the reuse demo
     so the recovery algebra stays clean.
     """
+    if not 1 <= secret < N:
+        raise ValueError("secret key out of range [1, N)")
     if k is None:
         k = rfc6979_k(secret, z)
     r = (k * G).x.num % N
@@ -118,6 +120,8 @@ def parse_der(data: bytes) -> Signature:
 
 
 def verify(point: Point, z: int, sig: Signature) -> bool:
+    if point.x is None:              # point at infinity is not a valid pubkey
+        return False
     if not (1 <= sig.r < N and 1 <= sig.s < N):
         return False
     s_inv = _inv(sig.s)

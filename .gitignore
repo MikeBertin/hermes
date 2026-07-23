@@ -4,3 +4,7 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 .testnet-key.json
+
+# internal working docs (never public)
+HANDOFF.md
+PLAN.md

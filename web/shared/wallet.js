@@ -158,8 +158,10 @@
       k.parentFp, ser32(k.childNum), k.chain, keydata);
     return H.b58checkEncode(payload);
   }
-  const xprv = (k) => serialize(k, "0488ade4", H.concatBytes(new Uint8Array(1), H.bigIntToBytes(k.secret,32)));
-  const xpub = (k) => serialize(k, "0488b21e", pubSec(k));
+  // version bytes: mainnet xprv/xpub, testnet tprv/tpub (BIP-32)
+  const xprv = (k, testnet=false) => serialize(k, testnet ? "04358394" : "0488ade4",
+    H.concatBytes(new Uint8Array(1), H.bigIntToBytes(k.secret,32)));
+  const xpub = (k, testnet=false) => serialize(k, testnet ? "043587cf" : "0488b21e", pubSec(k));
 
   window.HermesWallet = {
     sha512, hmac512, pbkdf2_512,

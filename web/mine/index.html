@@ -79,7 +79,7 @@
           <div class="stat wide"><div class="k">status</div><div class="v" id="st-found">grinding…</div></div>
         </div>
         <p class="hint">Each extra zero makes blocks ~16× rarer. Bitcoin's real target needs ~19
-          leading zeros — quintillions of hashes per block.</p>
+          leading zeros — around 10²⁴ hashes per block at today's difficulty.</p>
       </div>
     </div>
   </div>
@@ -217,9 +217,24 @@ window.POPS = {
       }
     });
     c.querySelectorAll("input[data-i]").forEach((inp) =>
-      inp.addEventListener("input", () => { blocks[+inp.dataset.i].data = inp.value; recompute(); render(); }));
+      inp.addEventListener("input", () => { blocks[+inp.dataset.i].data = inp.value; recompute(); updateInPlace(); }));
     c.querySelectorAll("button[data-mine]").forEach((btn) =>
       btn.addEventListener("click", () => mineBlock(+btn.dataset.mine)));
+  }
+  // refresh block cards without rebuilding them — keeps focus in the input being typed in
+  function updateInPlace() {
+    const els = $("chain").querySelectorAll(".block");
+    blocks.forEach((b, i) => {
+      const el = els[i]; if (!el) return;
+      const good = b._meetsTarget;
+      el.className = "block " + (good ? "good" : "bad");
+      el.querySelector(".st").textContent = good ? "VALID" : "INVALID";
+      const lns = el.querySelectorAll(".ln");
+      lns[0].innerHTML = `nonce <b>${b.nonce.toLocaleString()}</b>`;
+      lns[1].innerHTML = `prev <b>${b._prev.slice(0, 12)}…</b>`;
+      lns[2].className = "ln " + (good ? "" : "badln");
+      lns[2].innerHTML = `hash <span class="h">${b._hash.slice(0, 14)}…</span>`;
+    });
   }
   // mine the initial honest chain once, then render
   for (let i = 0; i < blocks.length; i++) {

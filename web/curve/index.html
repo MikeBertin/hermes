@@ -43,11 +43,11 @@
           <button data-v="double" aria-pressed="false">2P (double)</button>
         </div>
         <label>Point P — x <span class="val" id="pxV"></span></label>
-        <input type="range" id="px" min="-2.0" max="4.1" step="0.01" value="-1.2">
+        <input type="range" id="px" min="-1.91" max="4.1" step="0.01" value="-1.2">
         <div class="seg" id="pb"><button data-v="up" aria-pressed="true">upper</button><button data-v="dn" aria-pressed="false">lower</button></div>
         <div id="qBlock">
           <label>Point Q — x <span class="val" id="qxV"></span></label>
-          <input type="range" id="qx" min="-2.0" max="4.1" step="0.01" value="2.1">
+          <input type="range" id="qx" min="-1.91" max="4.1" step="0.01" value="2.1">
           <div class="seg" id="qb"><button data-v="up" aria-pressed="true">upper</button><button data-v="dn" aria-pressed="false">lower</button></div>
         </div>
         <div class="stats" style="margin-top:16px">
@@ -89,9 +89,10 @@
         <p>Bitcoin doesn't use the smooth curve — it uses points over a 256-bit prime, a cloud of
           ~10⁷⁷ dots. The algebra is identical; only the picture changes.</p></div>
       <div class="ncard"><h3>One generator, every key</h3>
-        <p>One fixed point <b>G</b> generates the whole group. Your private key is just <em>how many
-          times</em> you added G to itself. Counting forward is instant; counting back is the
-          discrete-log problem.</p></div>
+        <p>On secp256k1, one fixed point <b>G</b> generates the whole group. Your private key is just
+          <em>how many times</em> you added G to itself. Counting forward is instant; counting back
+          is the discrete-log problem. (In this page's toy field the demo G traces out a small
+          subgroup — big curves are chosen so that can't happen.)</p></div>
     </div>
   </div>
 </div>

@@ -57,8 +57,9 @@
   <header class="hero">
     <h1>Taproot &amp; Schnorr</h1>
     <p class="sub">
-      Bitcoin launched with ECDSA because Schnorr's cleaner scheme was patented. The patent died,
-      and in 2021 the <b>Taproot</b> upgrade brought it home (<span class="x" data-pop="bip340">BIP-340</span>).
+      Bitcoin launched with ECDSA — Schnorr's cleaner scheme had spent so long under patent that in
+      2009 it had no standard and no library support. The 2021 <b>Taproot</b> upgrade finally
+      brought it home (<span class="x" data-pop="bip340">BIP-340</span>).
       Same curve, same keys — but the equation is <b>linear</b>, so signatures and keys can
       <b>add</b>; and every output hides behind one
       <span class="x" data-pop="tweak">tweaked key</span>, so a plain payment, a multisig vault
@@ -105,7 +106,7 @@
         <div class="signerline"><span class="dot">A</span><span>Alice &nbsp;<span class="pk" id="p1">–</span></span></div>
         <div class="signerline"><span class="dot">B</span><span>Bob &nbsp;&nbsp;&nbsp;<span class="pk" id="p2">–</span></span></div>
         <div class="agg">
-          <div class="lab2">joint key &nbsp;P<sub>A</sub> + P<sub>B</sub> — one point, two owners</div>
+          <div class="lab2">joint key &nbsp;(d<sub>A</sub>+d<sub>B</sub>)·G — one point, two owners</div>
           <div class="num" id="pagg">–</div>
         </div>
         <div class="row" style="margin-top:12px">
@@ -114,8 +115,8 @@
         </div>
         <div id="aggBadge" class="badge2 no" style="margin-top:12px">not signed yet</div>
         <p class="hint" style="margin:10px 0 0">This is the door to <b>MuSig2</b>: an n-of-n vault
-          that costs and looks exactly like a single-sig payment — compare the 253-byte witness in
-          demo 9. (Real MuSig adds hashing so a cosigner can't craft a malicious "rogue" key;
+          that costs and looks exactly like a single-sig payment — against the ~250-byte witness a
+          2-of-3 script spend like demo 9's carries. (Real MuSig adds hashing so a cosigner can't craft a malicious "rogue" key;
           the algebra shown here is the heart of it.)</p>
       </div>
     </div>
@@ -186,7 +187,7 @@
 window.POPS = {
   bip340: "<h4>BIP-340</h4><p>The Schnorr signature standard activated with Taproot (Nov 2021). 64-byte signatures, 32-byte x-only public keys, deterministic nonces, and every hash domain-separated by a tag.</p>",
   xonly: "<h4>x-only public keys</h4><p>A curve point has an x and a y, but the y is redundant — it's one of two values, and BIP-340 fixes the choice: always the <em>even</em> one. So a Taproot pubkey is just 32 bytes of x.</p>",
-  tagged: "<h4>Tagged hashes</h4><p><code>sha256(sha256(tag) ‖ sha256(tag) ‖ msg)</code>. Every BIP-340/341 hash is prefixed with its purpose ("BIP0340/challenge", "TapTweak", …) so a digest from one context can never be replayed in another.</p>",
+  tagged: "<h4>Tagged hashes</h4><p><code>sha256(sha256(tag) ‖ sha256(tag) ‖ msg)</code>. Every BIP-340/341 hash is prefixed with its purpose (\"BIP0340/challenge\", \"TapTweak\", …) so a digest from one context can never be replayed in another.</p>",
   tweak: "<h4>The TapTweak</h4><p>The address key is never a bare wallet key: it's <code>Q = P + t·G</code> where <code>t</code> hashes the key itself (and optionally a tree of fallback scripts). Spending with the key reveals nothing about what else Q could have committed to.</p>",
 };
 </script>

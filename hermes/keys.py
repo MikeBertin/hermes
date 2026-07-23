@@ -49,10 +49,20 @@ class PublicKey:
         with a modular square root (secp256k1's prime is ≡ 3 mod 4, so the root
         is just a single modular exponentiation), then pick the parity."""
         if sec[0] == 4:
+            if len(sec) != 65:
+                raise ValueError("uncompressed SEC must be 65 bytes")
             x = int.from_bytes(sec[1:33], "big")
             y = int.from_bytes(sec[33:65], "big")
+            if x >= P or y >= P:
+                raise ValueError("SEC coordinate out of field range")
             return cls(Point(x, y))
+        if sec[0] not in (2, 3):
+            raise ValueError(f"invalid SEC prefix byte {sec[0]:#04x}")
+        if len(sec) != 33:
+            raise ValueError("compressed SEC must be 33 bytes")
         x = int.from_bytes(sec[1:33], "big")
+        if x >= P:
+            raise ValueError("SEC x-coordinate out of field range")
         alpha = (pow(x, 3, P) + 7) % P
         beta = pow(alpha, (P + 1) // 4, P)        # the square root
         even_beta = beta if beta % 2 == 0 else P - beta

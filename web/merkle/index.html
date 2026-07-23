@@ -101,9 +101,10 @@
       <div class="ncard"><h3>log₂(n), not n</h3>
         <p>A block of a thousand transactions needs a proof of about ten hashes. The cost of proving
           inclusion grows with the <em>depth</em> of the tree, not its width.</p></div>
-      <div class="ncard"><h3>Proof of reserves</h3>
-        <p>The same primitive lets a custodian prove a specific holding is committed on-chain — a
-          tiny, verifiable receipt anyone can check against the public block, no trust required.</p></div>
+      <div class="ncard"><h3>Beyond blocks</h3>
+        <p>The same primitive shows up wherever one hash must vouch for many records — exchange
+          proof-of-reserves builds a Merkle tree of customer balances so each user can verify
+          their inclusion in the audited total.</p></div>
     </div>
   </div>
 </div>
@@ -124,7 +125,7 @@ window.POPS = {
   let leaves = [];          // internal-order Uint8Array txids
 
   const randTxid = () => { const b = new Uint8Array(32); crypto.getRandomValues(b); return b; };
-  const short = (b) => H.bytesToHex(b).slice(0, 8);
+  const short = (b) => H.bytesToHex(b.slice().reverse()).slice(0, 8);  // display order, matching disp()
   const disp = (b) => H.bytesToHex(b.slice().reverse());   // big-endian display
 
   function newTxs() { leaves = Array.from({ length: n }, randTxid); selected = 0; render(); }
@@ -204,7 +205,7 @@ window.POPS = {
     proof.forEach((step, k) => {
       rows.push(`<div><span class="pill ${step.left ? "L" : "R"}">${step.left ? "left" : "right"}</span>h${k} sibling &nbsp;${short(step.hash)}…</div>`);
     });
-    rows.push(`<div style="margin-top:7px;color:var(--muted)">${proof.length} hashes prove inclusion among ${(2 ** proof.length)} possible leaves.</div>`);
+    rows.push(`<div style="margin-top:7px;color:var(--muted)">${proof.length} hashes prove inclusion among the block's ${n} transactions.</div>`);
     $("proof").innerHTML = rows.join("");
   }
 

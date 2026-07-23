@@ -62,11 +62,11 @@
       </div>
       <div class="arrow-d">↑ &nbsp;bech32 of &nbsp;SHA-256( witnessScript )</div>
       <div class="stg">
-        <div class="stg-h"><span class="tag">witnessScript — the 2-of-3 rule</span><span class="meta" id="m-policy"></span></div>
+        <div class="stg-h"><span class="tag" id="ws-title">witnessScript — the 2-of-3 rule</span><span class="meta" id="m-policy"></span></div>
         <div class="bytes" id="wscript" style="font-size:11px"></div>
         <p class="hint" style="margin:8px 0 0">
-          <code>OP_2</code> &lt;key A&gt; &lt;key B&gt; &lt;key C&gt; <code>OP_3</code> <code>OP_CHECKMULTISIG</code>
-          — "any 2 of these 3 keys".</p>
+          <code id="ws-opm">OP_2</code> &lt;key A&gt; &lt;key B&gt; &lt;key C&gt; <code>OP_3</code> <code>OP_CHECKMULTISIG</code>
+          — "<span id="ws-rule">any 2 of these 3 keys</span>".</p>
       </div>
     </div>
 
@@ -103,7 +103,7 @@
           backup whose loss is fatal.</p></div>
       <div class="ncard"><h3>Steal a key, steal nothing</h3>
         <p>An attacker who compromises one cosigner gets one signature — not enough. The threshold
-          turns a catastrophic breach into a recoverable one (rotate the lost key).</p></div>
+          turns a catastrophic breach into a recoverable one (rotate the compromised key).</p></div>
       <div class="ncard"><h3>One address, many guards</h3>
         <p>The keys can sit in different places — an office, a vault, a lawyer — yet the world sends
           to a single <code>bc1q…</code> address. This is exactly how corporate Bitcoin custody is built.</p></div>
@@ -163,6 +163,9 @@ window.POPS = {
     $("addr").textContent = addr;
     $("wscript").textContent = H.bytesToHex(wscript).replace(/(.{2})/g, "$1 ").trim();
     $("m-policy").textContent = m + "-of-3 · " + wscript.length + " bytes";
+    $("ws-title").textContent = `witnessScript — the ${m}-of-3 rule`;
+    $("ws-opm").textContent = "OP_" + m;
+    $("ws-rule").textContent = m === 3 ? "all 3 of these keys" : `any ${m} of these 3 keys`;
 
     $("signers").innerHTML = keys.map((k, i) => {
       const pk = H.bytesToHex(H.sec(k.point, true));
@@ -181,7 +184,7 @@ window.POPS = {
     v.className = "verdict " + (ok ? "ok" : "no");
     v.querySelector(".big").textContent = ok ? "✓" : "✗";
     $("verdict-txt").textContent = ok
-      ? `Released — ${have} valid signature${have > 1 ? "s" : ""} meets the ${m}-of-3 rule.`
+      ? `Released — ${have} valid signature${have > 1 ? "s meet" : " meets"} the ${m}-of-3 rule.`
       : `Rejected — need ${m} signatures, have ${have}.`;
 
     // the witness stack the spender broadcasts — exactly m signatures (extra
