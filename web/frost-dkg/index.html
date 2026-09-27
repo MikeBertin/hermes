@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FROST DKG — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>FROST DKG · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="FROST DKG — a key with no dealer — Hermes">
-<meta property="og:description" content="Distributed key generation (PedPoP): each participant contributes a secret only they know, the group key is the sum, and no one ever holds the whole secret — yet any t of n can still sign.">
+<meta property="og:title" content="FROST DKG: a key with no dealer · Hermes">
+<meta property="og:description" content="Distributed key generation (PedPoP): each participant contributes a secret only they know, the group key is the sum, and no one ever holds the whole secret, yet any t of n can still sign.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#34d399;--accent-ink:#04231a}
@@ -65,16 +67,16 @@
 <div class="page">
   <div class="crumb"><a href="../">Hermes</a> / FROST DKG</div>
   <header class="hero">
-    <h1>FROST DKG — a shared key with no dealer</h1>
+    <h1>FROST DKG: a shared key with no dealer</h1>
     <p class="sub">
       Demo 15's threshold vault had a catch: a <b>trusted dealer</b> drew the whole group secret,
       split it, and handed out shares. For a moment, one party knew everything. <b>Distributed key
       generation</b> deletes that party. Each participant brings a secret <em>only they</em> choose and
       Shamir-shares it with the others; the group key is the <b>sum</b> of everyone's contribution, so
-      the group secret <span class="mono">Σ a<sub>i0</sub></span> is <b>never assembled anywhere</b> —
+      the group secret <span class="mono">Σ a<sub>i0</sub></span> is <b>never assembled anywhere</b>,
       yet the shares everyone ends up with are ordinary FROST shares that
       <span class="x" data-pop="d15">demo 15's signer</span> accepts unchanged. This is
-      <span class="x" data-pop="pedpop">PedPoP</span> — Pedersen DKG with proofs of possession.
+      <span class="x" data-pop="pedpop">PedPoP</span>, Pedersen DKG with proofs of possession.
     </p>
   </header>
 
@@ -85,8 +87,8 @@
         <div id="parties"></div>
         <p class="hint" style="margin:10px 0 0">Everyone samples their own random polynomial and
           publishes commitments to <em>every</em> coefficient, <span class="mono">φ<sub>i0</sub> = a<sub>i0</sub>·G,
-          φ<sub>i1</sub> = a<sub>i1</sub>·G, …</span> — the first being their contribution to the group
-          key, the full vector what Feldman checks against — plus a
+          φ<sub>i1</sub> = a<sub>i1</sub>·G, …</span> (the first is their contribution to the group
+          key, the full vector is what Feldman checks against), plus a
           <span class="x" data-pop="pop">proof of possession</span> that they
           actually know <span class="mono">a<sub>i0</sub></span>. <span class="mono">New ceremony</span>
           redraws every secret.</p>
@@ -106,7 +108,7 @@
       <div class="card2">
         <h2>3 · The shares fold into one key</h2>
         <div class="agg">
-          <div class="lab2">group public key &nbsp;— Σ φ<sub>i0</sub>, a secret no one ever held whole</div>
+          <div class="lab2">group public key &nbsp;= Σ φ<sub>i0</sub>, private counterpart never assembled</div>
           <div class="num" id="gpk">–</div>
         </div>
         <p class="hint" style="margin:10px 0 0">Each participant sums the shares they received into their
@@ -125,8 +127,8 @@
         </div>
         <div id="signBadge" class="badge2 idle">tick two participants, then sign</div>
         <p class="hint" style="margin:10px 0 0">The DKG shares drop straight into the demo-15 signer.
-          Tick any two, and out comes one Schnorr signature that verifies under the group key — proof the
-          dealer-free setup produced real, working threshold key material.</p>
+          Tick any two, and out comes one Schnorr signature that verifies under the group key. That is
+          proof the dealer-free setup produced real, working threshold key material.</p>
       </div>
     </div>
 
@@ -139,10 +141,10 @@
           share &nbsp;<b>s<sub>i</sub></b> = Σ<sub>j</sub> f<sub>j</sub>(i)<br>
           group key &nbsp;<b>Y</b> = Σ<sub>j</sub> <span class="a">φ<sub>j0</sub></span> =
           (Σ<sub>j</sub> a<sub>j0</sub>)·G<br>
-          group secret &nbsp;Σ a<sub>j0</sub> &nbsp;<span style="color:var(--bad)">— never computed</span>
+          group secret &nbsp;Σ a<sub>j0</sub> &nbsp;<span style="color:var(--bad)">never computed</span>
         </div>
         <p class="hint">The <b>s<sub>i</sub></b> are Shamir shares of a polynomial whose constant term is
-          the group secret. Any 2 interpolate to it — but that's the one step the ceremony is designed so
+          the group secret. Any 2 interpolate to it, but that's the one step the ceremony is designed so
           nobody ever performs.</p>
       </div>
 
@@ -151,7 +153,7 @@
         <div class="weigh">
           <div class="side"><h4>Trusted dealer</h4>
             <div class="big">one knows all</div>
-            <div class="sub2">the dealer draws and splits the whole secret — a single point of failure who must be trusted to forget it.</div></div>
+            <div class="sub2">the dealer draws and splits the whole secret, a single point of failure who must be trusted to forget it.</div></div>
           <div class="side win"><h4>DKG</h4>
             <div class="big">no one knows all</div>
             <div class="sub2">the secret only ever exists as the sum of independent contributions, distributed from the very first moment.</div></div>
@@ -162,7 +164,7 @@
         <h2>Why the proof of possession?</h2>
         <p class="hint" style="margin-top:0">Without it, a participant could wait to see the others'
           <span class="mono">φ<sub>j0</sub></span> and choose their own contribution to <em>cancel</em>
-          them — steering the group key to one they secretly control (a rogue-key attack). Forcing each
+          them, steering the group key to one they secretly control (a rogue-key attack). Forcing each
           participant to prove they know their <span class="mono">a<sub>i0</sub></span> makes that
           impossible: you can't prove knowledge of a key built to subtract someone else's.</p>
       </div>
@@ -174,23 +176,23 @@
     <div class="notice-grid">
       <div class="ncard"><h3>The dealer is the weak link</h3>
         <p>Trusted-dealer keygen is fine until you ask "who watched the dealer?" DKG answers by never
-          creating a party with anything worth stealing — the secret is born distributed.</p></div>
+          creating a party with anything worth stealing. The secret is born distributed.</p></div>
       <div class="ncard"><h3>Bad shares are named</h3>
         <p>Corrupt a sub-share and its recipient's Feldman check fails against the sender's public
-          commitment — pinning the fault on its author, so the ceremony aborts and restarts without
+          commitment, pinning the fault on its author, so the ceremony aborts and restarts without
           the cheat, not with a broken key.</p></div>
       <div class="ncard"><h3>Same signer, either way</h3>
         <p>DKG changes only <em>setup</em>. The resulting shares sign with the exact demo-15 / RFC 9591
-          ceremony, and the verifier sees one ordinary Schnorr signature — no trace of how the key was
-          born.</p></div>
+          ceremony, and the verifier sees one ordinary Schnorr signature, with no trace of how the key
+          was born.</p></div>
     </div>
   </div>
 </div>
 
 <script>
 window.POPS = {
-  d15: "<h4>Demo 15 — FROST</h4><p>The threshold-signing half: any t of n shares fold into one Schnorr signature via Lagrange interpolation, the secret never reassembled. DKG here replaces its trusted-dealer setup; the signing is identical.</p>",
-  pedpop: "<h4>PedPoP</h4><p>Pedersen DKG with Proofs of Possession — the FROST paper's key-generation protocol. Each participant runs a verifiable Shamir sharing (Feldman) and proves knowledge of their contribution, defeating rogue-key attacks.</p>",
+  d15: "<h4>Demo 15 · FROST</h4><p>The threshold-signing half: any t of n shares fold into one Schnorr signature via Lagrange interpolation, the secret never reassembled. DKG here replaces its trusted-dealer setup; the signing is identical.</p>",
+  pedpop: "<h4>PedPoP</h4><p>Pedersen DKG with Proofs of Possession, the FROST paper's key-generation protocol. Each participant runs a verifiable Shamir sharing (Feldman) and proves knowledge of their contribution, defeating rogue-key attacks.</p>",
   pop: "<h4>Proof of possession</h4><p>A small Schnorr signature proving you know the secret a₀ behind your published commitment a₀·G. It stops a participant from adopting a contribution they can't open in order to bias the group key.</p>",
   feldman: "<h4>Feldman verification</h4><p>A recipient checks a secret sub-share f(j) against the sender's public coefficient commitments: f(j)·G must equal Σ jᵏ·φₖ. So a sender can't hand out a share that disagrees with what they committed to publicly.</p>",
 };
@@ -243,7 +245,7 @@ window.POPS = {
     parties[i].present = !parties[i].present;
     $("signBadge").className = "badge2 idle";
     $("signBadge").textContent = present().length < THRESHOLD
-      ? "below threshold — tick two participants" : "tick two participants, then sign";
+      ? "below threshold: tick two participants" : "tick two participants, then sign";
     render();
   }
 
@@ -253,12 +255,12 @@ window.POPS = {
     const signers = present();
     if (signers.length < THRESHOLD) {
       $("signBadge").className = "badge2 no";
-      $("signBadge").textContent = `✗ below threshold — ${signers.length} of ${THRESHOLD} needed; tick another participant`;
+      $("signBadge").textContent = `✗ below threshold: ${signers.length} of ${THRESHOLD} needed; tick another participant`;
       return;
     }
     if (corrupt) {                                          // a corrupted setup must not be used
       $("signBadge").className = "badge2 no";
-      $("signBadge").textContent = "✗ setup is corrupted — abort and restart the ceremony without Alice's bad share";
+      $("signBadge").textContent = "✗ setup is corrupted: abort and restart the ceremony without Alice's bad share";
       return;
     }
     const msg = H.utf8($("msg").value);
@@ -276,7 +278,7 @@ window.POPS = {
     const ok = H.frostVerify(msg, sig, groupPubkey);
     $("signBadge").className = "badge2 " + (ok ? "ok" : "no");
     $("signBadge").textContent = ok
-      ? `✓ valid Schnorr signature — ${signers.map((s) => s.name).join(" + ")} signed under the DKG key`
+      ? `✓ valid Schnorr signature: ${signers.map((s) => s.name).join(" + ")} signed under the DKG key`
       : "✗ verification failed";
   }
 
@@ -309,11 +311,11 @@ window.POPS = {
     $("gpk").textContent = hex(H.sec(groupPubkey, true));
     $("corrupt").textContent = corrupt ? "↺ Undo corruption" : "⚠ Corrupt Alice's share to Bob";
     $("corruptNote").innerHTML = corrupt
-      ? `<div class="badge2 no" style="display:flex">✗ Bob's Feldman check fails — the bad share is pinned on <b>Alice</b>, its author</div>`
+      ? `<div class="badge2 no" style="display:flex">✗ Bob's Feldman check fails: the bad share is pinned on <b>Alice</b>, its author</div>`
       : "";
   }
 
-  $("corrupt").addEventListener("click", () => { corrupt = !corrupt; finalizeAll(); $("signBadge").className = "badge2 idle"; $("signBadge").textContent = corrupt ? "setup corrupted — fix it to sign" : "tick two participants, then sign"; render(); });
+  $("corrupt").addEventListener("click", () => { corrupt = !corrupt; finalizeAll(); $("signBadge").className = "badge2 idle"; $("signBadge").textContent = corrupt ? "setup corrupted: fix it to sign" : "tick two participants, then sign"; render(); });
   $("sign").addEventListener("click", sign);
   $("reset").addEventListener("click", reset);
   $("msg").addEventListener("input", () => { $("signBadge").className = "badge2 idle"; $("signBadge").textContent = "tick two participants, then sign"; });

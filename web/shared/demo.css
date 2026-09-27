@@ -1,4 +1,4 @@
-/* Hermes — shared house style for individual demo pages.
+/* Hermes: shared house style for individual demo pages.
    Each demo sets its own --accent on :root and links this file. Mirrors the
    chiron/empedocles/plutus look: dark, mono-accented, two-column. */
 :root{
@@ -89,3 +89,6 @@ kbd{font-family:var(--mono);background:#1c1c28;border:1px solid var(--line);bord
 #pop.show{visibility:visible;opacity:1;transform:none}
 #pop h4{margin:0 0 7px;font-size:13.5px;color:var(--accent)}
 #pop p{margin:0}
+
+/* reduced motion: drop tweens and transitions; the demos only animate on a press */
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}

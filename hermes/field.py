@@ -7,7 +7,7 @@ exponentiate itself modulo ``p``. Division is multiplication by the modular
 inverse, which Python gives us via ``pow(x, -1, p)`` (Fermat's little theorem
 under the hood for prime ``p``).
 
-Nothing here is Bitcoin-specific — it is the bedrock that :mod:`hermes.curve`
+Nothing here is Bitcoin-specific; it is the bedrock that :mod:`hermes.curve`
 builds the secp256k1 group on top of.
 """
 

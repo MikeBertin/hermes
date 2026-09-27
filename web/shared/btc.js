@@ -1,8 +1,8 @@
-// Hermes — Bitcoin from scratch, in the browser.
+// Hermes: Bitcoin from scratch, in the browser.
 //
 // A self-contained JS/BigInt re-implementation of the canonical Python core in
 // hermes/. No dependencies. It MUST agree with the Python on every known-answer
-// vector (see shared/test.html and tests/test_core.py) — when in doubt, Python
+// vector (see shared/test.html and tests/test_core.py). When in doubt, Python
 // wins. Exposes a single global `Hermes`.
 (function () {
   "use strict";
@@ -576,7 +576,7 @@
   // --- MuSig2 key aggregation (BIP-327) ---------------------------------------
   // Schnorr's linearity, weaponized: n cosigners aggregate their pubkeys into
   // ONE x-only key (each blinded by a coefficient so nobody can rogue-key the
-  // sum), swap nonce PAIRS (round 1), swap partial sigs (round 2) — and the sum
+  // sum), swap nonce PAIRS (round 1), swap partial sigs (round 2), and the sum
   // is a plain 64-byte BIP-340 signature. Mirrors hermes/musig.py.
   const musigCbytes = (pt) => sec(pt, true);
   const musigCbytesExt = (pt) => (pt === null ? new Uint8Array(33) : sec(pt, true));
@@ -630,7 +630,7 @@
     return ctx;
   }
   // round 1: each signer's nonce PAIR (two nonces kill the Wagner/rogue-nonce
-  // attack — the binding coefficient b isn't known until every nonce is fixed)
+  // attack, since the binding coefficient b isn't known until every nonce is fixed)
   function musigNonceHash(rand, pk, aggpk, i, msgPrefixed, extraIn) {
     const buf = concatBytes(
       rand, Uint8Array.of(pk.length), pk, Uint8Array.of(aggpk.length), aggpk,
@@ -684,7 +684,7 @@
     return { Q, gacc, tacc, b, R, e };
   }
   // round 2: this signer's share s_i = k1 + b·k2 + e·a_i·d_i. Zeroizes the
-  // secnonce first — reuse must be impossible, not just discouraged.
+  // secnonce first: reuse must be impossible, not just discouraged.
   function musigPartialSign(secnonce, secret, session) {
     const { Q, gacc, b, R, e } = musigSessionValues(session);
     const k1_ = bytesToBigInt(secnonce.slice(0, 32));
@@ -702,7 +702,7 @@
     const d = mod(g * gacc * secret, N);
     return bigIntToBytes(mod(k1 + b * k2 + e * a * d, N), 32);
   }
-  // check signer i's share BEFORE aggregating — accountability
+  // check signer i's share BEFORE aggregating, for accountability
   function musigPartialSigVerify(psig, pubnonces, pubkeys, tweaks, isXonly, msg, i) {
     const session = { aggnonce: musigNonceAgg(pubnonces), pubkeys, tweaks, isXonly, msg };
     const { Q, gacc, b, R, e } = musigSessionValues(session);
@@ -755,7 +755,7 @@
     const h2 = lnHashInt(sec(perCommitmentPoint), sec(revocationBasepoint));
     return ptAdd(ptMul(h1, revocationBasepoint), ptMul(h2, perCommitmentPoint));
   }
-  // the matching private key — assemblable only once BOTH secrets are known
+  // the matching private key, assemblable only once BOTH secrets are known
   function lnDeriveRevocationPrivkey(revocationBasepointSecret, perCommitmentSecret) {
     const revBase = pubFromSecret(revocationBasepointSecret);
     const ppc = pubFromSecret(perCommitmentSecret);

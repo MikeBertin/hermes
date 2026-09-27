@@ -1,4 +1,4 @@
-"""Real Bitcoin transactions — the byte-exact wire format that nodes accept.
+"""Real Bitcoin transactions: the byte-exact wire format that nodes accept.
 
 This is the bridge from "correct in theory" to "broadcastable". A transaction is
 a version, a list of inputs (each pointing at a previous output it spends and
@@ -77,9 +77,9 @@ def _op_n(k: int) -> int:
 
 def multisig_script(m: int, pubkeys: list[bytes]) -> Script:
     """An ``m``-of-``n`` bare multisig script: ``OP_m <pub1>..<pubn> OP_n
-    OP_CHECKMULTISIG``. This is the *witnessScript* a P2WSH locks to — the policy
+    OP_CHECKMULTISIG``. This is the *witnessScript* a P2WSH locks to: the policy
     that says "any m of these n keys must sign". Treasuries use it (e.g. 2-of-3)
-    so no single lost or stolen key can move — or freeze — the funds."""
+    so no single lost or stolen key can move (or freeze) the funds."""
     n = len(pubkeys)
     if not 1 <= m <= n <= 16:
         raise ValueError("need 1 <= m <= n <= 16")
@@ -93,7 +93,7 @@ def p2wsh_script(sha256_of_witness_script: bytes) -> Script:
 
 def p2wsh_address(witness_script: Script, testnet: bool = False) -> str:
     """The bech32 ``bc1.../tb1...`` address that commits to a witnessScript.
-    Note the hash is a single SHA-256 (32 bytes), not HASH160 — P2WSH wants the
+    Note the hash is a single SHA-256 (32 bytes), not HASH160; P2WSH wants the
     extra collision resistance because a script can encode anyone's policy."""
     from .bech32 import encode_segwit
     program = sha256(witness_script.raw_serialize())
@@ -173,7 +173,7 @@ class Tx:
 
     def _serialize_legacy(self) -> bytes:
         """The pre-SegWit byte layout (no marker/flag/witness). This is what the
-        txid hashes — so a tx's identity doesn't depend on its signatures."""
+        txid hashes, so a tx's identity doesn't depend on its signatures."""
         out = self.version.to_bytes(4, "little")
         out += encode_varint(len(self.inputs))
         for tin in self.inputs:
@@ -185,7 +185,7 @@ class Tx:
         return out
 
     def serialize(self) -> bytes:
-        """Full wire serialization — SegWit format (with the witness) when any
+        """Full wire serialization: SegWit format (with the witness) when any
         input carries one, otherwise the legacy layout."""
         if not self._has_witness():
             return self._serialize_legacy()
@@ -290,7 +290,7 @@ class Tx:
         must appear in the same order as their pubkeys inside the script, since
         OP_CHECKMULTISIG walks both lists in lockstep; this signs in the order
         ``secrets`` is given, so pass them ordered by pubkey position. The witness
-        stack starts with an empty item — OP_CHECKMULTISIG's famous off-by-one
+        stack starts with an empty item because OP_CHECKMULTISIG's famous off-by-one
         pops one element too many, so a dummy must sit at the bottom."""
         z = self.sig_hash_bip143(index, witness_script, amount)
         sigs = [der(sign(s, z, low_s=True)) + SIGHASH_ALL.to_bytes(1, "big") for s in secrets]
@@ -299,7 +299,7 @@ class Tx:
 
     def verify_input_p2wsh_multisig(self, index: int, amount: int) -> bool:
         """Check that the witness carries exactly m valid signatures, in pubkey
-        order, for the m-of-n policy in its trailing witnessScript — the same
+        order, for the m-of-n policy in its trailing witnessScript, with the same
         semantics as OP_CHECKMULTISIG, where every provided signature must
         consume a key (a single bad or out-of-order signature fails the spend)."""
         witness = self.inputs[index].witness
@@ -340,7 +340,7 @@ _P2SH_VERSIONS = {0x05, 0xC4}                # mainnet '3...' / testnet '2...'
 
 def address_to_h160(address: str, testnet: bool | None = None) -> bytes:
     """Decode a base58 P2PKH address to its 20-byte key hash, rejecting anything
-    that merely *looks* like one — a P2SH address decodes fine but locks to a
+    that merely *looks* like one. A P2SH address decodes fine but locks to a
     script hash, and paying it with a P2PKH script would strand the coins."""
     from .base58 import b58check_decode
     payload = b58check_decode(address)
@@ -362,7 +362,7 @@ def p2pkh_from_address(address: str, testnet: bool | None = None) -> Script:
 
 
 def address_to_script(address: str, testnet: bool | None = None) -> Script:
-    """The locking script for paying any supported address — base58 P2PKH
+    """The locking script for paying any supported address: base58 P2PKH
     (``1.../m.../n...``) or native-SegWit P2WPKH (``bc1.../tb1...``). Pass
     ``testnet`` to also reject addresses for the wrong network."""
     from .bech32 import decode_segwit

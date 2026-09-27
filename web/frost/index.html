@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FROST — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>FROST · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="FROST — threshold Schnorr — Hermes">
-<meta property="og:description" content="Any t of n key-holders sign — one Schnorr signature, the secret never assembled. FROST threshold signatures (RFC 9591), from scratch.">
+<meta property="og:title" content="FROST: threshold Schnorr · Hermes">
+<meta property="og:description" content="Any t of n key-holders sign: one Schnorr signature, the secret never assembled. FROST threshold signatures (RFC 9591), from scratch.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#c4b5fd;--accent-ink:#1a1338}
@@ -57,16 +59,16 @@
 <div class="page">
   <div class="crumb"><a href="../">Hermes</a> / FROST</div>
   <header class="hero">
-    <h1>FROST — any <em>t</em> of <em>n</em> can sign</h1>
+    <h1>FROST: any <em>t</em> of <em>n</em> can sign</h1>
     <p class="sub">
       MuSig2 (demo 12) was <b>n-of-n</b>: every cosigner had to sign. <b>FROST</b>
-      (<span class="x" data-pop="rfc">RFC 9591</span>) is <b>t-of-n</b> — any threshold, say <b>2 of
+      (<span class="x" data-pop="rfc">RFC 9591</span>) is <b>t-of-n</b>: any threshold, say <b>2 of
       3</b>, can produce one signature, and any <b>1</b> alone cannot. The group secret is
       <span class="x" data-pop="shamir">Shamir-shared</span> once and <em>never reassembled</em>;
       signing folds the shares into the signature through
       <span class="x" data-pop="lagrange">Lagrange interpolation</span>. Lose a key and the treasury
       is safe; a thief with one share has nothing. It's the cryptographic shape of a real corporate
-      vault — as one ordinary Schnorr signature.
+      vault, delivered as one ordinary Schnorr signature.
     </p>
   </header>
 
@@ -76,7 +78,7 @@
         <h2>1 · The dealer splits one key into three shares</h2>
         <div id="officers"></div>
         <div class="agg">
-          <div class="lab2">group public key &nbsp;— the vault, from a secret no one holds whole</div>
+          <div class="lab2">group public key &nbsp;· the vault, from a secret no one holds whole</div>
           <div class="num" id="gpk">–</div>
         </div>
         <p class="hint" style="margin:10px 0 0">A trusted dealer draws one random group secret,
@@ -98,7 +100,7 @@
         <p class="hint" style="margin:10px 0 0">Two rounds (like MuSig2): each present officer commits
           a nonce pair, then returns a signature share <span class="mono">z<sub>i</sub></span> weighted
           by their Lagrange coefficient <span class="mono">λ<sub>i</sub></span>. The coordinator adds
-          the shares — out comes a single signature the whole group could have made.</p>
+          the shares, and out comes a single signature the whole group could have made.</p>
       </div>
     </div>
 
@@ -106,13 +108,13 @@
       <div class="panel">
         <h2>The signature</h2>
         <div class="stg final">
-          <div class="lab2">aggregate (R ‖ z) — 65 bytes, verifies under the group key</div>
+          <div class="lab2">aggregate (R ‖ z) · 65 bytes, verifies under the group key</div>
           <div class="num" id="sig">run the ceremony…</div>
         </div>
         <div class="formula" id="formula" style="display:none">
           z = Σ <b>z<sub>i</sub></b> &nbsp;·&nbsp; z<sub>i</sub> = k<sub>i</sub> +
           <span class="a">λ<sub>i</sub></span>·s<sub>i</sub>·c<br>
-          the <span class="a">λ<sub>i</sub></span> weights recombine the shares — the secret is never
+          the <span class="a">λ<sub>i</sub></span> weights recombine the shares; the secret is never
           formed
         </div>
       </div>
@@ -122,20 +124,20 @@
         <div class="weigh">
           <div class="side"><h4>MuSig2</h4>
             <div class="big">n-of-n</div>
-            <div class="sub2">every key must sign — a 2-of-2, or a full board. Miss one and there's no signature.</div></div>
+            <div class="sub2">every key must sign: a 2-of-2 or a full board. Miss one and there's no signature.</div></div>
           <div class="side win"><h4>FROST</h4>
             <div class="big">t-of-n</div>
-            <div class="sub2">any threshold signs — 2 of 3, 3 of 5. Keys can be lost or absent and the vault still works.</div></div>
+            <div class="sub2">any threshold signs: 2 of 3, 3 of 5. Keys can be lost or absent and the vault still works.</div></div>
         </div>
         <p class="hint" style="margin-top:10px">Both produce <em>one</em> Schnorr signature. FROST adds
-          fault-tolerance — the difference between "everyone, always" and "enough of us."</p>
+          fault-tolerance: the difference between "everyone, always" and "enough of us."</p>
       </div>
 
       <div class="panel">
         <h2>Why the secret never exists</h2>
         <p class="hint" style="margin-top:0">Shamir places the secret at <span class="mono">f(0)</span>
           of a hidden polynomial; each officer holds one point <span class="mono">f(i)</span>. Any two
-          points fix the line and thus <span class="mono">f(0)</span> — but no single point reveals
+          points fix the line and thus <span class="mono">f(0)</span>, but no single point reveals
           anything. FROST does this recombination <em>inside</em> the signature math, so
           <span class="mono">f(0)</span> is never actually computed anywhere.</p>
       </div>
@@ -150,7 +152,7 @@
           valid Lagrange set. Two is enough; the third is redundant. That's the "flexible" in FROST.</p></div>
       <div class="ncard"><h3>Same signature, either pair</h3>
         <p>Officers {1,2}, {1,3} or {2,3} all sign for the <em>same</em> group key and produce a
-          valid signature under it. The verifier can't tell which two showed up — or that it was a
+          valid signature under it. The verifier can't tell which two showed up, or even that it was a
           threshold scheme at all.</p></div>
       <div class="ncard"><h3>Accountable shares</h3>
         <p>Each share <span class="mono">z<sub>i</sub></span> verifies on its own before aggregation
@@ -162,9 +164,9 @@
 
 <script>
 window.POPS = {
-  rfc: "<h4>RFC 9591</h4><p>The IETF FROST standard (2024). This demo implements the FROST(secp256k1, SHA-256) ciphersuite exactly — including its hash_to_field / expand_message_xmd construction — and reproduces the RFC's official test vector byte-for-byte.</p>",
+  rfc: "<h4>RFC 9591</h4><p>The IETF FROST standard (2024). This demo implements the FROST(secp256k1, SHA-256) ciphersuite exactly (including its hash_to_field / expand_message_xmd construction) and reproduces the RFC's official test vector byte-for-byte.</p>",
   shamir: "<h4>Shamir Secret Sharing</h4><p>Hide a secret as f(0) of a random degree t-1 polynomial; give each participant a point f(i). Any t points interpolate back to f(0); fewer reveal nothing. FROST uses t=2 here (a line), so any 2 of 3 suffice.</p>",
-  lagrange: "<h4>Lagrange interpolation</h4><p>The coefficient λ_i weights each signer's share so that Σ λ_i·f(i) = f(0) — recovering the group secret's effect on the signature without ever computing the secret itself. λ_i depends only on which signers show up.</p>",
+  lagrange: "<h4>Lagrange interpolation</h4><p>The coefficient λ_i weights each signer's share so that Σ λ_i·f(i) = f(0), recovering the group secret's effect on the signature without ever computing the secret itself. λ_i depends only on which signers show up.</p>",
 };
 </script>
 <script src="../shared/demo.js"></script>
@@ -228,7 +230,7 @@ window.POPS = {
     render();
     $("mainBadge").className = "badge2 " + (ok ? "ok" : "no");
     $("mainBadge").textContent = ok
-      ? `✓ valid Schnorr signature — ${signers.map((s) => s.name).join(" + ")} signed for the whole group`
+      ? `✓ valid Schnorr signature: ${signers.map((s) => s.name).join(" + ")} signed for the whole group`
       : "✗ verification failed";
   }
 
@@ -248,10 +250,10 @@ window.POPS = {
 
     const n = present().length;
     const el = $("thr");
-    if (n < THRESHOLD) { el.innerHTML = `<span class="bad">below threshold</span> — ${n} of ${THRESHOLD} needed; tick another officer`; $("run").disabled = true; }
-    else { el.innerHTML = `<span class="ok">threshold met</span> — ${n} of ${TOTAL} signing (any ${THRESHOLD} suffice)`; $("run").disabled = false; }
+    if (n < THRESHOLD) { el.innerHTML = `<span class="bad">below threshold</span>: ${n} of ${THRESHOLD} needed; tick another officer`; $("run").disabled = true; }
+    else { el.innerHTML = `<span class="ok">threshold met</span>: ${n} of ${TOTAL} signing (any ${THRESHOLD} suffice)`; $("run").disabled = false; }
 
-    if ($("mainBadge").className.includes("idle")) $("mainBadge").textContent = n < THRESHOLD ? "below threshold — pick any two" : "ready — run the ceremony";
+    if ($("mainBadge").className.includes("idle")) $("mainBadge").textContent = n < THRESHOLD ? "below threshold: pick any two" : "ready: run the ceremony";
   }
 
   $("run").addEventListener("click", run);

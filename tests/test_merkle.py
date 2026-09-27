@@ -1,7 +1,7 @@
 """Merkle tree + inclusion-proof vectors.
 
 Anchored to a real block: Bitcoin block 100000 has four transactions, and our
-merkle root for them must equal the root in its header — the same root its
+merkle root for them must equal the root in its header, the same root its
 proof-of-work commits to.
 """
 

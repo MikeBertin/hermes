@@ -1,15 +1,15 @@
-"""Lightning payment channels — the revocation/penalty mechanism (BOLT-3).
+"""Lightning payment channels: the revocation/penalty mechanism (BOLT-3).
 
 A Lightning channel lets two parties pay each other thousands of times while
 touching the blockchain only twice: once to *open* (a 2-of-2 funding output) and
 once to *close*. In between, the current balance is a **commitment transaction**
-each side holds but doesn't broadcast — spend the funding output, pay each party
+each side holds but doesn't broadcast. It spends the funding output and pays each party
 its share. To move money, they simply sign a *new* commitment and throw the old
 one away.
 
 But "throw away" isn't enforceable on its own: nothing physically stops a cheater
-from broadcasting a stale commitment where they were richer. The fix — the single
-idea that makes off-chain state trustless — is the **revocation key**. Each
+from broadcasting a stale commitment where they were richer. The fix (the single
+idea that makes off-chain state trustless) is the **revocation key**. Each
 commitment's ``to_local`` output can be spent two ways:
 
   * by its owner, but only after a ``to_self_delay`` (OP_CHECKSEQUENCEVERIFY); or
@@ -17,7 +17,7 @@ commitment's ``to_local`` output can be spent two ways:
 
 That revocation key is a blinded 2-of-2 secret (BOLT-3 §"revocationpubkey"): it
 can only be assembled once the owner *reveals* the per-commitment secret for a
-state — which is exactly what "revoking" an old state means. So publishing a
+state, which is exactly what "revoking" an old state means. So publishing a
 revoked commitment hands the counterparty the key to take *everything* before the
 delay elapses. Cheating is not merely detected; it is punished.
 
@@ -66,7 +66,7 @@ def derive_pubkey(basepoint: Point, per_commitment_point: Point) -> Point:
 
 
 def derive_privkey(basepoint_secret: int, per_commitment_point: Point) -> int:
-    """The private key matching :func:`derive_pubkey` — computable only by the
+    """The private key matching :func:`derive_pubkey`, computable only by the
     owner of ``basepoint_secret``: ``basepoint_secret + SHA256(ppc || basepoint)``."""
     basepoint = basepoint_secret * G
     h = _sha256_int(_sec(per_commitment_point) + _sec(basepoint))
@@ -82,7 +82,7 @@ def derive_revocation_pubkey(revocation_basepoint: Point,
 
     It mixes one point from each party. Neither the node supplying the basepoint
     nor the node supplying the per-commitment point can know the matching private
-    key alone — that needs *both* underlying secrets."""
+    key alone; that needs *both* underlying secrets."""
     h1 = _sha256_int(_sec(revocation_basepoint) + _sec(per_commitment_point))
     h2 = _sha256_int(_sec(per_commitment_point) + _sec(revocation_basepoint))
     return h1 * revocation_basepoint + h2 * per_commitment_point
@@ -91,7 +91,7 @@ def derive_revocation_pubkey(revocation_basepoint: Point,
 def derive_revocation_privkey(revocation_basepoint_secret: int,
                               per_commitment_secret: int) -> int:
     """Assemble the revocation *private* key. This is the crux: it exists only
-    once *both* secrets are in one hand — which happens the moment the owner
+    once *both* secrets are in one hand, which happens the moment the owner
     reveals ``per_commitment_secret`` to revoke that state."""
     revocation_basepoint = revocation_basepoint_secret * G
     per_commitment_point = per_commitment_secret * G
@@ -106,7 +106,7 @@ def per_commitment_secret(seed: bytes, index: int) -> bytes:
 
     Secrets are handed out from the top index (2**48 - 1) downward. The bit-flip
     cascade means that revealing the secret for index *i* lets the receiver
-    recompute every secret for the higher indices already revoked — so they store
+    recompute every secret for the higher indices already revoked, so they store
     O(1) state, not one secret per update. (The compact O(48)-entry *storage*
     tree is an optimization we don't need here; generation is the whole idea.)"""
     p = bytearray(seed)
@@ -133,7 +133,7 @@ def funding_address(pubkey_a: bytes, pubkey_b: bytes, testnet: bool = False) -> 
 # --- the to_local output script ----------------------------------------------
 def to_local_script(revocation_pubkey: bytes, to_self_delay: int,
                     local_delayed_pubkey: bytes) -> Script:
-    """The BOLT-3 ``to_local`` witnessScript — the heart of the penalty scheme:
+    """The BOLT-3 ``to_local`` witnessScript, the heart of the penalty scheme:
 
         OP_IF   <revocation_pubkey>
         OP_ELSE <to_self_delay> OP_CHECKSEQUENCEVERIFY OP_DROP <local_delayed_pubkey>
@@ -169,7 +169,7 @@ def commitment_tx(funding_txid: bytes, funding_index: int, *,
 
     Two outputs: ``to_local`` (this party's balance, behind the delay/revocation
     :func:`to_local_script`) and ``to_remote`` (the counterparty's balance, a
-    plain P2WPKH they can sweep immediately — they aren't the one who might cheat
+    plain P2WPKH they can sweep immediately; they aren't the one who might cheat
     with *this* transaction). Still needs the 2-of-2 funding signature from both
     peers before it is valid; see :func:`sign_funding`."""
     ts = to_local_script(revocation_pubkey, to_self_delay, local_delayed_pubkey)
@@ -204,7 +204,7 @@ def _to_local_z(tx: Tx, index: int, commitment: Commitment) -> int:
 
 def penalty_tx(commitment: Commitment, sweep_script: Script, fee: int = 0) -> Tx:
     """Build the counterparty's *justice* transaction: sweep a broadcast, revoked
-    commitment's ``to_local`` output to an address they control. nSequence is 0 —
+    commitment's ``to_local`` output to an address they control. nSequence is 0:
     the revocation path has no relative timelock, so it can land immediately (and
     must, before the cheater's own delayed path matures)."""
     if commitment.to_local_index is None:
@@ -241,12 +241,12 @@ def sign_to_local_delayed(tx: Tx, index: int, commitment: Commitment,
 # A Hash-Time-Locked Contract pays out to whoever reveals a preimage R with
 # hash(R) == payment_hash, or refunds the sender after a timeout. Chain them
 # across channels (Alice→Bob→Carol) with *decreasing* timeouts and one preimage
-# settles the whole path trustlessly — the core of Lightning routing.
+# settles the whole path trustlessly. This is the core of Lightning routing.
 
 def payment_hash(preimage: bytes) -> bytes:
     """A payment is identified by ``SHA256(preimage)``. The receiver picks a
     random preimage, shares only its hash (the invoice), and reveals the preimage
-    to claim — which simultaneously lets each hop claim from the one before it."""
+    to claim, which simultaneously lets each hop claim from the one before it."""
     return sha256(preimage)
 
 
@@ -282,7 +282,7 @@ def htlc_received_script(revocation_pubkey: bytes, remote_htlcpubkey: bytes,
 
     Symmetric to the offered one, but the branches swap roles: the owner claims
     with the **preimage** (via a 2-of-2 HTLC-success tx), or the counterparty
-    refunds after an absolute ``cltv_expiry`` (OP_CHECKLOCKTIMEVERIFY) — or sweeps
+    refunds after an absolute ``cltv_expiry`` (OP_CHECKLOCKTIMEVERIFY), or sweeps
     instantly with the revocation key. The decreasing ``cltv_expiry`` per hop is
     what makes multi-hop routing safe for the middle nodes."""
     return Script([
@@ -305,8 +305,8 @@ def htlc_received_script(revocation_pubkey: bytes, remote_htlcpubkey: bytes,
 # --- second-stage HTLC transactions (BOLT-3 "HTLC-Timeout and HTLC-Success") --
 # When a channel force-closes on-chain with an HTLC still in flight, the HTLC
 # output on the commitment tx cannot be swept with a bare signature. It is spent
-# by a pre-signed **second-stage** transaction — HTLC-timeout for an *offered*
-# HTLC, HTLC-success for a *received* one — and, crucially, that transaction pays
+# by a pre-signed **second-stage** transaction (HTLC-timeout for an *offered*
+# HTLC, HTLC-success for a *received* one) and, crucially, that transaction pays
 # into a ``to_local`` output (:func:`to_local_script`). So the same delay +
 # revocation penalty as the main balance applies *recursively*: the owner waits
 # ``to_self_delay``, and a revoked commitment lets the counterparty sweep even the
@@ -340,7 +340,7 @@ def htlc_success_tx(commitment_txid: bytes, htlc_index: int, *,
     """Build the HTLC-success transaction spending a *received* HTLC output.
 
     Identical to :func:`htlc_timeout_tx` but ``nLockTime = 0`` (redeeming with the
-    preimage needs no timeout) — the preimage rides in the witness instead. Its
+    preimage needs no timeout); the preimage rides in the witness instead. Its
     output is likewise a delayed/revocable :func:`to_local_script`."""
     out = to_local_script(revocation_pubkey, to_self_delay, local_delayed_pubkey)
     amount = htlc_amount - fee
@@ -382,8 +382,8 @@ def sign_htlc_success(second_stage: Commitment, received_script: Script,
 
     The witness is ``0 <remotehtlcsig> <localhtlcsig> <payment_preimage>``: the
     32-byte preimage makes ``OP_SIZE 32 OP_EQUAL`` true, so the script takes the
-    OP_IF branch — checking ``HASH160(preimage) == payment_hash`` and then the
-    2-of-2 — instead of the counterparty's CLTV refund path."""
+    OP_IF branch (checking ``HASH160(preimage) == payment_hash`` and then the
+    2-of-2) instead of the counterparty's CLTV refund path."""
     remote, local = _htlc_2of2_sigs(second_stage.tx, received_script, htlc_amount,
                                     remote_htlc_privkey, local_htlc_privkey)
     second_stage.tx.inputs[0].witness = [b"", remote, local, preimage, received_script.raw_serialize()]
@@ -391,7 +391,7 @@ def sign_htlc_success(second_stage: Commitment, received_script: Script,
 
 def htlc_script(payment_hash: bytes, receiver_pubkey: bytes,
                 sender_pubkey: bytes, cltv_expiry: int) -> Script:
-    """A *canonical* HTLC — the logical contract a hop enforces, stripped of the
+    """A *canonical* HTLC: the logical contract a hop enforces, stripped of the
     channel's revocation/second-stage machinery (which BOLT-3's fuller scripts add
     for unilateral closes). This is the classic hashlock-or-timeout also used by
     cross-chain atomic swaps, and the form the routing demo walks through:

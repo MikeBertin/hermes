@@ -1,7 +1,7 @@
-"""Hermes — Bitcoin from first principles.
+"""Hermes: Bitcoin from first principles.
 
 A from-scratch Bitcoin implementation: the secp256k1 curve, SHA-256 and
-RIPEMD-160, Base58Check, keys and addresses, and ECDSA — built with no crypto
+RIPEMD-160, Base58Check, keys and addresses and ECDSA, built with no crypto
 dependencies, to be visualised in the browser. See PLAN.md.
 """
 

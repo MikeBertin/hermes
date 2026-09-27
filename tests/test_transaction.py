@@ -3,7 +3,7 @@
 The reference is a genuine legacy pay-to-public-key-hash transaction taken from
 the Bitcoin mainnet (txid fba398fab715c17923873ab0bdea05649ab4dd697ac5ff1d16e89
 c6aa1ae0c48, block 955925). If our sighash + DER are correct, the signature
-already on-chain inside it must verify — a full offline proof that what we build
+already on-chain inside it must verify, a full offline proof that what we build
 would be relayed by real nodes.
 """
 

@@ -2,8 +2,8 @@
 and the revocation/penalty mechanism.
 
 Anchored byte-for-byte to the official BOLT-3 test vectors:
-  * Appendix D — per-commitment secret generation.
-  * Appendix E — key derivation (localpubkey/privkey, revocationpubkey/privkey).
+  * Appendix D: per-commitment secret generation.
+  * Appendix E: key derivation (localpubkey/privkey, revocationpubkey/privkey).
 Plus an end-to-end channel lifecycle (open → update → revoke → cheat → punish),
 with every spend of a ``to_local`` output run through our own Script VM so the
 OP_IF / OP_CHECKSEQUENCEVERIFY branches are actually exercised.
@@ -298,7 +298,7 @@ def test_htlc_timeout_refund_respects_cltv():
     H = payment_hash(sha256(b"never revealed"))
     hop = htlc_script(H, receiver_pubkey=bpk, sender_pubkey=apk, cltv_expiry=800_100)
 
-    # If Carol never reveals, Alice (the sender) refunds — but only after the timeout.
+    # If Carol never reveals, Alice (the sender) refunds, but only after the timeout.
     assert _refund(hop, alice.secret, locktime=800_100) is True    # matured
     assert _refund(hop, alice.secret, locktime=800_099) is False   # one block too early
     # and the receiver can't take the refund branch (it checks the sender's key)
@@ -390,7 +390,7 @@ def test_second_stage_output_is_a_revocable_to_local():
                                          int.from_bytes(per_commitment_secret(alice.seed, 1), "big"))
     assert _vm_spend_to_local(penalty_tx(sst, sweep), sst, rev_priv, revocation=True, sequence=0) is True
 
-    # (b) the owner reclaims via the delayed branch — but only after to_self_delay
+    # (b) the owner reclaims via the delayed branch, but only after to_self_delay
     alice_delayed_priv = derive_privkey(alice.delayed_basepoint_secret, ppc)
     assert _vm_spend_to_local(penalty_tx(sst, sweep), sst, alice_delayed_priv,
                               revocation=False, sequence=TO_SELF_DELAY - 1) is False

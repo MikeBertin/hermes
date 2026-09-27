@@ -3,7 +3,7 @@
 
 Covers key aggregation, nonce generation/aggregation, the two-round signing
 ceremony, tweaking (plain + x-only/Taproot), and partial-signature
-aggregation — including every error case, which pin down WHO gets blamed
+aggregation, including every error case, which pin down WHO gets blamed
 (InvalidContributionError) and the exact ValueError messages. Ends with
 end-to-end ceremonies: an n-of-n vault whose final signature is a plain
 BIP-340 signature, including one behind a real Taproot output key.
@@ -136,7 +136,7 @@ SV_MSGS = unhex_all(SIGN_VERIFY["msgs"])
 
 
 def test_sign_verify_fixture_consistency():
-    # The vector file documents its own internal relationships — prove them.
+    # The vector file documents its own internal relationships; prove them.
     assert SV_X[0] == plain_pubkey(int.from_bytes(SV_SK, "big"))
     k1 = int.from_bytes(SV_SECNONCES[0][0:32], "big")
     k2 = int.from_bytes(SV_SECNONCES[0][32:64], "big")

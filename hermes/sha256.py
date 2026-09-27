@@ -74,7 +74,7 @@ def sha256(message: bytes) -> bytes:
 
 
 def double_sha256(message: bytes) -> bytes:
-    """SHA-256 applied twice — Bitcoin's workhorse (a.k.a. HASH256)."""
+    """SHA-256 applied twice: Bitcoin's workhorse (a.k.a. HASH256)."""
     return sha256(sha256(message))
 
 

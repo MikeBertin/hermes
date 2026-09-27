@@ -1,4 +1,4 @@
-// Hermes — HD wallet primitives (BIP-39 / BIP-32) for the browser.
+// Hermes: HD wallet primitives (BIP-39 / BIP-32) for the browser.
 //
 // SHA-512 (via BigInt), HMAC-SHA512, PBKDF2, mnemonic <-> seed, and BIP-32 key
 // derivation. Mirrors hermes/sha512.py, bip39.py, bip32.py and must agree with

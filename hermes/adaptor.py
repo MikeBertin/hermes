@@ -1,18 +1,18 @@
-"""Schnorr adaptor signatures — the engine behind PTLCs (point time-locked
+"""Schnorr adaptor signatures: the engine behind PTLCs (point time-locked
 contracts), Lightning's Taproot-era replacement for HTLCs.
 
 An HTLC (demo 14) locks a payment to a *hash*: reveal a preimage whose SHA-256
 matches and you're paid. A PTLC locks it to a *point* ``T = t·G``: a signature is
 issued in "encrypted" form (a **pre-signature**) that only becomes valid once
 someone adds the secret scalar ``t``. Crucially, publishing the completed
-signature **reveals** ``t`` — anyone holding the pre-signature can subtract it
+signature **reveals** ``t``: anyone holding the pre-signature can subtract it
 back out. So ``t`` plays the preimage's role, but it travels as an ordinary
 Schnorr signature: nothing on-chain looks special, and each hop can offset ``T``
 by a random tweak so the hops can't be linked (the privacy win over HTLCs, which
 expose the same hash at every hop).
 
-This builds BIP-340 adaptor signatures from scratch — the completed signature is
-a genuine 64-byte BIP-340 signature that :func:`hermes.schnorr.verify` accepts —
+This builds BIP-340 adaptor signatures from scratch. The completed signature is
+a genuine 64-byte BIP-340 signature that :func:`hermes.schnorr.verify` accepts,
 including the even-Y bookkeeping BIP-340 demands of the effective nonce.
 """
 
@@ -55,7 +55,7 @@ def presign(secret: int, msg: bytes, adaptor: Point, k: int | None = None):
     """Create a pre-signature over ``msg`` under the adaptor point ``T``.
 
     It is a valid-looking Schnorr commitment whose effective nonce is ``R0 + T``,
-    but it is *not yet* a valid signature — completing it needs ``t`` such that
+    but it is *not yet* a valid signature; completing it needs ``t`` such that
     ``t·G == T``. Returns ``(R0, s')`` where ``R0 = k·G`` is the nonce *without*
     the adaptor."""
     point = secret * G
@@ -75,7 +75,7 @@ def presign(secret: int, msg: bytes, adaptor: Point, k: int | None = None):
 
 def presig_verify(pubkey_xonly: bytes, msg: bytes, adaptor: Point, presig) -> bool:
     """Verify a pre-signature really commits to ``T``: adapting it with the matching
-    ``t`` is *guaranteed* to yield a valid signature — checkable without knowing ``t``."""
+    ``t`` is *guaranteed* to yield a valid signature, checkable without knowing ``t``."""
     r0, s_prime = presig
     pubkey = lift_x(int.from_bytes(pubkey_xonly, "big"))
     effective = r0 + adaptor
@@ -95,7 +95,7 @@ def adapt(presig, adaptor_secret: int) -> bytes:
 
 def extract(presig, signature: bytes, adaptor: Point) -> int:
     """Recover the adaptor secret ``t`` from a pre-signature and the completed
-    signature — the step that lets a routing node learn the secret and pull its
+    signature. This is the step that lets a routing node learn the secret and pull its
     own payment. Returns ``t`` with ``t·G == T``."""
     r0, s_prime = presig
     s = int.from_bytes(signature[32:64], "big")

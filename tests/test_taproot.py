@@ -1,8 +1,8 @@
 """Taproot key-path outputs (BIP-341) anchored two independent ways:
 
-1. The official BIP-341 wallet test vector with no script tree — internal key
+1. The official BIP-341 wallet test vector with no script tree: internal key
    -> tweak -> tweaked output key -> scriptPubKey address.
-2. The BIP-86 derivation vectors — the standard seed phrase, derived through
+2. The BIP-86 derivation vectors: the standard seed phrase, derived through
    our own BIP-39 + BIP-32 code at m/86'/0'/0'/0/0, must land on the published
    internal key, output key, and ``bc1p…`` address. One test spanning the whole
    stack: mnemonic -> HD tree -> x-only key -> TapTweak -> bech32m.

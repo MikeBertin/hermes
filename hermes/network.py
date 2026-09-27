@@ -1,4 +1,4 @@
-"""Consensus by simulation — forks, reorgs, and the 51% double-spend.
+"""Consensus by simulation: forks, reorgs and the 51% double-spend.
 
 Bitcoin has no chairman. Every node just keeps the chain with the most work on
 it. Two consequences fall out of that one rule, and this module simulates both:

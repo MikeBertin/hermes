@@ -3,7 +3,7 @@
 
 Rows with a secret key check signing byte-for-byte (pubkey, aux_rand -> exact
 signature); every row checks verification, and the FALSE rows are the ones
-that matter — each encodes a specific way a verifier can be tricked (point not
+that matter. Each encodes a specific way a verifier can be tricked (point not
 on the curve, negated s, r at the field size, ...).
 """
 
@@ -164,7 +164,7 @@ def test_lift_x_always_even_y():
 
 def test_keys_and_signatures_add():
     # Schnorr's linearity: the pubkey of (d1 + d2) is the point-sum P1 + P2.
-    # This is the doorway to MuSig — n keys aggregate into one.
+    # This is the doorway to MuSig: n keys aggregate into one.
     d1, d2 = 0xA11CE, 0xB0B
     P1, P2 = d1 * G, d2 * G
     assert pubkey_gen((d1 + d2) % N) == (P1 + P2).x.num.to_bytes(32, "big")

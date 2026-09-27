@@ -1,10 +1,10 @@
-"""P2WSH m-of-n multisig — the witness-script form of multisig that hardware
+"""P2WSH m-of-n multisig: the witness-script form of multisig that hardware
 wallets and treasury custody (Unchained, Sparrow, Casa) actually use.
 
 The authoritative anchor is a real native-P2WSH 2-of-3 multisig transaction from
 the chain (txid 440fe853…, via the libbitcoin worked example): if our BIP-143
 sighash for P2WSH is correct, the two signatures already inside its witness must
-verify against the keys in its witnessScript — an offline proof against the real
+verify against the keys in its witnessScript: an offline proof against the real
 network, the same technique Stage 7a used for legacy P2PKH.
 """
 

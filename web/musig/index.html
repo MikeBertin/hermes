@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MuSig2 — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>MuSig2 · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="MuSig2 — Hermes">
-<meta property="og:description" content="n cosigners, ONE key, one 64-byte signature — the two-round ceremony behind invisible multisig (BIP-327).">
+<meta property="og:title" content="MuSig2 · Hermes">
+<meta property="og:description" content="n cosigners, ONE key, one 64-byte signature: the two-round ceremony behind invisible multisig (BIP-327).">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#a8d94b;--accent-ink:#141c02}
@@ -70,14 +72,14 @@
 <div class="page">
   <div class="crumb"><a href="../">Hermes</a> / MuSig2</div>
   <header class="hero">
-    <h1>MuSig2 — n signatures become one</h1>
+    <h1>MuSig2: n signatures become one</h1>
     <p class="sub">
-      Demo 11 showed Schnorr keys <b>add</b> — but naively summing keys is a trap: the last
+      Demo 11 showed Schnorr keys <b>add</b>, but naively summing keys is a trap: the last
       cosigner to reveal theirs can craft a <span class="x" data-pop="rogue">rogue key</span> and own
       the sum. <b>MuSig2</b> (<span class="x" data-pop="bip327">BIP-327</span>) fixes that with hashed
       <span class="x" data-pop="keyagg">per-key coefficients</span>, then runs a
       <b>two-round ceremony</b>: swap <span class="x" data-pop="noncepair">nonce pairs</span>, swap
-      partial signatures, add them up. The result is one ordinary 64-byte BIP-340 signature — an
+      partial signatures, add them up. The result is one ordinary 64-byte BIP-340 signature: an
       n-of-n vault that looks, and costs, exactly like a lone signer.
     </p>
   </header>
@@ -85,15 +87,15 @@
   <div class="cols">
     <div class="col-left">
       <div class="card2">
-        <h2>1 · The cosigners — and their ONE key</h2>
+        <h2>1 · The cosigners and their ONE key</h2>
         <div id="signers"></div>
         <div class="agg">
-          <div class="lab2">KeyAgg &nbsp;Q = Σ a<sub>i</sub>·P<sub>i</sub> — one x-only key, <span id="nwho">three</span> owners</div>
+          <div class="lab2">KeyAgg &nbsp;Q = Σ a<sub>i</sub>·P<sub>i</sub> · one x-only key, <span id="nwho">three</span> owners</div>
           <div class="num" id="aggkey">–</div>
         </div>
         <p class="hint" style="margin:10px 0 0">Each coefficient
           <span class="mono">a<sub>i</sub> = H(L ‖ pk<sub>i</sub>)</span> hashes the <em>whole
-          ordered key list</em> <span class="mono">L</span> — so no cosigner can aim the sum at a key
+          ordered key list</em> <span class="mono">L</span>, so no cosigner can aim the sum at a key
           they control. This aggregate becomes the internal key of a perfectly normal
           <span class="mono">bc1p…</span> address (right).</p>
       </div>
@@ -103,14 +105,14 @@
         <label style="margin-top:0">Message to sign (a withdrawal, say)</label>
         <input type="text" id="msg" value="Withdraw 0.5 BTC from the treasury" spellcheck="false">
         <div class="steps" style="margin-top:12px">
-          <button id="st1" class="primary">Round 1 — swap nonces</button>
-          <button id="st2" disabled>Round 2 — partial sigs</button>
+          <button id="st1" class="primary">Round 1: swap nonces</button>
+          <button id="st2" disabled>Round 2: partial sigs</button>
           <button id="st3" disabled>Combine → one signature</button>
         </div>
         <div id="ceremony"></div>
         <div class="formula" id="bline" style="display:none">
           effective nonce &nbsp;<b>R = R₁ + <span class="a">b</span>·R₂</b> &nbsp;·&nbsp;
-          <span class="a">b</span> = H(aggnonce ‖ Q.x ‖ m) — fixed only after <em>every</em> nonce is on the table
+          <span class="a">b</span> = H(aggnonce ‖ Q.x ‖ m), fixed only after <em>every</em> nonce is on the table
         </div>
         <div class="finalsig" id="finalsig"></div>
         <div id="mainBadge" class="badge2 idle">run round 1 to begin</div>
@@ -119,7 +121,7 @@
           <button id="reset">New cosigners</button>
         </div>
         <p class="hint" style="margin:10px 0 0">Partial signatures are checked <em>individually</em>
-          before combining — a bad share is caught <b>and its author named</b>. Try the corrupt
+          before combining, so a bad share is caught <b>and its author named</b>. Try the corrupt
           button after round 2. And every nonce is single-use: signing zeroizes it, because reusing
           one leaks the key (demo 3).</p>
       </div>
@@ -142,7 +144,7 @@
       </div>
 
       <div class="panel">
-        <h2>The receipt — vs demo 9's vault</h2>
+        <h2>The receipt vs demo 9's vault</h2>
         <div class="weigh">
           <div class="side">
             <h4>2-of-3 P2WSH (demo 9)</h4>
@@ -157,7 +159,7 @@
             <div class="bar"><i style="width:25%;background:var(--accent)"></i></div>
           </div>
         </div>
-        <p class="hint" style="margin-top:10px">Cheaper <em>and</em> more private — the rare trade
+        <p class="hint" style="margin-top:10px">Cheaper <em>and</em> more private: the rare trade
           that costs nothing. The catch: MuSig2 is <b>n-of-n</b> (everyone signs). Thresholds like
           2-of-3 need script-path fallbacks or FROST.</p>
       </div>
@@ -168,7 +170,7 @@
           sessions in parallel can steer the combined challenge with a
           <span class="x" data-pop="wagner">generalized birthday attack</span> and forge a
           signature. The pair (R₁, R₂) + the binding hash <span class="mono">b</span> kill the
-          steering — that's the "2" in MuSig2, and why it still needs only two rounds.</p>
+          steering. That's the "2" in MuSig2, and why it still needs only two rounds.</p>
       </div>
     </div>
   </div>
@@ -176,7 +178,7 @@
   <div class="notice">
     <div class="notice-title">Things to notice</div>
     <div class="notice-grid">
-      <div class="ncard"><h3>The signature is boring — that's the point</h3>
+      <div class="ncard"><h3>The signature is boring, and that's the point</h3>
         <p>The final <span class="mono">(R.x ‖ s)</span> passes the exact
           <span class="mono">schnorrVerify</span> from demo 11. The verifier needs no idea MuSig
           exists: aggregation happens entirely off-chain, among the signers.</p></div>
@@ -184,11 +186,11 @@
         <p>Every partial signature verifies on its own
           (<span class="mono">s<sub>i</sub>·G == R<sub>i</sub> + e·a<sub>i</sub>·P<sub>i</sub></span>),
           so a corrupt share is pinned on its author before combining. BIP-327's error model names
-          the culprit — coordinators must know who to kick.</p></div>
+          the culprit: coordinators must know who to kick.</p></div>
       <div class="ncard"><h3>All or nothing</h3>
         <p>Missing one partial signature, the sum is garbage: n-of-n means every key must sign.
           That's perfect for a 2-of-2 (you + your hardware wallet) or an exchange's internal
-          sign-off — and it composes with Taproot script paths for recovery fallbacks.</p></div>
+          sign-off, and it composes with Taproot script paths for recovery fallbacks.</p></div>
     </div>
   </div>
 </div>
@@ -196,9 +198,9 @@
 <script>
 window.POPS = {
   bip327: "<h4>BIP-327</h4><p>The MuSig2 standard (2023): key aggregation + a two-round signing ceremony producing an ordinary BIP-340 Schnorr signature. Coming to Lightning's taproot channels, and already used in modern vault designs.</p>",
-  rogue: "<h4>The rogue-key attack</h4><p>If the joint key were just P₁+P₂, Mallory could wait to see Alice's key and publish P<sub>M</sub> = P<sub>evil</sub> − P₁. The 'joint' key would then equal P<sub>evil</sub> — which Mallory alone controls.</p>",
+  rogue: "<h4>The rogue-key attack</h4><p>If the joint key were just P₁+P₂, Mallory could wait to see Alice's key and publish P<sub>M</sub> = P<sub>evil</sub> − P₁. The 'joint' key would then equal P<sub>evil</sub>, which Mallory alone controls.</p>",
   keyagg: "<h4>KeyAgg coefficients</h4><p>a<sub>i</sub> = tagged_hash(\"KeyAgg coefficient\", L ‖ pk<sub>i</sub>), where L commits to the entire key list. To aim the sum at a chosen key you'd have to invert SHA-256. (One optimization: the second distinct key gets a<sub>i</sub> = 1.)</p>",
-  noncepair: "<h4>Nonce pairs</h4><p>Round 1: each signer sends TWO nonce points (66 bytes). They only fuse into the session nonce R = R₁ + b·R₂ after everyone has committed — the hash b makes parallel-session forgery (Wagner's attack) impossible.</p>",
+  noncepair: "<h4>Nonce pairs</h4><p>Round 1: each signer sends TWO nonce points (66 bytes). They only fuse into the session nonce R = R₁ + b·R₂ after everyone has committed; the hash b makes parallel-session forgery (Wagner's attack) impossible.</p>",
   wagner: "<h4>Wagner's attack</h4><p>A generalized birthday algorithm: open enough parallel sessions and you can pick nonce shares whose challenges sum to a chosen target, forging a signature on a message nobody signed. Two nonces + the binding coefficient b close the door.</p>",
 };
 </script>
@@ -291,7 +293,7 @@ window.POPS = {
     $("ceremony").innerHTML = signers.map((s, i) => {
       const ver = s.psig ? (psigOk(i)
         ? '<span class="ok3">✓ share verifies</span>'
-        : '<span class="no3">✗ BAD SHARE — caught, and named</span>') : "";
+        : '<span class="no3">✗ BAD SHARE: caught and named</span>') : "";
       return `
       <div class="signerline"><span class="dot">${s.name[0]}</span>
         <div class="body">
@@ -322,10 +324,10 @@ window.POPS = {
       badge.textContent = "run round 1 to begin";
     } else if (stage === 1) {
       badge.className = "badge2 idle";
-      badge.textContent = "nonces on the table — b is now fixed; run round 2";
+      badge.textContent = "nonces on the table: b is now fixed; run round 2";
     } else if (stage === 2) {
       badge.className = "badge2 idle";
-      badge.textContent = "shares ready — combine them";
+      badge.textContent = "shares ready: combine them";
     } else {
       const sig = H.musigPartialSigAgg(signers.map((s) => s.psig), session);
       fs.style.display = "block";
@@ -334,8 +336,8 @@ window.POPS = {
       const ok = H.schnorrVerify(aggpk, session.msg, sig);
       badge.className = "badge2 " + (ok ? "ok" : "no");
       badge.textContent = ok
-        ? "✓ plain BIP-340 signature — verifies under the vault's bc1p key"
-        : "✗ INVALID — Carol's bad share poisoned the sum (round 2 already named her)";
+        ? "✓ plain BIP-340 signature: verifies under the vault's bc1p key"
+        : "✗ INVALID: Carol's bad share poisoned the sum (round 2 already named her)";
     }
   }
 

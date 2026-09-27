@@ -1,4 +1,4 @@
-"""Hermes testnet CLI — build, sign, and broadcast a real Bitcoin transaction.
+"""Hermes testnet CLI: build, sign and broadcast a real Bitcoin transaction.
 
 Workflow (testnet coins have no value; this is safe and free):
 
@@ -28,7 +28,7 @@ TESTNET = True
 
 def _load() -> dict:
     if not os.path.exists(KEYFILE):
-        sys.exit("No key yet — run:  python -m hermes.cli new")
+        sys.exit("No key yet. Run:  python -m hermes.cli new")
     with open(KEYFILE) as f:
         return json.load(f)
 
@@ -68,7 +68,7 @@ def cmd_send(dest: str, do_broadcast: bool, fee: int = 300) -> None:
 
     utxos = fetch_utxos(k["address"], TESTNET)
     if not utxos:
-        sys.exit("No UTXOs — fund the address first (python -m hermes.cli info).")
+        sys.exit("No UTXOs. Fund the address first (python -m hermes.cli info).")
     total = sum(u["value"] for u in utxos)
     send_amount = total - fee
     if send_amount <= 0:
@@ -97,7 +97,7 @@ def cmd_send(dest: str, do_broadcast: bool, fee: int = 300) -> None:
         explorer = "https://blockstream.info/testnet/tx/" + txid
         print(f"explorer: {explorer}")
     else:
-        print("\n(dry run — pass --broadcast to publish it)")
+        print("\n(dry run: pass --broadcast to publish it)")
 
 
 def main(argv: list[str]) -> None:

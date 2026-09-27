@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Merkle Proofs — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Merkle Proofs · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Merkle Proofs — Hermes">
-<meta property="og:description" content="How a block fingerprints every transaction in 32 bytes — and how a light wallet proves one is included without downloading the rest.">
+<meta property="og:title" content="Merkle Proofs · Hermes">
+<meta property="og:description" content="How a block fingerprints every transaction in 32 bytes, and how a light wallet proves one is included without downloading the rest.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#4dc9e6;--accent-ink:#04222a;--proof:#ffc266;--path:#ef88c8}
@@ -40,10 +42,10 @@
     <h1>Merkle Proofs</h1>
     <p class="sub">
       A block can hold thousands of transactions, yet its header commits to all of them in a single
-      32-byte <b>merkle root</b> — hash them in pairs, then hash the pairs, up to one value. The
+      32-byte <b>merkle root</b>: hash them in pairs, then hash the pairs, up to one value. The
       reward is the <span class="x" data-pop="proof">merkle proof</span>: to prove a transaction is
       in the block you reveal only the handful of sibling hashes on its path to the root. A phone
-      can verify a payment against a header it trusts, without ever downloading the block — that's
+      can verify a payment against a header it trusts, without ever downloading the block. That's
       <span class="x" data-pop="spv">SPV</span>. Click any transaction below to see its proof.
     </p>
   </header>
@@ -68,7 +70,7 @@
           <button data-n="7">7</button>
           <button data-n="8" aria-pressed="true">8</button>
         </div>
-        <p class="hint" style="margin-top:9px">Odd levels duplicate the last hash — try 5 or 7.</p>
+        <p class="hint" style="margin-top:9px">Odd levels duplicate the last hash. Try 5 or 7.</p>
         <div class="stg" style="margin-top:12px;background:var(--panel);border:1px solid var(--accent);border-radius:11px;padding:11px 13px">
           <div style="font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.5px;margin-bottom:5px">MERKLE ROOT (in the block header)</div>
           <div id="root" style="font-family:var(--mono);font-size:12px;color:var(--accent);word-break:break-all"></div>
@@ -78,7 +80,7 @@
 
       <div class="panel">
         <h2>Inclusion proof <span id="sel-tag" style="color:var(--muted);font-weight:400;font-size:13px"></span></h2>
-        <p class="hint" style="margin:-2px 0 10px">The siblings a light wallet needs — just these, not the block.</p>
+        <p class="hint" style="margin:-2px 0 10px">The siblings a light wallet needs: just these, not the block.</p>
         <div class="proof-row" id="proof"></div>
         <div id="verdict" class="verdict ok"><span class="big">✓</span><span id="verdict-txt"></span></div>
         <label style="margin-top:13px">Tamper check</label>
@@ -97,12 +99,12 @@
     <div class="notice-grid">
       <div class="ncard"><h3>Phones don't store the chain</h3>
         <p>An SPV wallet keeps only block headers (80 bytes each). To trust a payment it asks a node
-          for a merkle proof and checks it against the header's root — verification without the data.</p></div>
+          for a merkle proof and checks it against the header's root: verification without the data.</p></div>
       <div class="ncard"><h3>log₂(n), not n</h3>
         <p>A block of a thousand transactions needs a proof of about ten hashes. The cost of proving
           inclusion grows with the <em>depth</em> of the tree, not its width.</p></div>
       <div class="ncard"><h3>Beyond blocks</h3>
-        <p>The same primitive shows up wherever one hash must vouch for many records — exchange
+        <p>The same primitive shows up wherever one hash must vouch for many records. Exchange
           proof-of-reserves builds a Merkle tree of customer balances so each user can verify
           their inclusion in the audited total.</p></div>
     </div>
@@ -111,8 +113,8 @@
 
 <script>
 window.POPS = {
-  proof: "<h4>Merkle proof</h4><p>The list of sibling hashes along a leaf's path to the root. Re-hashing the leaf with each sibling in turn must reproduce the root — otherwise the leaf isn't in the tree.</p>",
-  spv: "<h4>SPV — simplified payment verification</h4><p>From the Bitcoin whitepaper: verify a transaction by keeping only block headers and requesting a merkle branch linking it to a header whose proof-of-work you trust.</p>",
+  proof: "<h4>Merkle proof</h4><p>The list of sibling hashes along a leaf's path to the root. Re-hashing the leaf with each sibling in turn must reproduce the root; otherwise the leaf isn't in the tree.</p>",
+  spv: "<h4>SPV: simplified payment verification</h4><p>From the Bitcoin whitepaper: verify a transaction by keeping only block headers and requesting a merkle branch linking it to a header whose proof-of-work you trust.</p>",
 };
 </script>
 <script src="../shared/demo.js"></script>
@@ -147,8 +149,8 @@ window.POPS = {
     v.className = "verdict " + (ok ? "ok" : "no");
     v.querySelector(".big").textContent = ok ? "✓" : "✗";
     $("verdict-txt").textContent = ok
-      ? "Proof rebuilds the committed root — transaction is in the block."
-      : "Proof fails — the rebuilt root doesn't match the header. Not in the block.";
+      ? "Proof rebuilds the committed root: transaction is in the block."
+      : "Proof fails: the rebuilt root doesn't match the header. Not in the block.";
     $("sel-tag").textContent = "· tx #" + selected;
   }
 

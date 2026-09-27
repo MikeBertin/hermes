@@ -45,7 +45,7 @@ def test_presig_alone_is_not_a_valid_signature():
     pubkey = schnorr.pubkey_gen(d)
     T = adaptor.adaptor_point(t)
     r0, s_prime = adaptor.presign(d, msg, T)
-    # naively reading (R0.x || s') as a signature must NOT verify — t is missing
+    # naively reading (R0.x || s') as a signature must NOT verify, because t is missing
     forged = adaptor._xonly(r0) + s_prime.to_bytes(32, "big")
     assert schnorr.verify(pubkey, msg, forged) is False
 
@@ -91,7 +91,7 @@ def test_ptlc_route_one_point_settles_both_hops():
     assert schnorr.verify(schnorr.pubkey_gen(bob), msg_bc, sig_bc)
 
     # Bob sees the completed signature on-chain, extracts t, and uses it to pull
-    # his own payment from Alice — the same secret unlocks the hop before.
+    # his own payment from Alice. The same secret unlocks the hop before.
     t_learned = adaptor.extract(presig_bc, sig_bc, T)
     assert t_learned == t
     sig_ab = adaptor.adapt(presig_ab, t_learned)

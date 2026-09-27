@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HTLC Routing — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>HTLC Routing · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="HTLC Routing — Hermes">
-<meta property="og:description" content="One payment hops across the Lightning Network trustlessly — a hash-time-locked contract per hop, one preimage settles the whole path (BOLT-3).">
+<meta property="og:title" content="HTLC Routing · Hermes">
+<meta property="og:description" content="One payment hops across the Lightning Network trustlessly: a hash-time-locked contract per hop, and one preimage settles the whole path (BOLT-3).">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#2dd4bf;--accent-ink:#04201b}
@@ -61,14 +63,14 @@
 <div class="page">
   <div class="crumb"><a href="../">Hermes</a> / HTLC Routing</div>
   <header class="hero">
-    <h1>Routing — one payment, many hops</h1>
+    <h1>Routing: one payment, many hops</h1>
     <p class="sub">
-      Demo 13 built a <b>channel</b> between two people. But you don't have a channel with everyone —
+      Demo 13 built a <b>channel</b> between two people. But you don't have a channel with everyone;
       you reach them <b>through</b> others. Alice pays Carol by routing across Bob, with no trust in
       Bob and no channel between Alice and Carol. The trick is the
       <span class="x" data-pop="htlc">HTLC</span>: each hop is locked to the same
       <span class="x" data-pop="hash">payment hash</span>, so a single
-      <span class="x" data-pop="preimage">preimage</span> — Carol's secret — settles the entire path
+      <span class="x" data-pop="preimage">preimage</span> (Carol's secret) settles the entire path
       at once. And <b>decreasing</b> per-hop <span class="x" data-pop="delta">timelocks</span> mean a
       middle node can never be left out of pocket.
     </p>
@@ -97,7 +99,7 @@
           </div>
           <div class="node" id="nCarol"><div class="disc">C</div><div class="nm">Carol</div><div class="role">payee</div></div>
         </div>
-        <p class="hint" style="margin-top:12px">Bob takes a <b>0.0001 BTC</b> routing fee — he forwards
+        <p class="hint" style="margin-top:12px">Bob takes a <b>0.0001 BTC</b> routing fee: he forwards
           0.0100 to Carol but is owed 0.0101 by Alice. He only ever pays out <em>after</em> he can
           claim what he's owed, so forwarding is risk-free.</p>
       </div>
@@ -114,7 +116,7 @@
           <button id="reset">Reset</button>
         </div>
         <div class="log" id="log"><span class="l">Carol will generate a secret and invoice Alice for 0.01 BTC.</span></div>
-        <div id="mainBadge" class="badge2 idle">idle — start with Carol's invoice</div>
+        <div id="mainBadge" class="badge2 idle">idle: start with Carol's invoice</div>
       </div>
     </div>
 
@@ -122,15 +124,15 @@
       <div class="panel">
         <h2>The invoice</h2>
         <div class="stg">
-          <div class="lab2">payment hash &nbsp;H = SHA256(preimage) — sent to Alice</div>
+          <div class="lab2">payment hash &nbsp;H = SHA256(preimage) · sent to Alice</div>
           <div class="num" id="phash">–</div>
         </div>
         <div class="stg">
-          <div class="lab2">preimage R &nbsp;— Carol's secret, revealed only to claim</div>
+          <div class="lab2">preimage R &nbsp;· Carol's secret, revealed only to claim</div>
           <div class="num hid" id="preimage">•••••••• hidden ••••••••</div>
         </div>
         <p class="hint">The same H locks <em>both</em> hops. Whoever learns R can claim from the hop
-          behind them — so when Carol pulls her payment, she hands Bob the key to pull his.</p>
+          behind them. So when Carol pulls her payment, she hands Bob the key to pull his.</p>
       </div>
 
       <div class="panel">
@@ -151,15 +153,15 @@
       <div class="ncard"><h3>One secret, whole path</h3>
         <p>Every hop commits to the <em>same</em> payment hash. Carol's single preimage unlocks the
           Bob→Carol hop, which reveals it to Bob, who uses it on the Alice→Bob hop. The payment
-          settles backward, atomically — either all hops complete or none do.</p></div>
+          settles backward, atomically: either all hops complete or none do.</p></div>
       <div class="ncard"><h3>Why timelocks decrease</h3>
         <p>Alice→Bob expires <em>later</em> than Bob→Carol. If Carol claims at the last second, Bob
           still has a window to claim from Alice with the same preimage. Reverse the order and Bob
-          could pay Carol yet be unable to collect — so each hop subtracts a
+          could pay Carol yet be unable to collect, so each hop subtracts a
           <span class="mono">cltv_expiry_delta</span>.</p></div>
       <div class="ncard"><h3>Trustless forwarding</h3>
         <p>Bob never risks his money: he only forwards a payment he can immediately reclaim, and if
-          Carol vanishes, every HTLC simply times out and each sender is refunded. He isn't trusted —
+          Carol vanishes, every HTLC simply times out and each sender is refunded. He isn't trusted;
           he's <em>incentivised</em>, by the fee, and <em>protected</em>, by the script.</p></div>
     </div>
   </div>
@@ -167,10 +169,10 @@
 
 <script>
 window.POPS = {
-  htlc: "<h4>HTLC</h4><p>Hash-Time-Locked Contract: an output spendable two ways — by revealing a preimage whose hash matches (the receiver got paid), or by the sender after a timeout (a refund). Chain them and one preimage settles a multi-hop path.</p>",
+  htlc: "<h4>HTLC</h4><p>Hash-Time-Locked Contract: an output spendable two ways: by revealing a preimage whose hash matches (the receiver got paid), or by the sender after a timeout (a refund). Chain them and one preimage settles a multi-hop path.</p>",
   hash: "<h4>Payment hash</h4><p>H = SHA256(preimage). Carol shares H in her invoice but keeps the preimage secret. Every hop locks to the same H, which is what ties the path together without anyone trusting anyone.</p>",
   preimage: "<h4>Preimage</h4><p>Carol's random secret R. Revealing it is the receipt: it proves the payment reached her, and simultaneously lets each upstream hop pull its funds. In the script, OP_HASH160 checks RIPEMD160(SHA256(R)).</p>",
-  delta: "<h4>cltv_expiry_delta</h4><p>Each hop's refund timeout is set higher than the next hop's by a safety margin. This guarantees a routing node can always claim upstream after being claimed downstream — the invariant that makes forwarding safe.</p>",
+  delta: "<h4>cltv_expiry_delta</h4><p>Each hop's refund timeout is set higher than the next hop's by a safety margin. This guarantees a routing node can always claim upstream after being claimed downstream. That's the invariant that makes forwarding safe.</p>",
 };
 </script>
 <script src="../shared/demo.js"></script>
@@ -213,7 +215,7 @@ window.POPS = {
     hopAB = H.lnHtlcScript(phash, bob.pub, alice.pub, CLTV_AB);   // Alice pays Bob
     hopBC = H.lnHtlcScript(phash, carol.pub, bob.pub, CLTV_BC);   // Bob pays Carol
     stage = 2;
-    log(`<span class="l">HTLCs locked <b>forward</b>: Alice→Bob (expiry <b>${CLTV_AB}</b>) then Bob→Carol (expiry <b>${CLTV_BC}</b>). Money is committed but frozen — only the preimage or a timeout releases it.</span>`);
+    log(`<span class="l">HTLCs locked <b>forward</b>: Alice→Bob (expiry <b>${CLTV_AB}</b>) then Bob→Carol (expiry <b>${CLTV_BC}</b>). Money is committed but frozen: only the preimage or a timeout releases it.</span>`);
     render();
   }
 
@@ -238,29 +240,29 @@ window.POPS = {
     stage = 3;
     render();
     $("verify").innerHTML =
-      `<div><span class="lab3">SHA256(preimage) == H</span> &nbsp;<span class="ok3">${bcOk ? "✓" : "✗"}</span> — the hashlock opens</div>
+      `<div><span class="lab3">SHA256(preimage) == H</span> &nbsp;<span class="ok3">${bcOk ? "✓" : "✗"}</span> the hashlock opens</div>
        <div style="margin-top:4px"><span class="lab3">receiver signature valid</span> &nbsp;<span class="ok3">${abOk && bcOk ? "✓" : "✗"}</span></div>`;
-    log(`<span class="l win">◀ Carol reveals R to claim <b>0.0100</b> from Bob. Bob now knows R and claims <b>0.0101</b> from Alice. One secret, both hops — the payment reached Carol and Bob earned his fee.</span>`);
+    log(`<span class="l win">◀ Carol reveals R to claim <b>0.0100</b> from Bob. Bob now knows R and claims <b>0.0101</b> from Alice. One secret, both hops: the payment reached Carol and Bob earned his fee.</span>`);
     $("mainBadge").className = "badge2 ok";
-    $("mainBadge").textContent = "✓ settled — the same preimage unlocked every hop, backward";
+    $("mainBadge").textContent = "✓ settled: the same preimage unlocked every hop, backward";
   }
 
   function timeout() {
     stage = 4;
     render();
     $("verify").innerHTML =
-      `<div><span class="lab3">block height reaches ${CLTV_BC}</span> &nbsp;<span class="ok3">✓</span> — Bob→Carol refunds to Bob</div>
-       <div style="margin-top:4px"><span class="lab3">block height reaches ${CLTV_AB}</span> &nbsp;<span class="ok3">✓</span> — Alice→Bob refunds to Alice</div>`;
-    log(`<span class="l">Carol never reveals R. Each HTLC simply expires: Bob→Carol first (at ${CLTV_BC}), then Alice→Bob (at ${CLTV_AB}). Every sender is refunded — <b>nobody loses a satoshi</b>. This is why Bob can forward without trusting anyone.</span>`);
+      `<div><span class="lab3">block height reaches ${CLTV_BC}</span> &nbsp;<span class="ok3">✓</span> Bob→Carol refunds to Bob</div>
+       <div style="margin-top:4px"><span class="lab3">block height reaches ${CLTV_AB}</span> &nbsp;<span class="ok3">✓</span> Alice→Bob refunds to Alice</div>`;
+    log(`<span class="l">Carol never reveals R. Each HTLC simply expires: Bob→Carol first (at ${CLTV_BC}), then Alice→Bob (at ${CLTV_AB}). Every sender is refunded; <b>nobody loses a satoshi</b>. This is why Bob can forward without trusting anyone.</span>`);
     $("mainBadge").className = "badge2 idle";
-    $("mainBadge").textContent = "○ timed out — all HTLCs refunded, no funds lost";
+    $("mainBadge").textContent = "○ timed out: all HTLCs refunded, no funds lost";
   }
 
   function log(html) { $("log").innerHTML = html; }
 
   function renderScript() {
     // show the canonical HTLC script (built once we have a payment hash)
-    if (!phash) { $("scriptbox").innerHTML = '<span class="elsep">— waiting for the invoice —</span>'; return; }
+    if (!phash) { $("scriptbox").innerHTML = '<span class="elsep">(waiting for the invoice)</span>'; return; }
     const s = H.lnHtlcScript(phash, carol.pub, bob.pub, CLTV_BC);
     // annotate opcode by opcode
     const OPS = {0x63:"OP_IF",0x67:"OP_ELSE",0x68:"OP_ENDIF",0x75:"OP_DROP",0xa9:"OP_HASH160",
@@ -296,9 +298,9 @@ window.POPS = {
     $("stepRow").style.display = stage >= 2 ? "none" : "grid";
     $("st3").disabled = stage !== 2; $("st3b").disabled = stage !== 2;
 
-    if (stage === 0) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "idle — start with Carol's invoice"; }
-    else if (stage === 1) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "invoice ready — lock the HTLCs forward"; }
-    else if (stage === 2) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "HTLCs locked — settle with the preimage, or let them time out"; }
+    if (stage === 0) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "idle: start with Carol's invoice"; }
+    else if (stage === 1) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "invoice ready: lock the HTLCs forward"; }
+    else if (stage === 2) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "HTLCs locked: settle with the preimage, or let them time out"; }
     renderScript();
   }
 

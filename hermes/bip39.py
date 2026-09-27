@@ -1,4 +1,4 @@
-"""BIP-39 — turning randomness into a memorable seed phrase, and back.
+"""BIP-39: turning randomness into a memorable seed phrase, and back.
 
 Entropy (128–256 bits) is checksummed with SHA-256, sliced into 11-bit chunks,
 and each chunk indexes a fixed 2048-word list to give a mnemonic. The mnemonic

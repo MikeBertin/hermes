@@ -1,25 +1,25 @@
-"""Schnorr signatures (BIP-340) — the signature scheme Taproot brought to Bitcoin.
+"""Schnorr signatures (BIP-340): the signature scheme Taproot brought to Bitcoin.
 
 ECDSA was a workaround: Schnorr's scheme was patented, so Bitcoin launched
 without it. The patent is long dead, and BIP-340 (activated with Taproot, 2021)
-finally adds it. Same curve, same keys — a different, *cleaner* equation:
+finally adds it. Same curve, same keys, a different, *cleaner* equation:
 
     sign:    s = k + e·d          (no modular inverse anywhere)
     verify:  s·G == R + e·P       where e = H(R.x ‖ P.x ‖ m)
 
 That linearity is the superpower ECDSA never had: signatures and keys *add*.
 Two cosigners can sum their public keys and produce one joint signature that
-verifies against the sum (MuSig) — an n-of-n multisig indistinguishable from,
+verifies against the sum (MuSig): an n-of-n multisig indistinguishable from,
 and as cheap as, a single-sig payment.
 
 BIP-340 conventions implemented here:
-- **Tagged hashes** — every hash is domain-separated:
+- **Tagged hashes**: every hash is domain-separated:
   ``sha256(sha256(tag) ‖ sha256(tag) ‖ msg)``, so a hash from one context can
   never be replayed in another.
-- **x-only public keys** — 32 bytes, just ``P.x``; of the two points with that
+- **x-only public keys**: 32 bytes, just ``P.x``; of the two points with that
   x, the even-Y one is implied (``lift_x``). Signing negates ``d`` or ``k``
   as needed so the implied point is the one used.
-- **Deterministic nonces** — ``k`` is a tagged hash of (aux_rand ⊕ d) ‖ P.x ‖ m,
+- **Deterministic nonces**: ``k`` is a tagged hash of (aux_rand ⊕ d) ‖ P.x ‖ m,
   BIP-340's built-in answer to the nonce-reuse catastrophe (see ecdsa.py).
 
 Verified against the official BIP-340 test vectors, including the must-fail rows.
@@ -32,7 +32,7 @@ from .sha256 import sha256
 
 
 def tagged_hash(tag: str, msg: bytes) -> bytes:
-    """``sha256(sha256(tag) ‖ sha256(tag) ‖ msg)`` — BIP-340's domain-separated
+    """``sha256(sha256(tag) ‖ sha256(tag) ‖ msg)``: BIP-340's domain-separated
     hash. The doubled 64-byte prefix fills exactly one SHA-256 block, so
     implementations can precompute the tag's midstate."""
     t = sha256(tag.encode())
@@ -40,7 +40,7 @@ def tagged_hash(tag: str, msg: bytes) -> bytes:
 
 
 def lift_x(x: int) -> Point:
-    """The point with x-coordinate ``x`` and *even* y — how a 32-byte x-only
+    """The point with x-coordinate ``x`` and *even* y. This is how a 32-byte x-only
     public key becomes a point. secp256k1's prime is ≡ 3 mod 4, so the square
     root is a single exponentiation. Raises if ``x`` is not on the curve."""
     if not 0 < x < P:

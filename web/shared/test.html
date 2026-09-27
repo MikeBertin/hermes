@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hermes — JS core vector tests</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Hermes · JS core vector tests</title>
 <style>
   :root{
     --bg:#0a0a0f; --panel:#13131c; --line:#23232f;
@@ -32,7 +33,7 @@
 <body>
 <div class="wrap">
   <div class="badge">Hermes</div>
-  <h1>JS core — vector tests</h1>
+  <h1>JS core: vector tests</h1>
   <p class="lede">The browser crypto in <code>btc.js</code> must reproduce the same
     known-answer vectors as the Python core. Green here = the demos rest on correct math.</p>
   <div id="summary">running…</div>
@@ -389,7 +390,7 @@ check("frost aggregate signature (E.5)", H.bytesToHex(H.frostSerializeSig(F_SIG)
   "0205b6d04d3774c8929413e3c76024d54149c372d57aae62574ed74319b5ea14d0c65dde8492a7471437e6c2fe3da49b90d23f642b5c6dbe7e36089f096dd97324");
 check("frost signature verifies under the group key", H.frostVerify(F_MSG, F_SIG, F_GPK), true);
 
-// --- FROST DKG (PedPoP) — no trusted dealer; self-consistency via a real signature ---
+// --- FROST DKG (PedPoP): no trusted dealer; self-consistency via a real signature ---
 const DKG_POLYS = {
   1: [0x1111111111111111111111111111111111111111111111111111111111111111n, 0x0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0an],
   2: [0x2222222222222222222222222222222222222222222222222222222222222222n, 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0bn],
@@ -533,7 +534,7 @@ function render() {
      </tr>`).join("");
   const s = document.getElementById("summary");
   s.textContent = fail === 0
-    ? `✓ all ${pass} vectors pass — JS core matches Python`
+    ? `✓ all ${pass} vectors pass: JS core matches Python`
     : `✗ ${fail} failing / ${pass} passing`;
   s.style.color = fail === 0 ? "var(--pass)" : "var(--fail)";
   window.__HERMES_RESULT = { pass, fail };

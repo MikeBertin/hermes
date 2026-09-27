@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HD Wallet — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>HD Wallet · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="HD Wallet — Hermes">
-<meta property="og:description" content="One seed phrase unfolds into a whole tree of Bitcoin addresses — BIP-39 and BIP-32 from scratch.">
+<meta property="og:title" content="HD Wallet · Hermes">
+<meta property="og:description" content="One seed phrase unfolds into a whole tree of Bitcoin addresses: BIP-39 and BIP-32 from scratch.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#ffd56b;--accent-ink:#241c00}
@@ -39,7 +41,7 @@
   <header class="hero">
     <h1>The HD Wallet</h1>
     <p class="sub">
-      A modern wallet isn't a pile of keys — it's <b>one seed phrase</b>. Twelve words become a
+      A modern wallet isn't a pile of keys. It's <b>one seed phrase</b>. Twelve words become a
       512-bit seed (<span class="x" data-pop="bip39">BIP-39</span>), and that seed deterministically
       grows an entire <b>tree</b> of keys and addresses (<span class="x" data-pop="bip32">BIP-32</span>).
       Back up the phrase once and you've backed up every address you'll ever use.
@@ -53,7 +55,7 @@
         <div class="tree" id="tree"></div>
         <p class="hint">Path <b>m / 44' / coin' / account' / change / index</b>. The ' marks a
           <span class="x" data-pop="hardened">hardened</span> step. Hover an address to see its
-          private key — all from the phrase above, nothing stored.</p>
+          private key, all from the phrase above, nothing stored.</p>
       </div>
     </div>
 
@@ -82,12 +84,12 @@
     <div class="notice-grid">
       <div class="ncard"><h3>Deterministic, not random</h3>
         <p>The same phrase always rebuilds the exact same tree, in any conforming wallet. Lose your
-          device, type the words into a new one, and every address comes back.</p></div>
+          device, type the words into a new one and every address comes back.</p></div>
       <div class="ncard"><h3>The passphrase is a hidden wallet</h3>
-        <p>Add a passphrase and you get a completely different tree from the same words — a
+        <p>Add a passphrase and you get a completely different tree from the same words, a
           plausible-deniability vault. Forget it and that money is gone forever.</p></div>
       <div class="ncard"><h3>Hardened keeps branches private</h3>
-        <p>A parent xpub can normally derive every child public key — and worse, that xpub plus one
+        <p>A parent xpub can normally derive every child public key, and worse, that xpub plus one
           leaked child <em>private</em> key exposes the parent and all siblings. Hardened steps cut
           both links. That's why account-level paths use the apostrophe.</p></div>
     </div>

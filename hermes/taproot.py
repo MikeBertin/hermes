@@ -1,4 +1,4 @@
-"""Taproot outputs (BIP-341, key path) — tweak a key, get a ``bc1p…`` address.
+"""Taproot outputs (BIP-341, key path): tweak a key, get a ``bc1p…`` address.
 
 A Taproot output locks coins to a single x-only key ``Q``, but ``Q`` is never
 a bare wallet key. It is the *internal* key ``P`` shifted by a hash of itself:
@@ -9,7 +9,7 @@ a bare wallet key. It is the *internal* key ``P`` shifted by a hash of itself:
 Spending by key path is just a Schnorr signature with the tweaked secret
 ``d + t``. The point of the ceremony: the tweak can also commit to a Merkle
 tree of alternative spending scripts (the "script path"). Key-path spends
-reveal nothing — a plain payment, a MuSig multisig vault, and a key with a
+reveal nothing. A plain payment, a MuSig multisig vault and a key with a
 hidden script tree all look identical on-chain: 34 bytes, one signature.
 
 The address is simply witness v1 + ``Q.x`` in bech32m (BIP-350): ``bc1p…``.
@@ -36,7 +36,7 @@ def tap_tweak(internal_key: bytes) -> int:
 
 
 def output_key(internal_key: bytes) -> bytes:
-    """``Q = P + t·G`` — the tweaked, x-only key the scriptPubKey carries."""
+    """``Q = P + t·G``: the tweaked, x-only key the scriptPubKey carries."""
     point = lift_x(int.from_bytes(internal_key, "big"))
     Q = point + tap_tweak(internal_key) * G
     if Q.is_infinity:
@@ -51,7 +51,7 @@ def p2tr_address(internal_key: bytes, testnet: bool = False) -> str:
 
 
 def tweak_secret(secret: int) -> int:
-    """The secret that signs for the *tweaked* key — what a wallet actually
+    """The secret that signs for the *tweaked* key, which is what a wallet actually
     uses for a key-path spend. If ``d·G`` has odd y the secret is negated
     first (the x-only even-Y convention), then the tweak is added."""
     point = secret * G

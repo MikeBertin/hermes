@@ -1,11 +1,11 @@
-// demo-capture.js — records web/demo.gif, the README montage of seven demos.
+// demo-capture.js: records web/demo.gif, the README montage of seven demos.
 //
 // Drives the local dev server through eight beats (landing → Curve → Mine → Network →
 // Taproot → Lightning → HTLC Second-Stage → FROST DKG) with Playwright + the system Chrome, records
 // one continuous .webm, and prints its filename. A second ffmpeg pass turns the
 // .webm into an optimised, palette-based GIF (see the bottom of this file / HANDOFF.md).
 //
-//   # 1. dev server (serves web/ on :8011) — see projects/.claude/launch.json
+//   # 1. dev server (serves web/ on :8011); see projects/.claude/launch.json
 //   cd web && python3 -m http.server 8011
 //
 //   # 2. record the webm  (needs: npm i playwright  +  Google Chrome installed)
@@ -16,7 +16,7 @@
 //   ffmpeg -i "$V" -vf "setpts=PTS/1.25,fps=15,scale=760:-1:flags=lanczos,palettegen=stats_mode=diff" -y palette.png
 //   ffmpeg -i "$V" -i palette.png -lavfi "setpts=PTS/1.25,fps=15,scale=760:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle" -y web/demo.gif
 //
-// The GIF goes stale like og.png does when a demo is added — re-record to refresh.
+// The GIF goes stale like og.png does when a demo is added. Re-record to refresh.
 
 const { chromium } = require('playwright');
 
@@ -62,22 +62,22 @@ async function goto(page, path) {
   });
   const page = await context.newPage();
 
-  // 0 — Landing hero
+  // 0. Landing hero
   await goto(page, '/');
   await sleep(1600);
 
-  // 1 — The Curve: sweep Point P, the chord-and-tangent construction moves
+  // 1. The Curve: sweep Point P, the chord-and-tangent construction moves
   await goto(page, '/curve/');
   await sleep(400);
   await sweepRange(page, '#px', 3000);
   await sleep(300);
 
-  // 2 — Mine & Chain: grind the nonce
+  // 2. Mine & Chain: grind the nonce
   await goto(page, '/mine/');
   await page.click('#mineBtn');
   await sleep(3200);
 
-  // 3 — Network & 51%: the canvas is a tall 900x520 with the chain at only 40% height,
+  // 3. Network & 51%: the canvas is a tall 900x520 with the chain at only 40% height,
   // so it frames with a big empty void. Shrink it to a compact strip and reset (empty),
   // linger on the intro, then fast-forward Step so the chain fills the width block-by-block.
   await goto(page, '/network/');
@@ -89,7 +89,7 @@ async function goto(page, path) {
   for (let i = 0; i < 42; i++) { await page.click('#stepBtn'); await sleep(85); }
   await sleep(1200);
 
-  // 4 — Taproot & Schnorr: sign (VALID), then scroll to the "signatures add" beat
+  // 4. Taproot & Schnorr: sign (VALID), then scroll to the "signatures add" beat
   await goto(page, '/taproot/');
   await page.click('#signBtn');
   await sleep(1100);
@@ -98,19 +98,19 @@ async function goto(page, path) {
   await page.click('#jointSign');
   await sleep(1600);
 
-  // 5 — Lightning: pay off-chain, the balance bar slides to Bob
+  // 5. Lightning: pay off-chain, the balance bar slides to Bob
   await goto(page, '/lightning/');
   for (let i = 0; i < 5; i++) { await page.click('#payAB'); await sleep(420); }
   await sleep(900);
 
-  // 6 — HTLC Second-Stage: the offered->received toggle flips the flow diagram's
+  // 6. HTLC Second-Stage: the offered->received toggle flips the flow diagram's
   // middle box from HTLC-timeout (2-of-2, timelocked) to HTLC-success (2-of-2 + preimage).
   await goto(page, '/second-stage/');
   await sleep(1800);                                 // offered / HTLC-timeout, let the intro read
   await page.click('#tabRec');                       // -> received / HTLC-success
   await sleep(1800);
 
-  // 7 — FROST DKG: the participants + proofs of possession, then corrupt a sub-share
+  // 7. FROST DKG: the participants + proofs of possession, then corrupt a sub-share
   // and watch the Feldman verify matrix pin the fault on its author (accountability beat).
   await goto(page, '/frost-dkg/');
   await sleep(1800);                                 // participants bring secrets, proofs verify

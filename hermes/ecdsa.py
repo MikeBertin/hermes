@@ -1,4 +1,4 @@
-"""ECDSA signing and verification on secp256k1 — including the nonce-reuse attack.
+"""ECDSA signing and verification on secp256k1, including the nonce-reuse attack.
 
 A signature proves you know the private key for a public point without revealing
 it. The one catch: every signature needs a fresh, secret random nonce ``k``. Reuse
@@ -26,11 +26,11 @@ def _inv(a: int) -> int:
 
 def rfc6979_k(secret: int, z: int) -> int:
     """Derive the signing nonce deterministically from the key and message hash
-    (RFC 6979, HMAC-SHA256 variant — the one Bitcoin uses).
+    (RFC 6979, HMAC-SHA256 variant, the one Bitcoin uses).
 
     Random nonces are dangerous: a single repeat leaks the private key (see
     :func:`recover_secret_from_reused_nonce`), and a biased RNG has drained real
-    wallets. RFC 6979 sidesteps the RNG entirely — ``k`` is a deterministic
+    wallets. RFC 6979 sidesteps the RNG entirely: ``k`` is a deterministic
     function of ``(secret, z)``, so it's reproducible *and* unique per message.
 
     Since secp256k1's order and SHA-256's output are both 256 bits, ``bits2int``
@@ -59,7 +59,7 @@ def sign(secret: int, z: int, k: int | None = None, low_s: bool = True) -> Signa
     By default the nonce ``k`` is derived deterministically via RFC 6979, so
     signing the same message twice yields the identical signature (and txid).
     Pass an explicit ``k`` to demonstrate nonce reuse. ``low_s`` applies BIP-62
-    canonicalization (real Bitcoin requires it) — turn it off for the reuse demo
+    canonicalization (real Bitcoin requires it); turn it off for the reuse demo
     so the recovery algebra stays clean.
     """
     if not 1 <= secret < N:

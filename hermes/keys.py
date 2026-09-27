@@ -24,7 +24,7 @@ _HRP = {False: "bc", True: "tb"}                 # mainnet / testnet bech32 pref
 
 
 def hash160(data: bytes) -> bytes:
-    """RIPEMD-160(SHA-256(data)) — Bitcoin's public-key hash."""
+    """RIPEMD-160(SHA-256(data)): Bitcoin's public-key hash."""
     return ripemd160(sha256(data))
 
 
@@ -79,7 +79,7 @@ class PublicKey:
 
     def p2wpkh_address(self, testnet: bool = False) -> str:
         """Native SegWit (P2WPKH) address: bech32 of witness v0 + the key hash.
-        Always uses the *compressed* pubkey — SegWit forbids uncompressed keys."""
+        Always uses the *compressed* pubkey; SegWit forbids uncompressed keys."""
         return encode_segwit(_HRP[testnet], 0, self.hash160(compressed=True))
 
 

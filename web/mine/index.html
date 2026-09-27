@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mine &amp; Chain — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Mine &amp; Chain · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Mine & the Chain — Hermes">
+<meta property="og:title" content="Mine & the Chain · Hermes">
 <meta property="og:description" content="Grind a nonce until the hash clears the target, link blocks, then tamper with one and break the chain.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#ff9f43;--accent-ink:#241200}
@@ -44,7 +46,7 @@
     <h1>Mine &amp; the Chain</h1>
     <p class="sub">
       Mining is a <b>guessing game</b>. Bitcoin double-hashes a block header with SHA-256 and only
-      accepts the block if the hash comes out below a <span class="x" data-pop="target">target</span> —
+      accepts the block if the hash comes out below a <span class="x" data-pop="target">target</span>,
       so miners grind the <span class="mono">nonce</span> until they get lucky. Stacked up and linked
       by hash, those blocks become a chain you <b>can't quietly rewrite</b>.
     </p>
@@ -79,13 +81,13 @@
           <div class="stat wide"><div class="k">status</div><div class="v" id="st-found">grinding…</div></div>
         </div>
         <p class="hint">Each extra zero makes blocks ~16× rarer. Bitcoin's real target needs ~19
-          leading zeros — around 10²⁴ hashes per block at today's difficulty.</p>
+          leading zeros: around 10²⁴ hashes per block at today's difficulty.</p>
       </div>
     </div>
   </div>
 
   <div style="margin-top:26px">
-    <div class="notice-title" style="margin-bottom:8px">The chain — edit a block to break it</div>
+    <div class="notice-title" style="margin-bottom:8px">The chain: edit a block to break it</div>
     <div class="chain" id="chain"></div>
     <p class="hint" style="margin-top:0">Each block stores the hash of the one before it. Edit any
       block's data: its hash changes, so the next block's “prev” no longer matches and every block
@@ -97,13 +99,13 @@
     <div class="notice-grid">
       <div class="ncard"><h3>Hard to find, instant to check</h3>
         <p>Finding a nonce takes millions of tries; verifying one takes a single hash. That asymmetry
-          is the whole security model — cheap to police, expensive to cheat.</p></div>
+          is the whole security model: cheap to police, expensive to cheat.</p></div>
       <div class="ncard"><h3>Tampering cascades</h3>
         <p>Change old data and you must re-mine that block <em>and every block after it</em>, faster
           than the rest of the network extends the honest chain. Practically: impossible.</p></div>
       <div class="ncard"><h3>No clock, just work</h3>
         <p>Nothing trusts a timestamp. The chain's order is enforced purely by which blocks point to
-          which — and by how much computation is piled on top.</p></div>
+          which, and by how much computation is piled on top.</p></div>
     </div>
   </div>
 </div>
@@ -174,7 +176,7 @@ window.POPS = {
   const CDIFF = 3, ctarget = "0".repeat(CDIFF);
   const GENESIS = "00".repeat(8) + "…";
   const blocks = [
-    { data: "Genesis — 50 BTC to Satoshi", nonce: 0 },
+    { data: "Genesis: 50 BTC to Satoshi", nonce: 0 },
     { data: "Alice → Bob: 12 BTC", nonce: 0 },
     { data: "Bob → Carol: 3 BTC", nonce: 0 },
     { data: "Carol → Dave: 1 BTC", nonce: 0 },
@@ -221,7 +223,7 @@ window.POPS = {
     c.querySelectorAll("button[data-mine]").forEach((btn) =>
       btn.addEventListener("click", () => mineBlock(+btn.dataset.mine)));
   }
-  // refresh block cards without rebuilding them — keeps focus in the input being typed in
+  // refresh block cards without rebuilding them, which keeps focus in the input being typed in
   function updateInPlace() {
     const els = $("chain").querySelectorAll(".block");
     blocks.forEach((b, i) => {

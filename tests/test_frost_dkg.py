@@ -1,9 +1,9 @@
-"""FROST DKG (PedPoP) — distributed key generation with no trusted dealer.
+"""FROST DKG (PedPoP): distributed key generation with no trusted dealer.
 
 RFC 9591 standardises only FROST *signing*, so there are no official DKG vectors. Instead
 we pin correctness by self-consistency: a full 2-of-3 ceremony runs, every proof of
 possession and every Feldman sub-share verifies, the shares Shamir-reconstruct to the group
-key, and — the real proof — the DKG output produces a signature the (RFC-9591-vector-anchored)
+key and (the real proof) the DKG output produces a signature the (RFC-9591-vector-anchored)
 ``frost.verify`` accepts. The group secret is never assembled anywhere in the flow.
 """
 
@@ -74,7 +74,7 @@ def test_dkg_verification_shares_interpolate_to_the_group_key():
 
 
 def test_dkg_shares_reconstruct_the_never_assembled_secret():
-    # the shares ARE Shamir shares of Σ a_j0 — reconstructing proves it (the reconstruction
+    # the shares ARE Shamir shares of Σ a_j0; reconstructing proves it (the reconstruction
     # is exactly the step DKG exists to avoid ever performing in practice).
     result = _run_dkg()
     for signers in ([1, 2], [2, 3]):

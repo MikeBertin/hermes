@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Taproot &amp; Schnorr — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Taproot &amp; Schnorr · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Taproot &amp; Schnorr — Hermes">
-<meta property="og:description" content="Bitcoin's cleaner signature — x-only keys, signatures that add, and the tweak that turns a key into a bc1p… address.">
+<meta property="og:title" content="Taproot &amp; Schnorr · Hermes">
+<meta property="og:description" content="Bitcoin's cleaner signature: x-only keys, signatures that add, and the tweak that turns a key into a bc1p… address.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#f7a14b;--accent-ink:#2a1600}
@@ -57,10 +59,10 @@
   <header class="hero">
     <h1>Taproot &amp; Schnorr</h1>
     <p class="sub">
-      Bitcoin launched with ECDSA — Schnorr's cleaner scheme had spent so long under patent that in
+      Bitcoin launched with ECDSA. Schnorr's cleaner scheme had spent so long under patent that in
       2009 it had no standard and no library support. The 2021 <b>Taproot</b> upgrade finally
       brought it home (<span class="x" data-pop="bip340">BIP-340</span>).
-      Same curve, same keys — but the equation is <b>linear</b>, so signatures and keys can
+      Same curve, same keys, but the equation is <b>linear</b>, so signatures and keys can
       <b>add</b>; and every output hides behind one
       <span class="x" data-pop="tweak">tweaked key</span>, so a plain payment, a multisig vault
       and a secret script tree all look identical on-chain: <span class="mono">bc1p…</span>
@@ -92,21 +94,21 @@
             <div class="formula">s = k + <span class="a">e</span>·d<br>s·G == R + <span class="a">e</span>·P</div>
           </div>
         </div>
-        <p class="hint" style="margin:10px 0 0">No modular inverse anywhere —
+        <p class="hint" style="margin:10px 0 0">No modular inverse anywhere:
           <span class="mono">e</span> is a <span class="x" data-pop="tagged">tagged hash</span> of
           <span class="mono">R.x ‖ P.x ‖ m</span>, and the nonce is derived deterministically from
           the key and message, so the PS3 nonce-reuse bug (demo 3) is gone by construction.</p>
       </div>
 
       <div class="card2" style="border-color:rgba(247,161,75,.35)">
-        <h2>2 · The superpower — signatures add</h2>
+        <h2>2 · The superpower: signatures add</h2>
         <p class="hint" style="margin:-2px 0 8px">Because signing is linear, two cosigners can
-          <b>sum their keys</b> and produce one ordinary signature for the sum. The verifier — and
-          the blockchain — sees a single key, a single 64-byte signature.</p>
+          <b>sum their keys</b> and produce one ordinary signature for the sum. The verifier (and
+          the blockchain) sees a single key, a single 64-byte signature.</p>
         <div class="signerline"><span class="dot">A</span><span>Alice &nbsp;<span class="pk" id="p1">–</span></span></div>
         <div class="signerline"><span class="dot">B</span><span>Bob &nbsp;&nbsp;&nbsp;<span class="pk" id="p2">–</span></span></div>
         <div class="agg">
-          <div class="lab2">joint key &nbsp;(d<sub>A</sub>+d<sub>B</sub>)·G — one point, two owners</div>
+          <div class="lab2">joint key &nbsp;(d<sub>A</sub>+d<sub>B</sub>)·G · one point, two owners</div>
           <div class="num" id="pagg">–</div>
         </div>
         <div class="row" style="margin-top:12px">
@@ -115,7 +117,7 @@
         </div>
         <div id="aggBadge" class="badge2 no" style="margin-top:12px">not signed yet</div>
         <p class="hint" style="margin:10px 0 0">This is the door to <b>MuSig2</b>: an n-of-n vault
-          that costs and looks exactly like a single-sig payment — against the ~250-byte witness a
+          that costs and looks exactly like a single-sig payment, against the ~250-byte witness a
           2-of-3 script spend like demo 9's carries. (Real MuSig adds hashing so a cosigner can't craft a malicious "rogue" key;
           the algebra shown here is the heart of it.)</p>
       </div>
@@ -131,7 +133,7 @@
           <span class="lab">P.x</span><span class="num" id="pubx" style="font-size:11px">–</span>
         </div>
         <p class="hint">An <span class="x" data-pop="xonly">x-only pubkey</span>: 32 bytes, no
-          <span class="mono">02</span>/<span class="mono">03</span> prefix — of the two curve points
+          <span class="mono">02</span>/<span class="mono">03</span> prefix. Of the two curve points
           with this x, the even-Y one is implied.</p>
       </div>
 
@@ -157,7 +159,7 @@
           <div class="num" id="tw-addr">–</div>
         </div>
         <p class="hint" style="margin-top:10px">The tweak can also commit to a whole
-          <b>tree of scripts</b> — but a key-path spend never reveals whether one exists.
+          <b>tree of scripts</b>, but a key-path spend never reveals whether one exists.
           Your wallet's <span class="mono">bc1p…</span> addresses are built exactly like this
           (BIP-86).</p>
       </div>
@@ -169,14 +171,14 @@
     <div class="notice-grid">
       <div class="ncard"><h3>Cleaner math, provable security</h3>
         <p>ECDSA's <span class="mono">k⁻¹</span> was a patent workaround with a folklore security
-          argument. Schnorr's linear <span class="mono">s = k + e·d</span> has a clean proof — and
+          argument. Schnorr's linear <span class="mono">s = k + e·d</span> has a clean proof, and
           it's why signatures can be batch-verified and aggregated.</p></div>
       <div class="ncard"><h3>Everyone looks the same</h3>
-        <p>Single sig, 2-of-2 MuSig vault, or a key hiding a script tree — every key-path spend is
+        <p>Single sig, 2-of-2 MuSig vault or a key hiding a script tree: every key-path spend is
           the same 34-byte output and one 64-byte signature. Privacy for the vault, cheaper fees
           for everyone.</p></div>
       <div class="ncard"><h3>Tamper-proof, still</h3>
-        <p>Edit one character after signing and verification fails, exactly as with ECDSA — the
+        <p>Edit one character after signing and verification fails, exactly as with ECDSA. The
           challenge <span class="mono">e</span> binds the signature to the message <em>and</em> to
           both points. Different scheme, same guarantee.</p></div>
     </div>
@@ -186,7 +188,7 @@
 <script>
 window.POPS = {
   bip340: "<h4>BIP-340</h4><p>The Schnorr signature standard activated with Taproot (Nov 2021). 64-byte signatures, 32-byte x-only public keys, deterministic nonces, and every hash domain-separated by a tag.</p>",
-  xonly: "<h4>x-only public keys</h4><p>A curve point has an x and a y, but the y is redundant — it's one of two values, and BIP-340 fixes the choice: always the <em>even</em> one. So a Taproot pubkey is just 32 bytes of x.</p>",
+  xonly: "<h4>x-only public keys</h4><p>A curve point has an x and a y, but the y is redundant: it's one of two values, and BIP-340 fixes the choice: always the <em>even</em> one. So a Taproot pubkey is just 32 bytes of x.</p>",
   tagged: "<h4>Tagged hashes</h4><p><code>sha256(sha256(tag) ‖ sha256(tag) ‖ msg)</code>. Every BIP-340/341 hash is prefixed with its purpose (\"BIP0340/challenge\", \"TapTweak\", …) so a digest from one context can never be replayed in another.</p>",
   tweak: "<h4>The TapTweak</h4><p>The address key is never a bare wallet key: it's <code>Q = P + t·G</code> where <code>t</code> hashes the key itself (and optionally a tree of fallback scripts). Spending with the key reveals nothing about what else Q could have committed to.</p>",
 };
@@ -241,7 +243,7 @@ window.POPS = {
     const b = $("aggBadge");
     b.className = "badge2 " + (ok ? "ok" : "no");
     b.textContent = ok
-      ? "✓ one signature, verifies under the joint key — nobody can tell two people signed"
+      ? "✓ one signature, verifies under the joint key; nobody can tell two people signed"
       : "✗ verification failed";
   }
   $("newPair").addEventListener("click", newPair);

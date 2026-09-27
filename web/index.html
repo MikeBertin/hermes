@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hermes — Bitcoin from First Principles</title>
-<meta name="description" content="Bitcoin built from nothing — the secp256k1 curve, signatures, hashing, mining, Script and wallets, as interactive browser visualisations.">
+<link rel="icon" href="badge.svg" type="image/svg+xml">
+<title>Hermes · Bitcoin from First Principles</title>
+<meta name="description" content="Bitcoin built from nothing: the secp256k1 curve, signatures, hashing, mining, Script and wallets, as interactive browser visualisations.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mikebertin.github.io/hermes/">
-<meta property="og:title" content="Hermes — Bitcoin from First Principles">
-<meta property="og:description" content="Bitcoin built from nothing — keys, signatures, proof of work and more, as interactive visualisations.">
+<meta property="og:title" content="Hermes · Bitcoin from First Principles">
+<meta property="og:description" content="Bitcoin built from nothing: keys, signatures, proof of work and more, as interactive visualisations.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Hermes — Bitcoin from First Principles">
+<meta name="twitter:title" content="Hermes · Bitcoin from First Principles">
 <meta name="twitter:image" content="https://mikebertin.github.io/hermes/og.png">
 <style>
   :root{
@@ -72,6 +73,9 @@
     color:var(--muted);font-size:12.5px;line-height:1.8}
   footer b{color:var(--ink);font-weight:600}
   footer a{color:var(--curve)}
+  footer .hub{display:inline-flex;align-items:center;gap:6px;margin-top:6px}
+  footer .hub img{display:block}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -80,14 +84,14 @@
     <div class="badge">Hermes</div>
     <h1>Bitcoin from First Principles</h1>
     <p class="lede">
-      Bitcoin, built from <b>nothing</b> — no crypto libraries, no magic. The
+      Bitcoin, built from <b>nothing</b>. No crypto libraries, no magic. The
       <b>secp256k1</b> curve, the hashes, the signatures, the proof of work, the
       network, all rebuilt by hand and turned into things you can <b>touch</b>. Nineteen
       interactive windows onto how a chain of numbers becomes money nobody can forge.
     </p>
   </header>
 
-  <div class="layer-label">Layer 1 — <span>The Primitives</span></div>
+  <div class="layer-label">Layer 1 · <span>The Primitives</span></div>
   <div class="grid">
     <a class="card c1" href="curve/">
       <div class="num">01</div><div class="tag">Elliptic curve</div>
@@ -104,7 +108,7 @@
     <a class="card c3" href="sign/">
       <div class="num">03</div><div class="tag">ECDSA</div>
       <h2>Sign &amp; Forge</h2>
-      <p>Sign a message, verify it — then reuse one nonce across two signatures and watch the private key fall out.</p>
+      <p>Sign a message, verify it, then reuse one nonce across two signatures and watch the private key fall out.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c4" href="mine/">
@@ -115,12 +119,12 @@
     </a>
   </div>
 
-  <div class="layer-label">Layer 2 — <span>The Systems</span></div>
+  <div class="layer-label">Layer 2 · <span>The Systems</span></div>
   <div class="grid">
     <a class="card c5" href="network/">
       <div class="num">05</div><div class="tag">Consensus</div>
       <h2>Network &amp; the 51% Attack</h2>
-      <p>Nodes gossip, forks appear, and an attacker rewrites a "confirmed" payment.</p>
+      <p>Nodes gossip, forks appear and an attacker rewrites a "confirmed" payment.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c6" href="testnet/">
@@ -150,19 +154,19 @@
     <a class="card c10" href="merkle/">
       <div class="num">10</div><div class="tag">Merkle / SPV</div>
       <h2>Merkle Proofs</h2>
-      <p>A block fingerprints every transaction in 32 bytes. Prove one is included with a handful of hashes — no full block needed.</p>
+      <p>A block fingerprints every transaction in 32 bytes. Prove one is included with a handful of hashes, no full block needed.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c11" href="taproot/">
       <div class="num">11</div><div class="tag">BIP-340 / 341</div>
       <h2>Taproot &amp; Schnorr</h2>
-      <p>Bitcoin's cleaner signature: keys that add, one joint signature for many owners, and the tweak behind every bc1p… address.</p>
+      <p>Bitcoin's cleaner signature: keys that add, one joint signature for many owners and the tweak behind every bc1p… address.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c12" href="musig/">
       <div class="num">12</div><div class="tag">BIP-327</div>
       <h2>MuSig2</h2>
-      <p>Three cosigners, one key, one 64-byte signature. The two-round ceremony that makes a multisig vault invisible — with a witness 4× smaller.</p>
+      <p>Three cosigners, one key, one 64-byte signature. The two-round ceremony that makes a multisig vault invisible, with a witness 4× smaller.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c13" href="lightning/">
@@ -180,39 +184,40 @@
     <a class="card c15" href="frost/">
       <div class="num">15</div><div class="tag">RFC 9591</div>
       <h2>FROST Threshold</h2>
-      <p>Any <em>t</em> of <em>n</em> key-holders sign — 2 of 3, and any one alone can't. One Schnorr signature, the group secret never assembled.</p>
+      <p>Any <em>t</em> of <em>n</em> key-holders sign: 2 of 3, and any one alone can't. One Schnorr signature, the group secret never assembled.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c16" href="ptlc/">
       <div class="num">16</div><div class="tag">Adaptor sigs · Layer 2</div>
       <h2>PTLC Routing</h2>
-      <p>Route a payment with point-locks, not hash-locks. A Schnorr adaptor signature per hop; completing it reveals the secret and settles the path — privately.</p>
+      <p>Route a payment with point-locks, not hash-locks. A Schnorr adaptor signature per hop; completing it reveals the secret and settles the path, privately.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c17" href="frost-taproot/">
       <div class="num">17</div><div class="tag">BIP-340 · Taproot</div>
       <h2>FROST Taproot Vault</h2>
-      <p>Re-skin FROST to BIP-340: any 2 of 3 officers key-path spend a <span class="mono">bc1p</span> vault with one signature — indistinguishable on-chain from a lone wallet.</p>
+      <p>Re-skin FROST to BIP-340: any 2 of 3 officers key-path spend a <span class="mono">bc1p</span> vault with one signature, indistinguishable on-chain from a lone wallet.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c18" href="second-stage/">
       <div class="num">18</div><div class="tag">BOLT-3 · Layer 2</div>
       <h2>HTLC Second-Stage</h2>
-      <p>Force-close with a payment in flight: the HTLC-timeout / HTLC-success transactions (byte-for-byte BOLT-3), whose output is itself delayed and revocable — the penalty, one level down.</p>
+      <p>Force-close with a payment in flight: the HTLC-timeout / HTLC-success transactions (byte-for-byte BOLT-3), whose output is itself delayed and revocable: the penalty, one level down.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
     <a class="card c19" href="frost-dkg/">
       <div class="num">19</div><div class="tag">PedPoP · DKG</div>
       <h2>FROST DKG</h2>
-      <p>Delete the trusted dealer. Each participant contributes a secret only they know; the group key is the sum, never assembled — yet any 2 of 3 still sign. Distributed key generation, from scratch.</p>
+      <p>Delete the trusted dealer. Each participant contributes a secret only they know; the group key is the sum, never assembled, yet any 2 of 3 still sign. Distributed key generation, from scratch.</p>
       <span class="open">Open <span class="arrow">→</span></span>
     </a>
   </div>
 
   <footer>
-    <b>Hermes</b> — Greek god of commerce, boundaries and secrets; patron, by association, of
+    <b>Hermes</b>, Greek god of commerce, boundaries and secrets; patron, by association, of
     every signed and sealed message. Built from scratch in Python and JavaScript, cross-checked
     against Bitcoin's own test vectors.
+    <br><span class="hub"><img src="badge.svg" alt="" width="13" height="16"> <a href="https://mikebertin.github.io/">More builds by Mike Bertin</a></span>
   </footer>
 </div>
 </body>

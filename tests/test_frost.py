@@ -2,8 +2,8 @@
 
 Anchored byte-for-byte to the official Appendix E.5 test vector: a 2-of-3 group
 where participants 1 and 3 sign the message "test". Every intermediate value the
-RFC publishes — shares, nonces, commitments, binding factors, signature shares,
-and the aggregate signature — is reproduced exactly, then the signature is
+RFC publishes (shares, nonces, commitments, binding factors, signature shares
+and the aggregate signature) is reproduced exactly, then the signature is
 verified and the threshold semantics are checked.
 """
 

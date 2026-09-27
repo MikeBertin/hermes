@@ -1,9 +1,9 @@
-"""Bitcoin Script — a tiny, stack-based programming language.
+"""Bitcoin Script: a tiny, stack-based programming language.
 
 Every coin is locked by a short script (the *scriptPubKey*) and spent by
 prepending an unlocking script (the *scriptSig*). Concatenate the two, run them
 on a stack machine, and if the stack is left holding "true", the spend is valid.
-There are no loops — Script is deliberately not Turing-complete.
+There are no loops; Script is deliberately not Turing-complete.
 
 This implements the handful of opcodes the demos need: pay-to-public-key-hash,
 multisig, a hash lock, and a time lock. Signatures here are flat r‖s bytes (see
@@ -77,7 +77,7 @@ def decode_num(b: bytes) -> int:
 
 
 def is_truthy(el: bytes) -> bool:
-    # any non-zero byte is true (a lone 0x80 — negative zero — is still false)
+    # any non-zero byte is true (a lone 0x80, negative zero, is still false)
     return any(b != 0 for b in el[:-1]) or (len(el) > 0 and el[-1] not in (0, 0x80))
 
 
@@ -251,7 +251,7 @@ def evaluate(script: Script, z: int = 0, locktime: int | None = None,
         elif cmd == OP_CHECKSEQUENCEVERIFY:
             # Relative timelock (BIP-68/112): the input must be at least ``required``
             # blocks newer than the output it spends. Like CLTV, it verifies and
-            # leaves the value on the stack. Simplified to the block-count form —
+            # leaves the value on the stack. Simplified to the block-count form:
             # we compare the low 16 bits and ignore the disable/type flag bits.
             if sequence is None or not stack:
                 return False

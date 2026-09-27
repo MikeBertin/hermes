@@ -1,4 +1,4 @@
-// Hermes — shared hover-to-explain popover. Each demo defines a global POPS map
+// Hermes: shared hover-to-explain popover. Each demo defines a global POPS map
 // { key: "<h4>Title</h4><p>body</p>" } and marks terms with
 // <span class="x" data-pop="key">…</span>.
 (function () {

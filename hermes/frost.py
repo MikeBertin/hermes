@@ -1,13 +1,13 @@
-"""FROST — Flexible Round-Optimized Schnorr Threshold signatures (RFC 9591).
+"""FROST: Flexible Round-Optimized Schnorr Threshold signatures (RFC 9591).
 
-MuSig2 (demo 12) is *n-of-n*: every cosigner must sign. FROST is *t-of-n* — any
+MuSig2 (demo 12) is *n-of-n*: every cosigner must sign. FROST is *t-of-n*: any
 threshold t of the n key-holders can produce one signature, and any t-1 cannot.
 A 2-of-3 treasury where any two officers authorise a payment, yet the chain sees
 a single ordinary Schnorr signature: that is FROST.
 
 The group secret is never assembled. It is Shamir-shared once (here by a trusted
 dealer), and signing recombines the shares *inside* the signature via Lagrange
-interpolation — the secret itself never exists in one place. Signing is two
+interpolation, so the secret itself never exists in one place. Signing is two
 rounds, like MuSig2: commit nonce pairs, then exchange signature shares.
 
 This implements the ``FROST(secp256k1, SHA-256)`` ciphersuite from RFC 9591
@@ -61,23 +61,23 @@ def _hash_to_scalar(msg: bytes, suffix: bytes) -> int:
     return int.from_bytes(_expand_message_xmd(msg, CONTEXT + suffix, 48), "big") % N
 
 
-def h1(msg: bytes) -> int:   # "rho" — binding factors
+def h1(msg: bytes) -> int:   # "rho": binding factors
     return _hash_to_scalar(msg, b"rho")
 
 
-def h2(msg: bytes) -> int:   # "chal" — the signature challenge
+def h2(msg: bytes) -> int:   # "chal": the signature challenge
     return _hash_to_scalar(msg, b"chal")
 
 
-def h3(msg: bytes) -> int:   # "nonce" — nonce generation
+def h3(msg: bytes) -> int:   # "nonce": nonce generation
     return _hash_to_scalar(msg, b"nonce")
 
 
-def h4(msg: bytes) -> bytes:  # "msg" — message pre-hash (fixed length)
+def h4(msg: bytes) -> bytes:  # "msg": message pre-hash (fixed length)
     return sha256(CONTEXT + b"msg" + msg)
 
 
-def h5(msg: bytes) -> bytes:  # "com" — commitment-list pre-hash (fixed length)
+def h5(msg: bytes) -> bytes:  # "com": commitment-list pre-hash (fixed length)
     return sha256(CONTEXT + b"com" + msg)
 
 
@@ -102,7 +102,7 @@ def trusted_dealer_keygen(secret: int, coefficients: list[int], max_participants
 
 def derive_interpolating_value(identifiers: list[int], x_i: int) -> int:
     """The Lagrange coefficient λ_i for participant ``x_i`` within the signing set
-    ``identifiers`` — the weight that recombines shares back toward f(0)."""
+    ``identifiers``: the weight that recombines shares back toward f(0)."""
     if x_i not in identifiers:
         raise ValueError("invalid parameters: x_i not in the list")
     num, den = 1, 1
@@ -117,13 +117,13 @@ def derive_interpolating_value(identifiers: list[int], x_i: int) -> int:
 # --- round one: nonces & commitments -----------------------------------------
 def nonce_generate(secret: int, randomness: bytes) -> int:
     """Derive a single-use nonce by hashing fresh randomness with the secret share
-    (RFC 9591 §4.1) — a bad RNG alone can't leak or repeat it."""
+    (RFC 9591 §4.1), so a bad RNG alone can't leak or repeat it."""
     return h3(randomness + _ser_scalar(secret))
 
 
 def commit(secret: int, hiding_randomness: bytes, binding_randomness: bytes):
     """A participant's round-one output: a pair of nonces (kept private) and their
-    commitments (published). FROST uses *two* nonces — the binding one, weighted
+    commitments (published). FROST uses *two* nonces: the binding one, weighted
     per-session, is what defeats the parallel-session forgery MuSig2 also guards
     against."""
     hiding_nonce = nonce_generate(secret, hiding_randomness)
@@ -142,7 +142,7 @@ def encode_group_commitment_list(commitment_list: list) -> bytes:
 
 def compute_binding_factors(group_public_key: Point, commitment_list: list, msg: bytes):
     """One binding factor ρ_i per participant, each committing to the whole
-    session (group key, message, and *every* commitment) — so no signer can pick
+    session (group key, message and *every* commitment), so no signer can pick
     their nonce after seeing the others'."""
     prefix = _ser_element(group_public_key) + h4(msg) + h5(encode_group_commitment_list(commitment_list))
     return [(identifier, h1(prefix + _ser_scalar(identifier)))
@@ -189,7 +189,7 @@ def verify_share(identifier: int, secret_commitment: Point, sig_share: int,
                  group_public_key: Point, group_commitment: Point,
                  commitment_list: list, binding_factor_list: list, msg: bytes) -> bool:
     """Check one participant's share on its own (RFC 9591 §5.4 identifiable abort):
-    ``z_i·G == (hiding_i + ρ_i·binding_i) + λ_i·challenge·PK_i`` — so a bad share
+    ``z_i·G == (hiding_i + ρ_i·binding_i) + λ_i·challenge·PK_i``, so a bad share
     is pinned on its author before aggregation."""
     commits = {i: (h, b) for i, h, b in commitment_list}
     hiding_commit, binding_commit = commits[identifier]

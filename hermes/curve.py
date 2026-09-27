@@ -1,4 +1,4 @@
-"""secp256k1 — the elliptic curve Bitcoin uses.
+"""secp256k1: the elliptic curve Bitcoin uses.
 
 The curve is ``y^2 = x^3 + 7`` over the prime field GF(p). Its points, plus a
 special "point at infinity" that acts as zero, form a group: you can *add* two
@@ -12,7 +12,7 @@ where ``G`` is a fixed generator point and ``private_key`` is just a 256-bit
 number. Recovering the number from the point would mean solving the discrete-log
 problem, which nobody knows how to do.
 
-Everything here is built from :class:`hermes.field.FieldElement` — no crypto
+Everything here is built from :class:`hermes.field.FieldElement`, with no crypto
 libraries.
 """
 

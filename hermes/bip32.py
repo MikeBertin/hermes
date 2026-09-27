@@ -1,4 +1,4 @@
-"""BIP-32 — hierarchical deterministic keys.
+"""BIP-32: hierarchical deterministic keys.
 
 One 512-bit seed becomes a master key, and from it an entire tree of child keys,
 each addressed by a path like ``m/44'/0'/0'/0/3``. A ``'`` marks a *hardened*

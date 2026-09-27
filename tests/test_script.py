@@ -78,7 +78,7 @@ def test_csv():
 
 # --- conditional branches (OP_IF / OP_ELSE / OP_ENDIF) --------------------
 def test_if_else_branches():
-    # OP_IF <push A> OP_ELSE <push B> OP_ENDIF  — selector picks the branch
+    # OP_IF <push A> OP_ELSE <push B> OP_ENDIF: selector picks the branch
     script = lambda sel: Script([sel, OP_IF, OP_1, OP_ELSE, OP_0, OP_ENDIF])
     assert evaluate(script(OP_1)) is True                # truthy -> IF branch pushes 1
     assert evaluate(script(OP_0)) is False               # falsy  -> ELSE branch pushes 0

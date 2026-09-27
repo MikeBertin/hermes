@@ -1,4 +1,4 @@
-"""Merkle trees — how a block fingerprints all its transactions in 32 bytes,
+"""Merkle trees: how a block fingerprints all its transactions in 32 bytes,
 and how a light wallet proves one is included without downloading the rest.
 
 Every block header carries a single *merkle root*: hash the transactions in
@@ -6,9 +6,9 @@ pairs, then hash the pairs, and so on up to one value. Change any transaction
 and the root changes, so the root (committed to by proof-of-work) locks in the
 entire list. The payoff is the **merkle proof**: to convince someone a given
 transaction is in a block, you hand over only the ~log2(n) sibling hashes along
-its path to the root — a few hundred bytes instead of the whole block. That is
-what SPV ("simplified payment verification") wallets — and on-chain proof-of-
-reserves — rely on.
+its path to the root, a few hundred bytes instead of the whole block. That is
+what SPV ("simplified payment verification") wallets (and on-chain proof-of-
+reserves) rely on.
 
 Bitcoin quirks reproduced here:
 - hashes are combined with double-SHA-256;
@@ -28,7 +28,7 @@ def merkle_parent(left: bytes, right: bytes) -> bytes:
 
 
 def merkle_parent_level(hashes: list[bytes]) -> list[bytes]:
-    """One step up the tree. An odd node count duplicates the final hash — the
+    """One step up the tree. An odd node count duplicates the final hash: the
     quirk behind Bitcoin's CVE-2012-2459 duplicate-tx malleability."""
     if len(hashes) == 1:
         return hashes
@@ -38,7 +38,7 @@ def merkle_parent_level(hashes: list[bytes]) -> list[bytes]:
 
 
 def merkle_levels(hashes: list[bytes]) -> list[list[bytes]]:
-    """Every level from the leaves up to (and including) the single root —
+    """Every level from the leaves up to (and including) the single root,
     handy for drawing the tree."""
     if not hashes:
         raise ValueError("need at least one leaf")
@@ -55,7 +55,7 @@ def merkle_root(hashes: list[bytes]) -> bytes:
 
 def merkle_proof(hashes: list[bytes], index: int) -> list[tuple[bytes, bool]]:
     """The inclusion proof for leaf ``index``: the sibling hash at each level on
-    the way to the root, paired with a flag — ``True`` if the sibling sits on
+    the way to the root, paired with a flag: ``True`` if the sibling sits on
     the *left* (so the parent is ``sibling ‖ current``)."""
     proof: list[tuple[bytes, bool]] = []
     level = list(hashes)
@@ -84,6 +84,6 @@ def verify_merkle_proof(leaf: bytes, proof: list[tuple[bytes, bool]], root: byte
 # --- display-order convenience (block explorers show big-endian txids) --------
 def root_from_txids(txids: list[str]) -> str:
     """Merkle root from display-order (big-endian) txid hex, returned the same
-    way — matching what a block header / explorer shows."""
+    way, matching what a block header / explorer shows."""
     leaves = [bytes.fromhex(t)[::-1] for t in txids]
     return merkle_root(leaves)[::-1].hex()

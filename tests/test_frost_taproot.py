@@ -1,10 +1,10 @@
-"""BIP-340 / Taproot FROST — the threshold signature that spends a bc1p vault.
+"""BIP-340 / Taproot FROST: the threshold signature that spends a bc1p vault.
 
 No finalised BIP with test vectors exists, so correctness is pinned by
 self-consistency: over many random group keys and every 2-of-3 signing subset
 (which between them exercise all the even/odd-y parity combinations of the nonce
 R, the group key P, and the tweaked output key Q), the aggregate must verify as a
-genuine BIP-340 signature via the vector-anchored ``schnorr.verify`` — both under
+genuine BIP-340 signature via the vector-anchored ``schnorr.verify``, both under
 the raw group key (core) and under the TapTweaked output key (a real key-path
 spend of the vault address).
 """

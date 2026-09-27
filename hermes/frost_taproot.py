@@ -1,4 +1,4 @@
-"""BIP-340 / Taproot FROST — a threshold signature that actually spends Bitcoin.
+"""BIP-340 / Taproot FROST: a threshold signature that actually spends Bitcoin.
 
 Demo 15's FROST follows RFC 9591 exactly, but that ciphersuite's challenge hash
 isn't BIP-340's, so its 65-byte signature can't spend a Taproot output. This
@@ -7,7 +7,7 @@ even-Y conventions, so the aggregate is a genuine 64-byte BIP-340 signature that
 :func:`hermes.schnorr.verify` accepts.
 
 Wrapped in BIP-341's TapTweak, the group key becomes a ``bc1p…`` address, and any
-``t`` of ``n`` officers can produce a **key-path spend** of it — indistinguishable
+``t`` of ``n`` officers can produce a **key-path spend** of it, indistinguishable
 on-chain from a lone signer. A true t-of-n Taproot vault. There is no finalised
 BIP with test vectors for this yet, so correctness is pinned by self-consistency
 against our (vector-anchored) ``schnorr.verify`` and ``taproot`` modules.

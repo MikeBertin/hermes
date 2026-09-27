@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Real Testnet Transaction — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Real Testnet Transaction · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="A Real Bitcoin Transaction — Hermes">
-<meta property="og:description" content="Built from scratch with Hermes and broadcast to the Bitcoin testnet — a genuine, on-chain transaction, byte by byte.">
+<meta property="og:title" content="A Real Bitcoin Transaction · Hermes">
+<meta property="og:description" content="Built from scratch with Hermes and broadcast to the Bitcoin testnet: a genuine, on-chain transaction, byte by byte.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#58d68d;--accent-ink:#04210f}
@@ -42,8 +44,8 @@
     <h1>A Real Transaction</h1>
     <p class="sub">
       Everything else in Hermes is a model. This isn't. The transaction below was assembled by the
-      <b>from-scratch code</b> in this project — the same curve, signatures and serialization you've
-      been watching — signed, and <b>broadcast to the Bitcoin testnet</b>. It's on a real
+      <b>from-scratch code</b> in this project, the same curve, signatures and serialization you've
+      been watching. It was signed, then <b>broadcast to the Bitcoin testnet</b>. It's on a real
       blockchain, right now. Here it is, byte by byte.
     </p>
   </header>
@@ -90,7 +92,7 @@ $ <b>hermes.cli info</b>
 $ <b>hermes.cli send &lt;addr&gt; --broadcast</b>
   → signed, relayed, accepted ✓</pre>
         <p class="hint">Keys from the <a href="../address/">address</a> demo, the signature from
-          <a href="../sign/">Sign &amp; Forge</a>, the lock from <a href="../script/">Script</a> —
+          <a href="../sign/">Sign &amp; Forge</a>, the lock from <a href="../script/">Script</a>,
           all assembled into bytes a real node accepted.</p>
       </div>
     </div>
@@ -100,11 +102,11 @@ $ <b>hermes.cli send &lt;addr&gt; --broadcast</b>
     <div class="notice-title">Things to notice</div>
     <div class="notice-grid">
       <div class="ncard"><h3>It's just bytes</h3>
-        <p>A transaction is a short, rigid byte string — version, inputs, outputs, locktime. No
+        <p>A transaction is a short, rigid byte string: version, inputs, outputs, locktime. No
           accounts, no balances; only outputs being spent into new outputs.</p></div>
       <div class="ncard"><h3>The signature commits to everything</h3>
         <p>SIGHASH_ALL means the signature covers the whole transaction. Change any output by one
-          satoshi and the signature — and this txid — are instantly invalid.</p></div>
+          satoshi and the signature, along with this txid, is instantly invalid.</p></div>
       <div class="ncard"><h3>No permission needed</h3>
         <p>We didn't ask anyone. A valid, fee-paying transaction is simply relayed and mined. That
           openness is the entire point of the system.</p></div>
@@ -134,7 +136,7 @@ $ <b>hermes.cli send &lt;addr&gt; --broadcast</b>
     function activate(i) {
       document.querySelectorAll(".seg,.field").forEach(el =>
         el.classList.toggle("active", el.dataset.i === String(i)));
-      $("detail").innerHTML = `<b style="color:var(--ink)">${tx.segments[i].label}</b> — ${tx.segments[i].desc}`;
+      $("detail").innerHTML = `<b style="color:var(--ink)">${tx.segments[i].label}</b> · ${tx.segments[i].desc}`;
     }
     document.querySelectorAll(".seg,.field").forEach(el =>
       el.addEventListener("mouseenter", () => activate(el.dataset.i)));

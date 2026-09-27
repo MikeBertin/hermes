@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign &amp; Forge — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Sign &amp; Forge · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Sign & Forge — Hermes">
-<meta property="og:description" content="ECDSA signing and verification — then reuse one nonce and watch the private key fall out.">
+<meta property="og:title" content="Sign & Forge · Hermes">
+<meta property="og:description" content="ECDSA signing and verification, then reuse one nonce and watch the private key fall out.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#ff6b6b;--accent-ink:#2a0000}
@@ -38,7 +40,7 @@
       A signature proves you hold a private key without ever showing it. Every signature needs a
       fresh secret <span class="x" data-pop="nonce">nonce</span> <span class="mono">k</span>. Reuse
       <span class="mono">k</span> just once across two messages and your private key drops out by
-      <b>schoolbook algebra</b> — the bug that unlocked the PlayStation 3 and has drained real wallets.
+      <b>schoolbook algebra</b>. It is the bug that unlocked the PlayStation 3 and has drained real wallets.
     </p>
   </header>
 
@@ -62,7 +64,7 @@
       </div>
 
       <div class="card2" style="border-color:rgba(255,107,107,.35)">
-        <h2>2 · The attack — one nonce, two messages</h2>
+        <h2>2 · The attack: one nonce, two messages</h2>
         <label>Message A</label>
         <input type="text" id="mA" value="Pay Alice 0.5 BTC" spellcheck="false">
         <label>Message B</label>
@@ -97,7 +99,7 @@
         <div class="kv" style="margin-top:14px">
           <span class="lab">pubkey x</span><span class="num" id="pubx" style="font-size:11.5px">–</span>
         </div>
-        <p class="hint">The signatures below are made with this key. The attack never sees it — yet
+        <p class="hint">The signatures below are made with this key. The attack never sees it, yet
           it recovers it exactly.</p>
       </div>
       <div class="panel">
@@ -105,7 +107,7 @@
         <p class="hint" style="margin-top:0">Each signature is <span class="mono">s = k⁻¹(z + r·d)</span>.
           The nonce <span class="mono">k</span> is the only secret hiding <span class="mono">d</span>.
           Two signatures with the <span class="shared-r">same r</span> betray that they share
-          <span class="mono">k</span> — two equations, two unknowns, solved.</p>
+          <span class="mono">k</span>: two equations, two unknowns, solved.</p>
       </div>
     </div>
   </div>
@@ -115,14 +117,14 @@
     <div class="notice-grid">
       <div class="ncard"><h3>Edit after signing → invalid</h3>
         <p>A signature is bound to one exact message. Change a single character and verification
-          fails immediately — you can't lift a signature onto different terms.</p></div>
+          fails immediately. You can't lift a signature onto different terms.</p></div>
       <div class="ncard"><h3>Reused nonce = shared r</h3>
         <p>Because <span class="mono">r</span> comes only from <span class="mono">k·G</span>, two
           signatures sharing a nonce share their <span class="mono">r</span>. That repeat is the
           visible fingerprint of the fatal mistake.</p></div>
       <div class="ncard"><h3>It really recovers <em>your</em> key</h3>
         <p>The recovered <span class="mono">d</span> matches the private key in the side panel to the
-          last digit — computed only from public signature data.</p></div>
+          last digit, computed only from public signature data.</p></div>
     </div>
   </div>
 </div>
@@ -168,7 +170,7 @@ window.POPS = {
     b.className = "badge2 " + (ok ? "ok" : "no");
     b.textContent = ok ? "✓ signature VALID" : "✗ signature INVALID";
     $("verNote").textContent = (cur !== signed.msg)
-      ? "Message was edited after signing — the signature no longer matches."
+      ? "Message was edited after signing, so the signature no longer matches."
       : "";
   }
   $("signBtn").addEventListener("click", doSign);
@@ -182,7 +184,7 @@ window.POPS = {
     const z2 = H.messageHash($("mB").value);
     if (z1 === z2) {
       forge = null; $("recover").disabled = true; $("recBox").style.display = "none";
-      $("fr").textContent = "the two messages must differ — identical messages give identical signatures, and the algebra needs s₁ ≠ s₂";
+      $("fr").textContent = "the two messages must differ: identical messages give identical signatures, and the algebra needs s₁ ≠ s₂";
       $("fs1").textContent = "–"; $("fs2").textContent = "–";
       return;
     }
@@ -200,14 +202,14 @@ window.POPS = {
   function recover() {
     if (!forge) return;
     const { z1, z2, s1, s2 } = forge;
-    // k and d from the two signatures alone — no secret used
+    // k and d from the two signatures alone; no secret used
     const sdiff = ((s1.s - s2.s) % H.N + H.N) % H.N;
     const k = ((z1 - z2) * H.modInv(sdiff, H.N) % H.N + H.N) % H.N;
     const d = H.recoverNonceReuse(z1, s1, z2, s2);
     $("recK").textContent = hexBig(k);
     $("recD").textContent = hexBig(d);
     $("matchLine").innerHTML = d === secret
-      ? "✓ matches your private key exactly — recovered from public data alone."
+      ? "✓ matches your private key exactly, recovered from public data alone."
       : "recovered value (compare to side panel)";
     $("recBox").style.display = "";
   }

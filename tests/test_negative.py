@@ -1,4 +1,4 @@
-"""Negative-path tests — the rejection branches the known-answer vectors never
+"""Negative-path tests: the rejection branches the known-answer vectors never
 reach. Each of these pins a bug found in review: invalid mnemonics that crashed
 (or passed), P2SH/wrong-network addresses silently paid as P2PKH, a multisig
 verifier laxer than OP_CHECKMULTISIG, and Script VM stack underflow raising

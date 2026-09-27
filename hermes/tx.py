@@ -2,7 +2,7 @@
 
 This is the conceptual core a double-spend needs: a transaction spends specific
 previous outputs (inputs) and creates new ones (outputs), and two transactions
-that spend the *same* input are in conflict — only one can ever be in the chain.
+that spend the *same* input are in conflict: only one can ever be in the chain.
 
 It is deliberately simplified (recipients are plain labels, no scripts, no DER):
 just enough to give every payment a real, hash-derived txid and to detect

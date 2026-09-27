@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Curve — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>The Curve · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="The Elliptic Curve — Hermes">
+<meta property="og:title" content="The Elliptic Curve · Hermes">
 <meta property="og:description" content="secp256k1's group law made geometric: your private key is a number, your public key is a point.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>:root{--accent:#7cc4ff}</style>
 </head>
@@ -20,7 +22,7 @@
       Bitcoin's keys live on <b>secp256k1</b>, the curve <span class="mono">y² = x³ + 7</span>.
       Its points form a group: you can <span class="x" data-pop="add">add</span> two points with a
       ruler and you can <span class="x" data-pop="mul">multiply</span> a point by a whole number.
-      That multiplication, <span class="mono">k·G</span>, is a <b>one-way street</b> — easy forwards,
+      That multiplication, <span class="mono">k·G</span>, is a <b>one-way street</b>: easy forwards,
       hopeless backwards. That asymmetry is your <b>private key → public key</b>.
     </p>
   </header>
@@ -42,11 +44,11 @@
           <button data-v="add" aria-pressed="true">P + Q</button>
           <button data-v="double" aria-pressed="false">2P (double)</button>
         </div>
-        <label>Point P — x <span class="val" id="pxV"></span></label>
+        <label>Point P · x <span class="val" id="pxV"></span></label>
         <input type="range" id="px" min="-1.91" max="4.1" step="0.01" value="-1.2">
         <div class="seg" id="pb"><button data-v="up" aria-pressed="true">upper</button><button data-v="dn" aria-pressed="false">lower</button></div>
         <div id="qBlock">
-          <label>Point Q — x <span class="val" id="qxV"></span></label>
+          <label>Point Q · x <span class="val" id="qxV"></span></label>
           <input type="range" id="qx" min="-1.91" max="4.1" step="0.01" value="2.1">
           <div class="seg" id="qb"><button data-v="up" aria-pressed="true">upper</button><button data-v="dn" aria-pressed="false">lower</button></div>
         </div>
@@ -63,7 +65,7 @@
         <h2>k · G over a small field</h2>
         <p class="hint" style="margin-top:0">Same curve, but over the integers mod <span id="pVal" class="mono"></span>.
           Every dot is a point. Crank <b>k</b> and watch <span class="mono">k·G</span> hop around with no
-          pattern — that scramble is why nobody can run the private key backwards out of the public key.</p>
+          pattern. That scramble is why nobody can run the private key backwards out of the public key.</p>
         <label>k <span class="val" id="kV"></span></label>
         <input type="range" id="k" min="1" max="2" value="1">
         <div class="row" style="margin-top:10px">
@@ -83,16 +85,16 @@
     <div class="notice-title">Things to notice</div>
     <div class="notice-grid">
       <div class="ncard"><h3>The vertical line is "infinity"</h3>
-        <p>Add a point to its own mirror image and the line through them is vertical — it never hits the
+        <p>Add a point to its own mirror image and the line through them is vertical, so it never hits the
           curve a third time. That missing point is the group's <b>zero</b>, the point at infinity.</p></div>
       <div class="ncard"><h3>Real intuition, integer reality</h3>
-        <p>Bitcoin doesn't use the smooth curve — it uses points over a 256-bit prime, a cloud of
+        <p>Bitcoin doesn't use the smooth curve. It uses points over a 256-bit prime, a cloud of
           ~10⁷⁷ dots. The algebra is identical; only the picture changes.</p></div>
       <div class="ncard"><h3>One generator, every key</h3>
         <p>On secp256k1, one fixed point <b>G</b> generates the whole group. Your private key is just
           <em>how many times</em> you added G to itself. Counting forward is instant; counting back
           is the discrete-log problem. (In this page's toy field the demo G traces out a small
-          subgroup — big curves are chosen so that can't happen.)</p></div>
+          subgroup; big curves are chosen so that can't happen.)</p></div>
     </div>
   </div>
 </div>
@@ -100,7 +102,7 @@
 <script>
 window.POPS = {
   add: "<h4>Adding points</h4><p>Draw a straight line through two points on the curve. It crosses the curve at exactly one more place; reflect that point over the x-axis and you've got P + Q.</p>",
-  mul: "<h4>k·G</h4><p>Add a point G to itself k times. Do it with repeated doubling and it's fast even for 256-bit k — but recovering k from the result is believed to be infeasible.</p>",
+  mul: "<h4>k·G</h4><p>Add a point G to itself k times. Do it with repeated doubling and it's fast even for 256-bit k, but recovering k from the result is believed to be infeasible.</p>",
 };
 </script>
 <script src="../shared/demo.js"></script>

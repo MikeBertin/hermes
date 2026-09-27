@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Script VM — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Script VM · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="The Script VM — Hermes">
+<meta property="og:title" content="The Script VM · Hermes">
 <meta property="og:description" content="Bitcoin Script as a step-through stack machine: P2PKH, multisig, hash locks and time locks.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#5fd0c5;--accent-ink:#04201d}
@@ -42,7 +44,7 @@
   <header class="hero">
     <h1>The Script VM</h1>
     <p class="sub">
-      Bitcoin coins aren't "owned" — they're <b>locked by a script</b>. To spend one you supply an
+      Bitcoin coins aren't "owned"; they're <b>locked by a script</b>. To spend one you supply an
       <span class="x" data-pop="unlock">unlocking script</span>; glue it in front of the lock, run the
       pair on a <span class="x" data-pop="stack">stack machine</span>, and if the stack ends holding
       <b>true</b>, the money moves. Step through four classic locks below.
@@ -77,7 +79,7 @@
         </div>
         <label style="margin-top:14px;display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="tamper" style="width:auto;margin:0;accent-color:var(--bad)">
-          <span>Tamper — make the spend invalid</span>
+          <span>Tamper: make the spend invalid</span>
         </label>
         <p class="hint" id="explain"></p>
       </div>
@@ -92,9 +94,9 @@
           spender later. Spending is just: can you write a prefix that makes the whole thing pass?</p></div>
       <div class="ncard"><h3>No loops, on purpose</h3>
         <p>Script has no jumps or loops, so every program halts. That keeps validation cheap and
-          predictable — nodes can't be tricked into running forever.</p></div>
+          predictable: nodes can't be tricked into running forever.</p></div>
       <div class="ncard"><h3>One machine, many contracts</h3>
-        <p>The same opcodes express a plain payment, an m-of-n vault, a hash-revealed payment, and a
+        <p>The same opcodes express a plain payment, an m-of-n vault, a hash-revealed payment and a
           time-delayed one. Lightning channels are built from exactly these pieces.</p></div>
     </div>
   </div>
@@ -102,7 +104,7 @@
 
 <script>
 window.POPS = {
-  unlock: "<h4>Unlocking script</h4><p>The data a spender provides — typically a signature and public key — that satisfies the conditions the coin was locked with.</p>",
+  unlock: "<h4>Unlocking script</h4><p>The data a spender provides (typically a signature and public key) that satisfies the conditions the coin was locked with.</p>",
   stack: "<h4>Stack machine</h4><p>A last-in-first-out pile of byte strings. Opcodes push and pop values; the script passes if it ends with a single true value on top.</p>",
 };
 </script>
@@ -144,7 +146,7 @@ window.POPS = {
       const sig = ser64(H.sign(signer, z, null, true));
       return { unlock: [D(sig,"signature"), D(sec,"pubkey")],
         lock: [O(OP.OP_DUP), O(OP.OP_HASH160), D(h160,"pubKeyHash"), O(OP.OP_EQUALVERIFY), O(OP.OP_CHECKSIG)],
-        explain: "Pay-to-Public-Key-Hash — the everyday Bitcoin address. The lock commits to a hash of the public key; spending reveals the key and a signature over the transaction." };
+        explain: "Pay-to-Public-Key-Hash: the everyday Bitcoin address. The lock commits to a hash of the public key; spending reveals the key and a signature over the transaction." };
     }
     if (kind === "multisig") {
       const ks = [1001n,1002n,1003n].map(k => ({k, sec:H.sec(H.pubFromSecret(k))}));
@@ -153,7 +155,7 @@ window.POPS = {
       const second = tamper ? ser64(H.sign(ks[0].k, z, null, true)) : s1; // tamper: 2nd sig also from key0
       return { unlock: [O(OP.OP_0), D(s0,"sig · key1"), D(second, tamper ? "sig · key1 (dup!)" : "sig · key2")],
         lock: [O(OP.OP_2), D(ks[0].sec,"pubkey1"), D(ks[1].sec,"pubkey2"), D(ks[2].sec,"pubkey3"), O(OP.OP_3), O(OP.OP_CHECKMULTISIG)],
-        explain: "A 2-of-3 vault: any two of three keys can spend. The leading OP_0 is the famous off-by-one bug Bitcoin can never fix — CHECKMULTISIG pops one item too many." };
+        explain: "A 2-of-3 vault: any two of three keys can spend. The leading OP_0 is the famous off-by-one bug Bitcoin can never fix: CHECKMULTISIG pops one item too many." };
     }
     if (kind === "hashlock") {
       const preimage = enc("hermes-was-here"), h = H.sha256(preimage);
@@ -174,7 +176,7 @@ window.POPS = {
           D(encodeNum(delay),"144"), O(OP.OP_CHECKSEQUENCEVERIFY), O(OP.OP_DROP),
           D(delPub,"delayedPubkey"), O(OP.OP_ENDIF), O(OP.OP_CHECKSIG)],
         sequence: tamper ? delay - 1 : delay,
-        explain: "Lightning's to_local output. Two ways to spend: the IF branch lets the counterparty take everything with the revocation key if you publish an old, revoked state; the ELSE branch lets you reclaim your own funds — but only after a to_self_delay (OP_CHECKSEQUENCEVERIFY) that gives them time to catch a cheat." };
+        explain: "Lightning's to_local output. Two ways to spend: the IF branch lets the counterparty take everything with the revocation key if you publish an old, revoked state; the ELSE branch lets you reclaim your own funds, but only after a to_self_delay (OP_CHECKSEQUENCEVERIFY) that gives them time to catch a cheat." };
     }
     // cltv
     const threshold = 800000;
@@ -264,10 +266,10 @@ window.POPS = {
   }
   function renderProgram() {
     const rows = [];
-    if (cur.splitLen > 0) rows.push(`<div class="divider">scriptSig — unlock</div>`);
-    else rows.push(`<div class="divider">scriptSig — (empty)</div>`);
+    if (cur.splitLen > 0) rows.push(`<div class="divider">scriptSig · unlock</div>`);
+    else rows.push(`<div class="divider">scriptSig · (empty)</div>`);
     cur.cmds.forEach((c, i) => {
-      if (i === cur.splitLen) rows.push(`<div class="divider">scriptPubKey — lock</div>`);
+      if (i === cur.splitLen) rows.push(`<div class="divider">scriptPubKey · lock</div>`);
       const isOp = c.op !== undefined;
       const done = i < step ? "done" : "";
       const isCur = i === step - 1 ? "cur" : "";
@@ -294,7 +296,7 @@ window.POPS = {
     const b = $("badge"); const atEnd = step >= cur.trace.length-1;
     if (!atEnd) { b.className="badge2 mid"; b.textContent = `step ${step} / ${cur.trace.length-1}`; return; }
     b.className = "badge2 " + (cur.valid ? "ok" : "no");
-    b.textContent = cur.valid ? "✓ VALID — coins can move" : "✗ INVALID — spend rejected";
+    b.textContent = cur.valid ? "✓ VALID: coins can move" : "✗ INVALID: spend rejected";
   }
 
   $("step").addEventListener("click", () => { if (step < cur.trace.length-1) step++; renderProgram(); renderStack(); setBadge(); });

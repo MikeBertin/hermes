@@ -1,6 +1,6 @@
 """Bech32 / Bech32m address encoding (BIP-173, BIP-350).
 
-SegWit addresses don't use Base58Check — they use bech32, a checksummed base-32
+SegWit addresses don't use Base58Check; they use bech32, a checksummed base-32
 format that's case-insensitive, QR-friendly, and catches typos with a BCH code
 (it can *locate* errors, not just detect them). Witness v0 (P2WPKH / P2WSH) uses
 plain bech32; witness v1+ (Taproot) uses bech32m, which differs only by the
@@ -74,7 +74,7 @@ def bech32_decode(bech: str) -> tuple[str | None, list[int] | None, str | None]:
 
 
 def convertbits(data: list[int], frombits: int, tobits: int, pad: bool = True) -> list[int] | None:
-    """Regroup a bit-stream from ``frombits``-wide to ``tobits``-wide units —
+    """Regroup a bit-stream from ``frombits``-wide to ``tobits``-wide units:
     here, the 8-bit witness program <-> 5-bit bech32 symbols."""
     acc = bits = 0
     ret: list[int] = []

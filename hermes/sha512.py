@@ -1,6 +1,6 @@
 """SHA-512 and HMAC-SHA512, implemented from scratch.
 
-Wallets don't hash with SHA-256 for key derivation — they use SHA-512, wrapped
+Wallets don't hash with SHA-256 for key derivation; they use SHA-512, wrapped
 in HMAC (for BIP-32 child keys) and PBKDF2 (for turning a seed phrase into a
 seed). SHA-512 is structurally the same as SHA-256 but with 64-bit words, 80
 rounds, and different rotation amounts. Follows FIPS 180-4.
@@ -90,7 +90,7 @@ def hmac_sha512(key: bytes, message: bytes) -> bytes:
 
 def pbkdf2_hmac_sha512(password: bytes, salt: bytes, iterations: int, dklen: int = 64) -> bytes:
     """PBKDF2 with HMAC-SHA512 as the PRF. BIP-39 uses 2048 iterations, 64-byte
-    output — which fits in a single derived block, so we keep it simple."""
+    output, which fits in a single derived block, so we keep it simple."""
     out = bytearray()
     block_index = 1
     while len(out) < dklen:

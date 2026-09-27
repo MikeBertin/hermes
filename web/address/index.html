@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Key → Address — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Key → Address · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Key → Address — Hermes">
+<meta property="og:title" content="Key → Address · Hermes">
 <meta property="og:description" content="Watch a 256-bit secret become a Bitcoin address through SHA-256, RIPEMD-160 and Base58Check.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#ffc266;--accent-ink:#1f1400}
@@ -27,8 +29,8 @@
   <header class="hero">
     <h1>Key → Address</h1>
     <p class="sub">
-      A Bitcoin address is the end of an assembly line. It starts with one <b>random number</b> — your
-      private key — and runs through elliptic-curve multiplication, two
+      A Bitcoin address is the end of an assembly line. It starts with one <b>random number</b>, your
+      private key, and runs through elliptic-curve multiplication, two
       <span class="x" data-pop="hash">hash functions</span>, and a checksummed encoding. Every step is
       computed here, for real, by hand. Change one bit of the secret and the whole address
       <span class="x" data-pop="aval">avalanches</span>.
@@ -73,7 +75,7 @@
         <p class="hint" id="err" style="color:var(--bad);min-height:14px"></p>
       </div>
       <div class="panel">
-        <h2>WIF — the private key, encoded</h2>
+        <h2>WIF: the private key, encoded</h2>
         <div class="val-big" id="s-wif" style="font-size:13px;color:var(--ink)"></div>
         <p class="hint">The same secret in Wallet Import Format: version byte + key + checksum, Base58.
           This is what you back up.</p>
@@ -85,11 +87,11 @@
     <div class="notice-title">Things to notice</div>
     <div class="notice-grid">
       <div class="ncard"><h3>One way only</h3>
-        <p>You can run this line top to bottom in microseconds. Running it backwards — address to
-          public key to private key — would mean breaking both the curve and the hashes.</p></div>
+        <p>You can run this line top to bottom in microseconds. Running it backwards, address to
+          public key to private key, would mean breaking both the curve and the hashes.</p></div>
       <div class="ncard"><h3>The avalanche</h3>
         <p>Hit <em>Flip one bit</em>. A single changed bit in the secret produces a completely
-          unrelated address (changed characters in red). No partial credit — that's a good hash.</p></div>
+          unrelated address (changed characters in red). No partial credit, and that's a good hash.</p></div>
       <div class="ncard"><h3>The checksum saves you</h3>
         <p>Those last 4 bytes are a hash of everything before them. Mistype an address and the
           checksum won't match, so your wallet refuses to send. Typos can't burn coins.</p></div>
@@ -100,7 +102,7 @@
 <script>
 window.POPS = {
   hash: "<h4>SHA-256 then RIPEMD-160</h4><p>Two different hash functions in series (called HASH160). The double layer shrinks the key to 20 bytes and hedges against a weakness in either one.</p>",
-  aval: "<h4>Avalanche effect</h4><p>A good hash sends every input bit through every output bit. Flip one and on average half the output bits flip — the result looks entirely new.</p>",
+  aval: "<h4>Avalanche effect</h4><p>A good hash sends every input bit through every output bit. Flip one and on average half the output bits flip, so the result looks entirely new.</p>",
 };
 </script>
 <script src="../shared/demo.js"></script>
@@ -154,7 +156,7 @@ window.POPS = {
     $("s-h160").innerHTML = diff(h160hex.replace(/(..)/g, "$1 ").trim(), prevH160);
     $("s-addr").innerHTML = diff(addr, prevAddr);
     $("m-addr").textContent = (testnet ? "testnet" : "mainnet") + " P2PKH";
-    // native SegWit (P2WPKH) — bech32 of the same key hash; always compressed
+    // native SegWit (P2WPKH): bech32 of the same key hash; always compressed
     const segwit = H.p2wpkhAddress(point, testnet);
     $("s-segwit").innerHTML = diff(segwit, prevSegwit);
     $("m-segwit").textContent = (testnet ? "tb" : "bc") + "1… · bech32 · P2WPKH";

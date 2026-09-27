@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Network &amp; the 51% Attack — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Network &amp; the 51% Attack · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Network & the 51% Attack — Hermes">
-<meta property="og:description" content="Nodes gossip, forks appear and resolve — and a majority miner rewrites a confirmed payment.">
+<meta property="og:title" content="Network & the 51% Attack · Hermes">
+<meta property="og:description" content="Nodes gossip, forks appear and resolve, and a majority miner rewrites a confirmed payment.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#b58cff;--accent-ink:#160a2b}
@@ -32,7 +34,7 @@
     <p class="sub">
       No one is in charge of Bitcoin. Every node simply keeps the chain with the
       <span class="x" data-pop="work">most work</span>. Two things follow: the network sometimes
-      <b>forks</b> and heals itself — and an attacker with enough hashpower can secretly out-build the
+      <b>forks</b> and heals itself, and an attacker with enough hashpower can secretly out-build the
       honest chain to <b>reverse a payment</b> that already looked confirmed.
     </p>
   </header>
@@ -67,7 +69,7 @@
             <div class="stat"><div class="k">reorgs seen</div><div class="v" id="cReorg">0</div></div>
           </div>
           <p class="hint">When two miners find a block at once you get a fork. The moment one side is
-            extended, it becomes the most-work chain and the other side's block is orphaned — a
+            extended, it becomes the most-work chain and the other side's block is orphaned: a
             <b>reorg</b>. Watch the highlight jump.</p>
         </div>
       </div>
@@ -99,7 +101,7 @@
           <div class="row" style="margin-top:14px"><button id="runAtk" class="primary">Run one attack</button><button id="resetA">Reset</button></div>
           <div class="outcome run" id="outcome">set hashpower &amp; confirmations, then run</div>
           <p class="hint">The probability is from a Monte-Carlo run of the Python simulator. A single
-            run below is one roll of the dice — watch the private red chain try to overtake.</p>
+            run below is one roll of the dice. Watch the private red chain try to overtake.</p>
         </div>
       </div>
     </div>
@@ -109,15 +111,15 @@
     <div class="notice-title">Things to notice</div>
     <div class="notice-grid">
       <div class="ncard"><h3>Confirmations buy safety</h3>
-        <p>Each block mined on top of a payment makes reversing it exponentially harder — for any
+        <p>Each block mined on top of a payment makes reversing it exponentially harder, for any
           attacker below 50%. That's the whole reason to "wait for 6 confirmations".</p></div>
       <div class="ncard"><h3>51% isn't a magic switch</h3>
         <p>Even just under half the hashpower gives a real chance of a double-spend; just over half
           makes it a near-certainty given patience. Security degrades smoothly, then collapses.</p></div>
       <div class="ncard"><h3>Honesty is the default win</h3>
-        <p>For a small miner, honest mining on the longest chain is the profitable strategy — which
+        <p>For a small miner, honest mining on the longest chain is the profitable strategy, which
           is why the network stays converged. (Above roughly a third of the hashpower, cleverer
-          withholding strategies — "selfish mining" — can beat it; another reason concentration
+          withholding strategies ("selfish mining") can beat it; another reason concentration
           is the thing to watch.)</p></div>
     </div>
   </div>
@@ -125,7 +127,7 @@
 
 <script>
 window.POPS = {
-  work: "<h4>Most-work rule</h4><p>Nodes prefer the chain with the most cumulative proof-of-work (usually the longest). No votes, no authority — just whichever chain took the most computation to build.</p>",
+  work: "<h4>Most-work rule</h4><p>Nodes prefer the chain with the most cumulative proof-of-work (usually the longest). No votes, no authority: just whichever chain took the most computation to build.</p>",
 };
 </script>
 <script src="../shared/demo.js"></script>
@@ -244,9 +246,9 @@ window.POPS = {
       const state={honest,attacker,shipped};
       drawRace(state);
       if(shipped && attacker>honest){ done=true; $("outcome").className="outcome rev";
-        $("outcome").textContent="✗ DOUBLE-SPEND — attacker overtook; the payment is reversed"; }
+        $("outcome").textContent="✗ DOUBLE-SPEND: attacker overtook; the payment is reversed"; }
       else if(shipped && honest-attacker>=8){ done=true; $("outcome").className="outcome safe";
-        $("outcome").textContent="✓ SAFE — honest chain pulled too far ahead; attacker gives up"; }
+        $("outcome").textContent="✓ SAFE: honest chain pulled too far ahead; attacker gives up"; }
     }, 180);
   }
   function resetRace(){ if(atkTimer){clearInterval(atkTimer);atkTimer=null;} drawRace({honest:0,attacker:0,shipped:false});

@@ -1,10 +1,10 @@
-"""MuSig2 key aggregation (BIP-327) — n signatures become one.
+"""MuSig2 key aggregation (BIP-327): n signatures become one.
 
 Schnorr's linearity (see schnorr.py) means public keys and signatures *add*.
 MuSig2 turns that party trick into a protocol: n cosigners aggregate their
 public keys into ONE x-only key, run a two-round signing ceremony, and the
 result is a plain 64-byte BIP-340 signature. On-chain, the n-of-n vault is
-indistinguishable from — and costs exactly the same as — a lone signer.
+indistinguishable from (and costs exactly the same as) a lone signer.
 Compare the 2-of-3 P2WSH vault (transaction.py): its witness carries every
 signature and the whole script; a MuSig2 vault carries 64 bytes, full stop.
 
@@ -22,7 +22,7 @@ Why TWO nonces per signer (the "2" in MuSig2)? A single aggregated nonce lets
 an attacker open many parallel sessions and steer the combined challenge with
 Wagner's generalized-birthday algorithm. Each signer instead commits to a
 *pair* (R₁, R₂), and the session binds them with ``b = H(aggnonce ‖ Q.x ‖ m)``
-into an effective nonce ``R = R₁ + b·R₂`` — b isn't known until every nonce is
+into an effective nonce ``R = R₁ + b·R₂``; b isn't known until every nonce is
 fixed, so there is nothing to steer. Signing stays two rounds: swap nonces,
 swap partial signatures.
 
@@ -32,22 +32,22 @@ The ceremony (what the round-trip actually carries):
     round 2:  each signer i sends s_i = k_i1 + b·k_i2 + e·a_i·d_i
     combine:  s = Σ s_i  →  (R.x ‖ s) verifies under Q via plain BIP-340
 
-Tweaking (``apply_tweak``) folds a Taproot TapTweak — or a BIP-32 derivation
-step — into the aggregate, so the vault hides behind an ordinary ``bc1p…``
+Tweaking (``apply_tweak``) folds a Taproot TapTweak (or a BIP-32 derivation
+step) into the aggregate, so the vault hides behind an ordinary ``bc1p…``
 address (taproot.py).
 
 BIP-327 conventions implemented here:
-- Inputs are 33-byte *compressed* ("plain") public keys, NOT x-only — the
+- Inputs are 33-byte *compressed* ("plain") public keys, NOT x-only; the
   aggregate is only reduced to x-only at the very end.
 - ``secnonce`` is single-use by construction: signing zeroizes it in place,
   so accidental reuse raises instead of leaking the key (see ecdsa.py for
   what reuse costs).
 - Misbehaving participants raise ``InvalidContributionError`` naming the
-  culprit — a real coordinator must know *who* to hold accountable.
+  culprit, since a real coordinator must know *who* to hold accountable.
 
 Scope: the n-of-n path plus tweaks. Adaptor signatures and the deterministic
 (stateless) signer variant are out of scope. Verified against the official
-BIP-327 vectors: key_agg, nonce_gen, nonce_agg, sign_verify, tweak, sig_agg —
+BIP-327 vectors: key_agg, nonce_gen, nonce_agg, sign_verify, tweak, sig_agg,
 including every error case.
 """
 
@@ -85,7 +85,7 @@ def cbytes(point: Point) -> bytes:
 
 
 def cbytes_ext(point: Point) -> bytes:
-    """Like :func:`cbytes` but the point at infinity is 33 zero bytes — the
+    """Like :func:`cbytes` but the point at infinity is 33 zero bytes; the
     aggregate nonce needs this (cosigners' nonces can legitimately cancel)."""
     if point.is_infinity:
         return bytes(33)
@@ -116,7 +116,7 @@ def cpoint_ext(data: bytes) -> Point:
 
 
 def plain_pubkey(secret: int) -> bytes:
-    """The 33-byte compressed public key for ``secret`` — the form BIP-327
+    """The 33-byte compressed public key for ``secret``: the form BIP-327
     aggregates (x-only would lose the parity the coefficients depend on)."""
     if not 1 <= secret < N:
         raise ValueError("The secret key must be an integer in the range 1..n-1.")
@@ -124,7 +124,7 @@ def plain_pubkey(secret: int) -> bytes:
 
 
 def key_sort(pubkeys: List[bytes]) -> List[bytes]:
-    """Lexicographic ordering — how cosigners agree on a canonical key list
+    """Lexicographic ordering: how cosigners agree on a canonical key list
     (KeyAgg is order-sensitive: same keys, different order, different Q)."""
     return sorted(pubkeys)
 
@@ -133,7 +133,7 @@ def key_sort(pubkeys: List[bytes]) -> List[bytes]:
 
 class KeyAggContext(NamedTuple):
     """The aggregate key plus the accumulators tweaking maintains:
-    ``gacc`` (±1 mod n) tracks parity flips, ``tacc`` the summed tweaks —
+    ``gacc`` (±1 mod n) tracks parity flips, ``tacc`` the summed tweaks;
     signers need both to shift their partial signatures to match."""
 
     Q: Point
@@ -142,17 +142,17 @@ class KeyAggContext(NamedTuple):
 
 
 def get_xonly_pk(keyagg_ctx: KeyAggContext) -> bytes:
-    """The 32-byte x-only aggregate — what a Taproot output actually carries."""
+    """The 32-byte x-only aggregate: what a Taproot output actually carries."""
     return xbytes(keyagg_ctx.Q)
 
 
 def hash_keys(pubkeys: List[bytes]) -> bytes:
-    """``L`` — one tagged hash committing to the entire ordered key list."""
+    """``L``: one tagged hash committing to the entire ordered key list."""
     return tagged_hash("KeyAgg list", b"".join(pubkeys))
 
 
 def get_second_key(pubkeys: List[bytes]) -> bytes:
-    """The first key that differs from ``pubkeys[0]`` (zeros if all equal) —
+    """The first key that differs from ``pubkeys[0]`` (zeros if all equal);
     it gets coefficient 1, an optimization the spec allows because a rogue
     second key still can't aim the sum once every *other* key is blinded."""
     for pk in pubkeys[1:]:
@@ -174,7 +174,7 @@ def _key_agg_coeff_internal(pubkeys: List[bytes], pk: bytes, pk2: bytes) -> int:
 
 
 def key_agg(pubkeys: List[bytes]) -> KeyAggContext:
-    """``Q = Σ a_i·P_i`` — aggregate n plain public keys into one."""
+    """``Q = Σ a_i·P_i``: aggregate n plain public keys into one."""
     pk2 = get_second_key(pubkeys)
     Q = INFINITY
     for i, pk in enumerate(pubkeys):
@@ -183,7 +183,7 @@ def key_agg(pubkeys: List[bytes]) -> KeyAggContext:
         except ValueError:
             raise InvalidContributionError(i, "pubkey")
         Q = Q + _key_agg_coeff_internal(pubkeys, pk, pk2) * point
-    # Q = infinity would need the coefficients to conspire across a hash —
+    # Q = infinity would need the coefficients to conspire across a hash:
     # negligible, and not triggerable by any signer.
     assert not Q.is_infinity
     return KeyAggContext(Q, 1, 0)
@@ -191,7 +191,7 @@ def key_agg(pubkeys: List[bytes]) -> KeyAggContext:
 
 def apply_tweak(keyagg_ctx: KeyAggContext, tweak: bytes, is_xonly: bool) -> KeyAggContext:
     """Shift the aggregate: ``Q' = g·Q + t·G``. An x-only tweak (Taproot's
-    TapTweak) first negates Q if its y is odd — that is ``g = n-1`` — because
+    TapTweak) first negates Q if its y is odd (that is ``g = n-1``) because
     the tweak commits to the x-only form. A plain tweak (BIP-32 step) never
     negates. The accumulators carry the correction into signing."""
     if len(tweak) != 32:
@@ -208,7 +208,7 @@ def apply_tweak(keyagg_ctx: KeyAggContext, tweak: bytes, is_xonly: bool) -> KeyA
 
 
 def key_agg_and_tweak(pubkeys: List[bytes], tweaks: List[bytes], is_xonly: List[bool]) -> KeyAggContext:
-    """KeyAgg then the whole tweak chain — the session's view of the key."""
+    """KeyAgg then the whole tweak chain: the session's view of the key."""
     if len(tweaks) != len(is_xonly):
         raise ValueError("The `tweaks` and `is_xonly` arrays must have the same length.")
     ctx = key_agg(pubkeys)
@@ -233,8 +233,8 @@ def nonce_gen_internal(rand_: bytes, sk: Optional[bytes], pk: bytes,
                        aggpk: Optional[bytes], msg: Optional[bytes],
                        extra_in: Optional[bytes]) -> Tuple[bytearray, bytes]:
     """The deterministic core of :func:`nonce_gen` (exposed for the official
-    vectors, which fix ``rand_``). Everything the signer knows — secret key,
-    aggregate key, message — is folded into the two nonces, so even a weak
+    vectors, which fix ``rand_``). Everything the signer knows (secret key,
+    aggregate key, message) is folded into the two nonces, so even a weak
     ``rand_`` degrades gracefully rather than repeating a nonce."""
     if sk is not None:
         rand = bytes(a ^ b for a, b in zip(sk, tagged_hash("MuSig/aux", rand_)))
@@ -259,8 +259,8 @@ def nonce_gen_internal(rand_: bytes, sk: Optional[bytes], pk: bytes,
 
 def nonce_gen(sk: Optional[bytes], pk: bytes, aggpk: Optional[bytes] = None,
               msg: Optional[bytes] = None, extra_in: Optional[bytes] = None) -> Tuple[bytearray, bytes]:
-    """Round 1: make this signer's nonce pair. Returns ``(secnonce, pubnonce)``
-    — keep the first secret and NEVER reuse it; broadcast the second."""
+    """Round 1: make this signer's nonce pair. Returns ``(secnonce, pubnonce)``.
+    Keep the first secret and NEVER reuse it; broadcast the second."""
     if sk is not None and len(sk) != 32:
         raise ValueError("The optional byte array sk must have length 32.")
     if aggpk is not None and len(aggpk) != 32:
@@ -271,7 +271,7 @@ def nonce_gen(sk: Optional[bytes], pk: bytes, aggpk: Optional[bytes] = None,
 def nonce_agg(pubnonces: List[bytes]) -> bytes:
     """Sum everyone's pubnonces slot-wise: ``(ΣR_i1, ΣR_i2)``, 66 bytes.
     Either sum may be the point at infinity (encoded as zeros) if nonces
-    cancel — harmless, the session substitutes G downstream."""
+    cancel. That is harmless; the session substitutes G downstream."""
     aggnonce = b""
     for j in (0, 1):
         R_j = INFINITY
@@ -317,7 +317,7 @@ def get_session_values(session_ctx: SessionContext) -> Tuple[Point, int, int, in
 
 
 def get_session_key_agg_coeff(session_ctx: SessionContext, point: Point) -> int:
-    """This signer's ``a_i`` — their key must actually be in the session."""
+    """This signer's ``a_i``; their key must actually be in the session."""
     pk = cbytes(point)
     if pk not in session_ctx.pubkeys:
         raise ValueError("The signer's pubkey must be included in the list of pubkeys.")
@@ -357,7 +357,7 @@ def partial_sign(secnonce: bytearray, sk: bytes, session_ctx: SessionContext) ->
 
 def partial_sig_verify(psig: bytes, pubnonces: List[bytes], pubkeys: List[bytes],
                        tweaks: List[bytes], is_xonly: List[bool], msg: bytes, i: int) -> bool:
-    """Check signer ``i``'s share *before* aggregating — the accountability
+    """Check signer ``i``'s share *before* aggregating: the accountability
     step. A bad share caught here names its author; caught after aggregation
     it only proves *someone* cheated."""
     if len(pubnonces) != len(pubkeys):
@@ -370,7 +370,7 @@ def partial_sig_verify(psig: bytes, pubnonces: List[bytes], pubkeys: List[bytes]
 
 def partial_sig_verify_internal(psig: bytes, pubnonce: bytes, pk: bytes,
                                 session_ctx: SessionContext) -> bool:
-    """``s_i·G == R_i + e·a_i·P_i`` — the per-signer analogue of BIP-340
+    """``s_i·G == R_i + e·a_i·P_i``: the per-signer analogue of BIP-340
     verification, with this signer's effective nonce ``R_i = R_i1 + b·R_i2``
     (negated when the session's R needed negating)."""
     Q, gacc, _, b, R, e = get_session_values(session_ctx)
@@ -389,7 +389,7 @@ def partial_sig_verify_internal(psig: bytes, pubnonce: bytes, pk: bytes,
 
 def partial_sig_agg(psigs: List[bytes], session_ctx: SessionContext) -> bytes:
     """Combine: ``s = Σ s_i + e·g·tacc`` (the tweak's contribution enters once,
-    here). Returns ``R.x ‖ s`` — a standard 64-byte BIP-340 signature that
+    here). Returns ``R.x ‖ s``, a standard 64-byte BIP-340 signature that
     ``schnorr.verify`` accepts against the aggregate x-only key."""
     Q, _, tacc, _, R, e = get_session_values(session_ctx)
     s = 0

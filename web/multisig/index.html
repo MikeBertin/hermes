@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Multisig Vault — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>Multisig Vault · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="Multisig Vault — Hermes">
+<meta property="og:title" content="Multisig Vault · Hermes">
 <meta property="og:description" content="Three keys, one address, a 2-of-3 rule. Build a real P2WSH multisig vault by hand and watch the threshold decide.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#ef88c8;--accent-ink:#2a0a1f}
@@ -48,7 +50,7 @@
     <p class="sub">
       A single private key is a single point of failure: lose it and the coins are gone; let it
       leak and they're stolen. A <b>multisig</b> vault fixes both. Three cosigners each hold a key,
-      but the coins live at <b>one address</b> governed by a rule — <span class="x" data-pop="thresh">2 of 3
+      but the coins live at <b>one address</b> governed by a rule: <span class="x" data-pop="thresh">2 of 3
       must sign</span>. Below is a real <span class="x" data-pop="p2wsh">P2WSH</span> vault, its address
       built by hand from the three keys. Choose who signs a withdrawal and watch the threshold decide.
     </p>
@@ -62,11 +64,11 @@
       </div>
       <div class="arrow-d">↑ &nbsp;bech32 of &nbsp;SHA-256( witnessScript )</div>
       <div class="stg">
-        <div class="stg-h"><span class="tag" id="ws-title">witnessScript — the 2-of-3 rule</span><span class="meta" id="m-policy"></span></div>
+        <div class="stg-h"><span class="tag" id="ws-title">witnessScript: the 2-of-3 rule</span><span class="meta" id="m-policy"></span></div>
         <div class="bytes" id="wscript" style="font-size:11px"></div>
         <p class="hint" style="margin:8px 0 0">
-          <code id="ws-opm">OP_2</code> &lt;key A&gt; &lt;key B&gt; &lt;key C&gt; <code>OP_3</code> <code>OP_CHECKMULTISIG</code>
-          — "<span id="ws-rule">any 2 of these 3 keys</span>".</p>
+          <code id="ws-opm">OP_2</code> &lt;key A&gt; &lt;key B&gt; &lt;key C&gt; <code>OP_3</code> <code>OP_CHECKMULTISIG</code>,
+          meaning "<span id="ws-rule">any 2 of these 3 keys</span>".</p>
       </div>
     </div>
 
@@ -99,13 +101,13 @@
     <div class="notice-title">Why treasuries hold coins this way</div>
     <div class="notice-grid">
       <div class="ncard"><h3>Lose a key, keep your coins</h3>
-        <p>A 2-of-3 vault survives one lost or destroyed key — the other two still spend. No single
+        <p>A 2-of-3 vault survives one lost or destroyed key; the other two still spend. No single
           backup whose loss is fatal.</p></div>
       <div class="ncard"><h3>Steal a key, steal nothing</h3>
-        <p>An attacker who compromises one cosigner gets one signature — not enough. The threshold
+        <p>An attacker who compromises one cosigner gets one signature, which is not enough. The threshold
           turns a catastrophic breach into a recoverable one (rotate the compromised key).</p></div>
       <div class="ncard"><h3>One address, many guards</h3>
-        <p>The keys can sit in different places — an office, a vault, a lawyer — yet the world sends
+        <p>The keys can sit in different places (an office, a vault, a lawyer) yet the world sends
           to a single <code>bc1q…</code> address. This is exactly how corporate Bitcoin custody is built.</p></div>
     </div>
   </div>
@@ -113,7 +115,7 @@
 
 <script>
 window.POPS = {
-  thresh: "<h4>m-of-n threshold</h4><p>The rule baked into the script: of the n keys, any m must sign. 2-of-3 is the workhorse — redundant against loss, resistant to a single theft.</p>",
+  thresh: "<h4>m-of-n threshold</h4><p>The rule baked into the script: of the n keys, any m must sign. 2-of-3 is the workhorse: redundant against loss, resistant to a single theft.</p>",
   p2wsh: "<h4>Pay-to-Witness-Script-Hash</h4><p>The address commits to a SHA-256 of the spending <em>script</em>, not a single key. To spend, you reveal the script and satisfy it. Native SegWit, so the address is bech32 (<code>bc1q…</code>).</p>",
 };
 </script>
@@ -163,7 +165,7 @@ window.POPS = {
     $("addr").textContent = addr;
     $("wscript").textContent = H.bytesToHex(wscript).replace(/(.{2})/g, "$1 ").trim();
     $("m-policy").textContent = m + "-of-3 · " + wscript.length + " bytes";
-    $("ws-title").textContent = `witnessScript — the ${m}-of-3 rule`;
+    $("ws-title").textContent = `witnessScript: the ${m}-of-3 rule`;
     $("ws-opm").textContent = "OP_" + m;
     $("ws-rule").textContent = m === 3 ? "all 3 of these keys" : `any ${m} of these 3 keys`;
 
@@ -174,7 +176,7 @@ window.POPS = {
         <div class="dot">${"ABC"[i]}</div>
         <div class="who"><b>${NAMES[i]}</b> <span style="color:var(--muted);font-size:11.5px">· ${SUB[i]}</span>
           <div class="pk">${pk}</div></div>
-        <div class="mark">${on ? "✓ signs" : "— idle"}</div></div>`;
+        <div class="mark">${on ? "✓ signs" : "idle"}</div></div>`;
     }).join("");
     $("signers").querySelectorAll(".signer").forEach((el) =>
       el.addEventListener("click", () => { const i = +el.dataset.i; signing[i] = !signing[i]; render(); }));
@@ -184,17 +186,17 @@ window.POPS = {
     v.className = "verdict " + (ok ? "ok" : "no");
     v.querySelector(".big").textContent = ok ? "✓" : "✗";
     $("verdict-txt").textContent = ok
-      ? `Released — ${have} valid signature${have > 1 ? "s meet" : " meets"} the ${m}-of-3 rule.`
-      : `Rejected — need ${m} signatures, have ${have}.`;
+      ? `Released: ${have} valid signature${have > 1 ? "s meet" : " meets"} the ${m}-of-3 rule.`
+      : `Rejected: need ${m} signatures, have ${have}.`;
 
-    // the witness stack the spender broadcasts — exactly m signatures (extra
+    // the witness stack the spender broadcasts: exactly m signatures (extra
     // ones would actually fail OP_CHECKMULTISIG), in cosigner order
     const chosen = valid.map((good, i) => (good ? i : -1)).filter((i) => i >= 0).slice(0, m);
     const sigLines = chosen.map((i) => `  <span>&lt;signature ${"ABC"[i]}&gt;</span>`);
     $("wstack").innerHTML = ok
       ? [`witness stack:`, `  &lt;empty&gt;  <span style="color:var(--muted)">(OP_CHECKMULTISIG off-by-one)</span>`,
          ...sigLines, `  <span>&lt;witnessScript&gt;</span>`].join("<br>")
-      : `witness stack: <span style="color:var(--muted)">incomplete — not enough signatures to build a valid spend</span>`;
+      : `witness stack: <span style="color:var(--muted)">incomplete: not enough signatures to build a valid spend</span>`;
   }
 
   // controls

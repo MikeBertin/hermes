@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PTLCs — Hermes</title>
+<link rel="icon" href="../badge.svg" type="image/svg+xml">
+<title>PTLCs · Hermes</title>
 <meta property="og:type" content="website">
-<meta property="og:title" content="PTLCs / adaptor signatures — Hermes">
+<meta property="og:title" content="PTLCs / adaptor signatures · Hermes">
 <meta property="og:description" content="Route a Lightning payment with point-locks instead of hash-locks. A Schnorr adaptor signature per hop; one secret scalar settles the path and stays private.">
 <meta property="og:image" content="https://mikebertin.github.io/hermes/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/demo.css">
 <style>
   :root{--accent:#f472b6;--accent-ink:#2a0a1a}
@@ -61,13 +63,13 @@
 <div class="page">
   <div class="crumb"><a href="../">Hermes</a> / PTLC</div>
   <header class="hero">
-    <h1>PTLCs — routing with points, not hashes</h1>
+    <h1>PTLCs: routing with points, not hashes</h1>
     <p class="sub">
       HTLC routing (demo 14) locked every hop to the same <b>hash</b>. A <b>PTLC</b> locks it to a
       <b>point</b> <span class="mono">T = t·G</span> instead, using a
       <span class="x" data-pop="adaptor">Schnorr adaptor signature</span>: each hop issues a payment
       as a <b>pre-signature</b> that only becomes valid once the secret scalar <span class="mono">t</span>
-      is added — and <em>publishing</em> the finished signature <b>reveals</b> t to the hop behind it.
+      is added, and <em>publishing</em> the finished signature <b>reveals</b> t to the hop behind it.
       Same idea as a preimage, but it rides inside an ordinary signature: nothing on-chain looks
       special, and each hop can <span class="x" data-pop="tweak">offset the point</span> so the hops
       can't be linked. It's what Taproot lets Lightning become.
@@ -94,7 +96,7 @@
           <div class="node" id="nC"><div class="disc">C</div><div class="nm">Carol</div><div class="role">payee</div></div>
         </div>
         <p class="hint" style="margin-top:12px">Both hops are locked to the same point <b>T</b>. Each
-          is a real Schnorr pre-signature — provably completable by whoever knows the matching
+          is a real Schnorr pre-signature: provably completable by whoever knows the matching
           <span class="mono">t</span>, yet invalid until then.</p>
       </div>
 
@@ -105,11 +107,11 @@
           <button id="st2" disabled>② Lock pre-signatures →</button>
         </div>
         <div class="steps three" id="settleRow" style="display:none">
-          <button id="st3" class="primary">③ Carol claims — reveals t ◀</button>
+          <button id="st3" class="primary">③ Carol claims, revealing t ◀</button>
           <button id="reset">Reset</button>
         </div>
         <div class="log" id="log"><span class="l">Carol picks a secret scalar t and publishes only the point T = t·G.</span></div>
-        <div id="mainBadge" class="badge2 idle">idle — start with Carol's invoice</div>
+        <div id="mainBadge" class="badge2 idle">idle: start with Carol's invoice</div>
       </div>
     </div>
 
@@ -117,11 +119,11 @@
       <div class="panel">
         <h2>The point-lock</h2>
         <div class="stg">
-          <div class="lab2">adaptor point &nbsp;T = t·G — the invoice</div>
+          <div class="lab2">adaptor point &nbsp;T = t·G · the invoice</div>
           <div class="num" id="tpoint">–</div>
         </div>
         <div class="stg">
-          <div class="lab2">secret scalar t &nbsp;— revealed only by claiming</div>
+          <div class="lab2">secret scalar t &nbsp;· revealed only by claiming</div>
           <div class="num hid" id="tsecret">•••••••• hidden ••••••••</div>
         </div>
       </div>
@@ -129,12 +131,12 @@
       <div class="panel">
         <h2>Adaptor-signature flow (Bob→Carol hop)</h2>
         <div class="flowsteps">
-          <div class="fstep" id="f1"><span class="k">presign</span><span class="v">a pre-signature under T — verifies as completable</span></div>
+          <div class="fstep" id="f1"><span class="k">presign</span><span class="v">a pre-signature under T; verifies as completable</span></div>
           <div class="fstep" id="f2"><span class="k">adapt(t)</span><span class="v">+ t → a valid 64-byte BIP-340 signature</span></div>
           <div class="fstep" id="f3"><span class="k">extract</span><span class="v">Bob subtracts the pre-sig back out → learns t</span></div>
         </div>
         <p class="hint" style="margin-top:8px">The completed signature verifies with the exact
-          <span class="mono">schnorrVerify</span> from demo 11 — the chain can't tell a PTLC from any
+          <span class="mono">schnorrVerify</span> from demo 11, so the chain can't tell a PTLC from any
           other spend.</p>
       </div>
 
@@ -143,10 +145,10 @@
         <div class="weigh">
           <div class="side"><h4>HTLC</h4>
             <div class="big">hash-lock</div>
-            <div class="sub2">same payment hash at every hop — linkable; needs a hashlock script.</div></div>
+            <div class="sub2">same payment hash at every hop: linkable; needs a hashlock script.</div></div>
           <div class="side win"><h4>PTLC</h4>
             <div class="big">point-lock</div>
-            <div class="sub2">a per-hop point + a plain signature — unlinkable, smaller, script-less.</div></div>
+            <div class="sub2">a per-hop point + a plain signature: unlinkable, smaller, script-less.</div></div>
         </div>
       </div>
     </div>
@@ -156,15 +158,15 @@
     <div class="notice-title">Things to notice</div>
     <div class="notice-grid">
       <div class="ncard"><h3>The secret rides in the signature</h3>
-        <p>There's no hashlock and no preimage on-chain — just a normal Schnorr signature. The secret
+        <p>There's no hashlock and no preimage on-chain, just a normal Schnorr signature. The secret
           <span class="mono">t</span> is the <em>difference</em> between the pre-signature and the
           finished one, so anyone holding the pre-sig recovers it the instant the payment settles.</p></div>
       <div class="ncard"><h3>Unlinkable hops</h3>
         <p>Each forwarder can lock its outgoing hop to <span class="mono">T + y·G</span> for a random
           <span class="mono">y</span>. The points all differ, so an observer can't tie the hops of one
-          payment together — then the node peels <span class="mono">y</span> back off to learn t.</p></div>
+          payment together. Then the node peels <span class="mono">y</span> back off to learn t.</p></div>
       <div class="ncard"><h3>Built on adaptor signatures</h3>
-        <p>The same primitive powers discreet log contracts, atomic swaps, and cross-chain trades:
+        <p>The same primitive powers discreet log contracts, atomic swaps and cross-chain trades:
           issue a signature "encrypted" under a point, and completing it publishes the point's discrete
           log. Taproot's Schnorr is what makes it clean.</p></div>
     </div>
@@ -173,8 +175,8 @@
 
 <script>
 window.POPS = {
-  adaptor: "<h4>Adaptor signature</h4><p>A Schnorr signature issued in an incomplete form, bound to a point T = t·G. It's provably completable by whoever knows t, but invalid until t is added. Completing it publishes t — the property that makes point-locked routing work.</p>",
-  tweak: "<h4>Point offset (tweak)</h4><p>A forwarding node locks its outgoing hop to T + y·G for a random y instead of T. Every hop's point then looks independent, so the route can't be correlated on-chain. The node subtracts y to recover t. HTLCs can't do this — the hash is the same everywhere.</p>",
+  adaptor: "<h4>Adaptor signature</h4><p>A Schnorr signature issued in an incomplete form, bound to a point T = t·G. It's provably completable by whoever knows t, but invalid until t is added. Completing it publishes t, the property that makes point-locked routing work.</p>",
+  tweak: "<h4>Point offset (tweak)</h4><p>A forwarding node locks its outgoing hop to T + y·G for a random y instead of T. Every hop's point then looks independent, so the route can't be correlated on-chain. The node subtracts y to recover t. HTLCs can't do this: the hash is the same everywhere.</p>",
 };
 </script>
 <script src="../shared/demo.js"></script>
@@ -215,7 +217,7 @@ window.POPS = {
     const okBC = H.adaptorPresigVerify(H.schnorrPubkey(bob), MSG_BC, T, presigBC);
     stage = 2;
     $("f1").classList.toggle("done", okAB && okBC);
-    log(`<span class="l">Both hops locked as pre-signatures under <b>T</b> — each verifies as completable (${okAB && okBC ? "✓" : "✗"}), but neither is a valid signature yet.</span>`);
+    log(`<span class="l">Both hops locked as pre-signatures under <b>T</b>; each verifies as completable (${okAB && okBC ? "✓" : "✗"}), but neither is a valid signature yet.</span>`);
     render();
   }
 
@@ -234,9 +236,9 @@ window.POPS = {
     render();
     $("mainBadge").className = "badge2 " + (carolOk && bobOk && recovered ? "ok" : "idle");
     $("mainBadge").textContent = (carolOk && bobOk && recovered)
-      ? "✓ settled — one secret t completed both signatures, backward"
+      ? "✓ settled: one secret t completed both signatures, backward"
       : "✗ something went wrong";
-    log(`<span class="l win">◀ Carol adds <span class="g">t</span> to claim from Bob — a valid signature. Bob reads it, <b>extracts t</b>, and completes his own from Alice. The point unlocked the path, and the chain only ever saw two ordinary signatures.</span>`);
+    log(`<span class="l win">◀ Carol adds <span class="g">t</span> to claim from Bob with a valid signature. Bob reads it, <b>extracts t</b>, and completes his own from Alice. The point unlocked the path, and the chain only ever saw two ordinary signatures.</span>`);
   }
 
   function log(html) { $("log").innerHTML = html; }
@@ -254,9 +256,9 @@ window.POPS = {
     $("settleRow").style.display = stage >= 2 ? "grid" : "none";
     $("st3").disabled = stage !== 2;
 
-    if (stage === 0) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "idle — start with Carol's invoice"; }
-    else if (stage === 1) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "invoice ready — lock the pre-signatures"; }
-    else if (stage === 2) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "locked — Carol claims to reveal t"; }
+    if (stage === 0) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "idle: start with Carol's invoice"; }
+    else if (stage === 1) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "invoice ready: lock the pre-signatures"; }
+    else if (stage === 2) { $("mainBadge").className = "badge2 idle"; $("mainBadge").textContent = "locked: Carol claims to reveal t"; }
   }
 
   $("st1").addEventListener("click", invoice);

@@ -81,7 +81,7 @@ def test_bip143_sighash_matches_spec():
 
 def test_bip143_signature_is_reproduced_byte_for_byte():
     """Because sign() is RFC 6979 deterministic, our signature for the BIP-143
-    input equals the one published in the spec — end-to-end proof of the whole
+    input equals the one published in the spec: end-to-end proof of the whole
     segwit signing path (sighash -> nonce -> DER -> low-s)."""
     tx = Tx.parse(BIP143_UNSIGNED)
     z = tx.sig_hash_bip143(1, p2pkh_script(bytes.fromhex(BIP143_KEYHASH)), BIP143_AMOUNT)
